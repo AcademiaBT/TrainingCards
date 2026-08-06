@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin · Joc biasuri cognitive</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div id="login-view" class="login-wrap" style="display:none;">
+  <div class="eyebrow" style="color:var(--gold); font-size:11px; letter-spacing:0.15em; text-transform:uppercase;">Trainer</div>
+  <h2>Autentificare</h2>
+  <label>Email</label>
+  <input id="login-email" type="email" placeholder="trainer@exemplu.ro" />
+  <label>Parolă</label>
+  <input id="login-password" type="password" />
+  <button class="btn" id="login-btn" style="margin-top:18px; width:100%;">Intră</button>
+  <div class="error-msg" id="login-error"></div>
+</div>
+
+<div id="admin-view" style="display:none;">
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">Panou Trainer</div>
+      <h1>Biasuri cognitive · Admin</h1>
+    </div>
+    <button class="btn outline" id="logout-btn" style="border-color:var(--gold-soft); color:var(--gold-soft);">Deconectare</button>
+  </header>
+
+  <main>
+    <div class="panel" id="session-panel">
+      <h3>Sesiune și grupuri</h3>
+
+      <div id="no-session-box">
+        <p style="font-size:13px; color:var(--grey); margin-bottom:16px;">
+          Configurează grupele înainte de a genera sesiunea. Poți lăsa lista de email-uri goală dacă vrei o singură grupă, cu toți cursanții.
+        </p>
+
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Listă email-uri (opțional — una pe linie, sau separate prin virgulă)</label>
+        <textarea id="emails-paste" rows="4" style="width:100%;" placeholder="ion@exemplu.ro
+maria@exemplu.ro
+..."></textarea>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;">
+          <label style="font-size:13px; font-weight:600;">sau încarcă xlsx:</label>
+          <input type="file" id="emails-xlsx" accept=".xlsx,.xls,.csv" />
+        </div>
+        <p id="emails-count" style="font-size:12px; color:var(--grey); margin-top:6px;"></p>
+
+        <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Cursanți per grupă</label>
+        <input id="group-size" type="number" min="1" value="4" style="width:100px;" />
+
+        <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 6px;">Cum se distribuie cardurile pe grupe?</label>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="dist-mode" value="split" checked style="width:auto;" />
+            Împarte tot deck-ul între grupe, fără suprapuneri
+          </label>
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="dist-mode" value="fixed" style="width:auto;" />
+            Număr fix de carduri per grupă
+          </label>
+          <div id="fixed-options" style="display:none; margin-left:26px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span>Carduri per grupă:</span>
+              <input id="fixed-count" type="number" min="1" value="3" style="width:80px;" />
+            </div>
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input id="allow-repeat" type="checkbox" style="width:auto;" />
+              Permite repetarea cărților între grupe
+            </label>
+          </div>
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="dist-mode" value="all" style="width:auto;" />
+            Toate grupele văd tot deck-ul (fără împărțire)
+          </label>
+        </div>
+
+        <div class="error-msg" id="groups-error"></div>
+        <button class="btn gold" id="create-session-btn" style="margin-top:18px;">Creează sesiune și generează grupe</button>
+      </div>
+
+      <div id="active-session-box" style="display:none;">
+        <p style="font-size:14px;">Sesiune activă: <span class="badge" id="session-code-badge"></span></p>
+        <div id="groups-list" style="display:flex; flex-direction:column; gap:12px; margin-top:14px;"></div>
+        <button class="btn danger" id="end-session-btn" style="margin-top:16px;">Încheie sesiunea (toate grupele)</button>
+      </div>
+    </div>
+
+    <div class="panel" id="control-panel" style="display:none;">
+      <h3>Control carduri (sesiune live)</h3>
+      <p style="font-size:13px; color:var(--grey);">Click pe un card pentru a-l evidenția la grupa selectată. Butonul „Permite răsturnarea” activează flip-ul pentru acel card, doar la această grupă.</p>
+      <div id="group-tabs" style="display:flex; gap:8px; margin:12px 0; flex-wrap:wrap;"></div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <button class="btn gold" id="flip-all-on-btn">Activează flip pe toate (grupa curentă)</button>
+        <button class="btn outline" id="flip-all-off-btn">Dezactivează flip pe toate</button>
+      </div>
+      <div class="card-grid" id="control-grid"></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0;">Deck-ul de carduri (MVP)</h3>
+        <div id="deck-edit-actions" style="display:flex; gap:8px;">
+          <button class="btn gold" id="bulk-upload-btn">Încarcă în bulk</button>
+          <button class="btn" id="add-card-btn">+ Card nou</button>
+        </div>
+      </div>
+      <p id="deck-locked-note" style="display:none; font-size:13px; color:var(--red); margin:-4px 0 12px;">
+        🔒 Editarea deck-ului e dezactivată cât timp sesiunea e activă, ca să eviți modificări accidentale în timpul unui training live. Încheie sesiunea pentru a adăuga, edita sau șterge carduri.
+      </p>
+      <div id="deck-bulk-bar" style="display:none; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+        <button class="btn outline" id="select-all-btn">Selectează tot</button>
+        <button class="btn danger" id="bulk-delete-btn" disabled>Șterge selectate (<span id="selected-count">0</span>)</button>
+      </div>
+      <div class="card-grid" id="deck-grid"></div>
+    </div>
+  </main>
+</div>
+
+<div id="card-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:50; align-items:center; justify-content:center; padding:20px;">
+  <div class="panel" style="max-width:480px; width:100%; max-height:90vh; overflow:auto;">
+    <h3 id="modal-title">Card nou</h3>
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Titlu</label>
+    <input id="f-title" style="width:100%;" />
+
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;" id="label-front">Imagine față</label>
+    <input id="f-front-file" type="file" accept="image/*" />
+    <img id="f-front-preview" style="max-width:100px; margin-top:6px; border-radius:6px; display:none;" />
+
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;" id="label-back">Imagine verso</label>
+    <input id="f-back-file" type="file" accept="image/*" />
+    <img id="f-back-preview" style="max-width:100px; margin-top:6px; border-radius:6px; display:none;" />
+
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Fața afișată inițial</label>
+    <select id="f-initial-face" style="width:100%;">
+      <option value="front">Față</option>
+      <option value="back">Verso</option>
+    </select>
+
+    <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px;">
+      <input id="f-flippable" type="checkbox" checked style="width:auto;" />
+      Flippable implicit (poate fi întors în sesiuni noi)
+    </label>
+
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Explicație / detalii</label>
+    <textarea id="f-explanation" rows="3" style="width:100%;"></textarea>
+
+    <div class="error-msg" id="modal-error"></div>
+
+    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+      <button class="btn outline" id="modal-cancel-btn">Anulează</button>
+      <button class="btn" id="modal-save-btn">Salvează</button>
+    </div>
+  </div>
+</div>
+
+<div id="bulk-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:50; align-items:center; justify-content:center; padding:20px;">
+  <div class="panel" style="max-width:640px; width:100%; max-height:90vh; overflow:auto;">
+    <h3>Încărcare în bulk (față + verso)</h3>
+    <p style="font-size:13px; color:var(--grey);">
+      Selectează toate imaginile deodată. Fișierele trebuie să aibă denumiri de forma
+      <code>01-titlu-fata.jpg</code> și <code>01-titlu-verso.jpg</code> — se împerechează automat după nume.
+    </p>
+    <input type="file" id="bulk-file-input" accept="image/*" multiple style="width:100%;" />
+    <div id="bulk-preview" style="margin-top:16px; display:flex; flex-direction:column; gap:10px;"></div>
+    <div class="error-msg" id="bulk-error"></div>
+    <div id="bulk-progress" style="font-size:13px; color:var(--green); margin-top:8px;"></div>
+    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+      <button class="btn outline" id="bulk-cancel-btn">Închide</button>
+      <button class="btn" id="bulk-save-btn" disabled>Încarcă toate cardurile</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:60; align-items:center; justify-content:center; padding:30px; cursor:zoom-out;">
+  <img id="lightbox-img" style="max-width:90vw; max-height:90vh; border-radius:12px;" />
+</div>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>
