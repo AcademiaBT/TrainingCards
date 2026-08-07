@@ -399,8 +399,15 @@ function readXlsxEmails(file) {
 function updateEmailsCount() {
   const pasted = parseEmails($("emails-paste").value);
   $("emails-count").textContent = pasted.length > 0 ? `${pasted.length} email-uri valide detectate (din text)` : "";
+  const hasEmails = pasted.length > 0 || $("emails-xlsx").files.length > 0;
+  $("group-size").style.opacity = hasEmails ? "1" : "0.5";
+  $("group-size-hint").textContent = hasEmails
+    ? "Se vor forma grupe de această mărime din lista de email-uri."
+    : "Contează doar dacă ai completat o listă de email-uri. Cu lista goală (ca acum), se creează automat o singură grupă cu toți cursanții, indiferent ce pui aici.";
 }
 $("emails-paste").addEventListener("input", updateEmailsCount);
+$("emails-xlsx").addEventListener("change", updateEmailsCount);
+updateEmailsCount();
 
 document.querySelectorAll('input[name="dist-mode"]').forEach((r) => {
   r.addEventListener("change", () => {
