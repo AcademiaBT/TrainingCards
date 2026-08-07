@@ -272,7 +272,7 @@ $("bulk-upload-btn").addEventListener("click", () => {
 $("bulk-cancel-btn").addEventListener("click", () => ($("bulk-modal").style.display = "none"));
 
 function titleFromSlug(slug) {
-  const clean = slug.replace(/^\d+-/, "").replace(/-/g, " ").trim();
+  const clean = slug.replace(/^\d+_?/, "").replace(/_+/g, " ").trim();
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
@@ -282,7 +282,7 @@ $("bulk-file-input").addEventListener("change", () => {
 
   files.forEach((file) => {
     const name = file.name.replace(/\.[^.]+$/, ""); // fara extensie
-    const m = name.match(/^(.*)-(fata|verso|front|back)$/i);
+    const m = name.match(/^(.*)_(fata|verso|front|back)$/i);
     if (!m) return; // fisier care nu respecta formatul, il ignoram
     const key = m[1];
     const side = m[2].toLowerCase();
