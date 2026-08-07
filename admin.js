@@ -704,13 +704,14 @@ function renderSessionPanel() {
   }
 }
 
+let controlGroupCards = []; // cache local pentru grupa curent afisata in panoul de control (evita rebuild complet la fiecare click)
+
 async function renderControlGrid() {
   if (!currentSession || !currentGroupId) return;
   const grid = $("control-grid");
-  grid.innerHTML = "";
 
   const { data: rows } = await supabase.from("session_group_cards").select("*").eq("group_id", currentGroupId);
-  const groupCards = (rows || [])
+  controlGroupCards = (rows || [])
     .map((r) => {
       const card = deckCards.find((c) => c.id === r.card_id);
       return card ? { ...card, is_flippable: r.is_flippable } : null;
@@ -718,24 +719,26 @@ async function renderControlGrid() {
     .filter(Boolean);
   const currentGroup = groups.find((g) => g.id === currentGroupId);
 
-  if (groupCards.length === 0) {
+  grid.innerHTML = "";
+  if (controlGroupCards.length === 0) {
     grid.innerHTML = `<p style="color:var(--grey); font-size:14px;">Această grupă nu are carduri alocate.</p>`;
     return;
   }
 
-  groupCards.forEach((c) => {
+  controlGroupCards.forEach((c) => {
     const isHighlighted = currentGroup && currentGroup.highlighted_card_id === c.id;
     const isFlippable = c.is_flippable;
     const previewBack = !!controlPreviewBack[c.id];
     const tile = document.createElement("div");
     tile.className = "card-tile" + (isHighlighted ? " highlighted" : "");
+    tile.dataset.cardId = c.id;
     tile.innerHTML = `
       <img src="${previewBack ? c.back_image_url : c.front_image_url}" alt="${escapeHtml(c.title)}" />
       <div class="tile-label">${escapeHtml(c.title)}</div>
       <div class="tile-controls">
         <button class="toggle-flip" data-preview>${previewBack ? "Vezi față" : "Vezi verso"}</button>
         <button class="toggle-flip" data-zoom>🔍</button>
-        <button class="toggle-flip ${isFlippable ? "active" : ""}" data-toggle="${c.id}">
+        <button class="toggle-flip ${isFlippable ? "active" : ""}" data-toggle>
           ${isFlippable ? "Flip activat" : "Permite răsturnarea"}
         </button>
       </div>
@@ -744,32 +747,65 @@ async function renderControlGrid() {
     tile.querySelector(".tile-label").addEventListener("click", () => highlightCard(c.id));
     tile.querySelector("[data-preview]").addEventListener("click", (e) => {
       e.stopPropagation();
-      controlPreviewBack[c.id] = !previewBack;
-      renderControlGrid();
+      togglePreview(c.id);
     });
     tile.querySelector("[data-zoom]").addEventListener("click", (e) => {
       e.stopPropagation();
-      openLightbox(previewBack ? c.back_image_url : c.front_image_url);
+      const cur = controlGroupCards.find((x) => x.id === c.id);
+      openLightbox(controlPreviewBack[c.id] ? cur.back_image_url : cur.front_image_url);
     });
-    tile.querySelector("[data-toggle]").addEventListener("click", async (e) => {
+    tile.querySelector("[data-toggle]").addEventListener("click", (e) => {
       e.stopPropagation();
-      await supabase
-        .from("session_group_cards")
-        .update({ is_flippable: !isFlippable })
-        .eq("group_id", currentGroupId)
-        .eq("card_id", c.id);
-      renderControlGrid();
+      toggleFlippable(c.id);
     });
     grid.appendChild(tile);
   });
 }
 
+// actualizeaza doar clasa "highlighted" pe tile-urile existente, fara sa recreeze DOM-ul (evita flicker-ul de reincarcare a imaginilor)
+function updateHighlightUI(cardId) {
+  document.querySelectorAll("#control-grid .card-tile").forEach((tile) => {
+    tile.classList.toggle("highlighted", tile.dataset.cardId === cardId);
+  });
+}
+
 async function highlightCard(cardId) {
   if (!currentGroupId) return;
-  await supabase.from("session_groups").update({ highlighted_card_id: cardId }).eq("id", currentGroupId);
   const g = groups.find((g) => g.id === currentGroupId);
   if (g) g.highlighted_card_id = cardId;
-  renderControlGrid();
+  updateHighlightUI(cardId); // feedback vizual instant
+  await supabase.from("session_groups").update({ highlighted_card_id: cardId }).eq("id", currentGroupId);
+}
+
+// actualizeaza doar butonul de flip al unui singur tile, fara rebuild complet
+function updateTileFlipButton(cardId, isFlippable) {
+  const tile = document.querySelector(`#control-grid .card-tile[data-card-id="${cardId}"]`);
+  if (!tile) return;
+  const btn = tile.querySelector("[data-toggle]");
+  btn.textContent = isFlippable ? "Flip activat" : "Permite răsturnarea";
+  btn.classList.toggle("active", isFlippable);
+}
+
+async function toggleFlippable(cardId) {
+  const cached = controlGroupCards.find((c) => c.id === cardId);
+  if (!cached) return;
+  const next = !cached.is_flippable;
+  cached.is_flippable = next;
+  updateTileFlipButton(cardId, next); // feedback vizual instant
+  await supabase.from("session_group_cards").update({ is_flippable: next }).eq("group_id", currentGroupId).eq("card_id", cardId);
+}
+
+// actualizeaza doar imaginea si butonul de preview ale unui singur tile (fata/verso, doar pentru trainer)
+function togglePreview(cardId) {
+  const cached = controlGroupCards.find((c) => c.id === cardId);
+  if (!cached) return;
+  const next = !controlPreviewBack[cardId];
+  controlPreviewBack[cardId] = next;
+  const tile = document.querySelector(`#control-grid .card-tile[data-card-id="${cardId}"]`);
+  if (!tile) return;
+  tile.querySelector("img").src = next ? cached.back_image_url : cached.front_image_url;
+  const previewBtn = tile.querySelector("[data-preview]");
+  previewBtn.textContent = next ? "Vezi față" : "Vezi verso";
 }
 
 async function setAllFlippable(value) {
@@ -779,7 +815,10 @@ async function setAllFlippable(value) {
   const original = btn.textContent;
   btn.textContent = "Se aplică...";
   await supabase.from("session_group_cards").update({ is_flippable: value }).eq("group_id", currentGroupId);
-  await renderControlGrid();
+  controlGroupCards.forEach((c) => {
+    c.is_flippable = value;
+    updateTileFlipButton(c.id, value);
+  });
   btn.disabled = false;
   btn.textContent = original;
 }
