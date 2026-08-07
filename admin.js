@@ -128,7 +128,7 @@ function renderDeck() {
 }
 
 function updateBulkBar() {
-  $("selected-count").textContent = selectedCardIds.size;
+  $("bulk-delete-btn").innerHTML = `Șterge selectate (<span id="selected-count">${selectedCardIds.size}</span>)`;
   $("bulk-delete-btn").disabled = selectedCardIds.size === 0;
   $("select-all-btn").textContent = selectedCardIds.size === deckCards.length && deckCards.length > 0 ? "Deselectează tot" : "Selectează tot";
 }
@@ -153,8 +153,7 @@ $("bulk-delete-btn").addEventListener("click", async () => {
     await loadDeck();
   } catch (err) {
     alert("Eroare la ștergere: " + err.message);
-    btn.disabled = false;
-    btn.textContent = `Șterge selectate (${selectedCardIds.size})`;
+    updateBulkBar();
   }
 });
 
