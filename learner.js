@@ -13,6 +13,7 @@ let cards = [];         // cardurile alocate acestei grupe
 let flippableMap = {};  // card_id -> bool, sincronizat de la trainer
 let flippedLocal = {};  // card_id -> bool, doar local, la acest user
 let lastScrolledHighlight = undefined;
+let pollTimer = null; // fallback prin polling, pentru retele care blocheaza WebSocket (Supabase Realtime)
 
 function escapeHtml(str) {
   const d = document.createElement("div");
@@ -69,6 +70,44 @@ async function init() {
 
   render();
   subscribeRealtime();
+  startPolling();
+}
+
+// fallback: unele retele (firewall/proxy de firma) blocheaza conexiunile WebSocket folosite de Realtime.
+// Verificam periodic prin cereri HTTP normale, ca sesiunea sa ramana sincronizata oricum.
+function startPolling() {
+  pollTimer = setInterval(pollUpdates, 4000);
+}
+
+async function pollUpdates() {
+  if (!group) return;
+  try {
+    const { data: sessionData } = await supabase.from("training_sessions").select("status").eq("id", sessionId).maybeSingle();
+    if (!sessionData || sessionData.status !== "active") {
+      showSessionEnded();
+      return;
+    }
+
+    let changed = false;
+
+    const { data: groupData } = await supabase.from("session_groups").select("highlighted_card_id").eq("id", group.id).maybeSingle();
+    if (groupData && groupData.highlighted_card_id !== group.highlighted_card_id) {
+      group.highlighted_card_id = groupData.highlighted_card_id;
+      changed = true;
+    }
+
+    const { data: cardRows } = await supabase.from("session_group_cards").select("card_id, is_flippable").eq("group_id", group.id);
+    (cardRows || []).forEach((r) => {
+      if (flippableMap[r.card_id] !== r.is_flippable) {
+        flippableMap[r.card_id] = r.is_flippable;
+        changed = true;
+      }
+    });
+
+    if (changed) render();
+  } catch (err) {
+    // eroare temporara de retea - reincercam la urmatorul ciclu, fara sa intrerupem experienta
+  }
 }
 
 function render() {
@@ -154,6 +193,7 @@ function openLightbox(src) {
 $("learner-lightbox").addEventListener("click", () => ($("learner-lightbox").style.display = "none"));
 
 function showSessionEnded() {
+  if (pollTimer) clearInterval(pollTimer);
   supabase.removeAllChannels();
   $("learner-grid").innerHTML = "";
   $("learner-lightbox").style.display = "none";
