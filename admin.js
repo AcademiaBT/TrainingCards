@@ -726,7 +726,8 @@ async function renderControlGrid() {
       const card = deckCards.find((c) => c.id === r.card_id);
       return card ? { ...card, is_flippable: r.is_flippable } : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   const currentGroup = groups.find((g) => g.id === currentGroupId);
 
   grid.innerHTML = "";
@@ -834,5 +835,23 @@ async function setAllFlippable(value) {
 }
 $("flip-all-on-btn").addEventListener("click", () => setAllFlippable(true));
 $("flip-all-off-btn").addEventListener("click", () => setAllFlippable(false));
+
+async function deactivateAndResetFlip() {
+  if (!currentGroupId) return;
+  const btn = $("flip-all-reset-btn");
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "Se aplică...";
+  await supabase.from("session_group_cards").update({ is_flippable: false }).eq("group_id", currentGroupId);
+  // trimite semnalul de resetare: toti cursantii din aceasta grupa isi intorc cardurile inapoi cu fata
+  await supabase.from("session_groups").update({ flip_reset_at: new Date().toISOString() }).eq("id", currentGroupId);
+  controlGroupCards.forEach((c) => {
+    c.is_flippable = false;
+    updateTileFlipButton(c.id, false);
+  });
+  btn.disabled = false;
+  btn.textContent = original;
+}
+$("flip-all-reset-btn").addEventListener("click", deactivateAndResetFlip);
 
 checkAuth();
