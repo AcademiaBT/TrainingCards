@@ -113,7 +113,11 @@ function renderDeck() {
       tile.querySelector("[data-delete]").addEventListener("click", async (e) => {
         e.stopPropagation();
         if (!confirm(`Ștergi cardul „${c.title}”?`)) return;
-        await supabase.from("cards").delete().eq("id", c.id);
+        const { error } = await supabase.from("cards").delete().eq("id", c.id);
+        if (error) {
+          alert("Eroare la ștergere: " + error.message);
+          return;
+        }
         selectedCardIds.delete(c.id);
         await loadDeck();
       });
@@ -139,12 +143,19 @@ $("select-all-btn").addEventListener("click", () => {
 $("bulk-delete-btn").addEventListener("click", async () => {
   if (selectedCardIds.size === 0) return;
   if (!confirm(`Ștergi definitiv ${selectedCardIds.size} carduri selectate?`)) return;
-  $("bulk-delete-btn").disabled = true;
-  $("bulk-delete-btn").textContent = "Se șterge...";
-  await supabase.from("cards").delete().in("id", Array.from(selectedCardIds));
-  selectedCardIds.clear();
-  await loadDeck();
-  $("bulk-delete-btn").textContent = `Șterge selectate (0)`;
+  const btn = $("bulk-delete-btn");
+  btn.disabled = true;
+  btn.textContent = "Se șterge...";
+  try {
+    const { error } = await supabase.from("cards").delete().in("id", Array.from(selectedCardIds));
+    if (error) throw error;
+    selectedCardIds.clear();
+    await loadDeck();
+  } catch (err) {
+    alert("Eroare la ștergere: " + err.message);
+    btn.disabled = false;
+    btn.textContent = `Șterge selectate (${selectedCardIds.size})`;
+  }
 });
 
 function syncDeckLockUI() {
