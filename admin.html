@@ -59,7 +59,7 @@
         <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr de grupe</label>
         <input id="num-groups" type="number" min="1" value="4" style="width:100px;" />
 
-        <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Carduri per grupă</label>
+        <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;" id="cards-per-group-label">Carduri per grupă</label>
         <input id="cards-per-group" type="number" min="1" value="3" style="width:100px;" />
 
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 6px;">Cum se extrag cardurile?</label>
@@ -71,6 +71,10 @@
           <label style="display:flex; align-items:center; gap:8px;">
             <input type="radio" name="draw-mode" value="deplete" style="width:auto;" />
             Prin scădere (o carte extrasă pentru o grupă nu mai e disponibilă pentru celelalte)
+          </label>
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="draw-mode" value="manual" style="width:auto;" />
+            Aleg eu manual ce carduri primește fiecare grupă (grupele pornesc goale)
           </label>
         </div>
 

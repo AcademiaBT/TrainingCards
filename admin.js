@@ -449,6 +449,14 @@ async function loadGroups() {
   if (!currentGroupId || !groups.find((g) => g.id === currentGroupId)) currentGroupId = groups[0]?.id || null;
 }
 
+document.querySelectorAll('input[name="draw-mode"]').forEach((r) => {
+  r.addEventListener("change", () => {
+    const isManual = document.querySelector('input[name="draw-mode"]:checked').value === "manual";
+    $("cards-per-group").style.display = isManual ? "none" : "inline-block";
+    $("cards-per-group-label").style.display = isManual ? "none" : "block";
+  });
+});
+
 $("create-session-btn").addEventListener("click", async () => {
   $("groups-error").textContent = "";
   if (deckCards.length === 0) {
@@ -457,13 +465,19 @@ $("create-session-btn").addEventListener("click", async () => {
   }
 
   const numGroups = Math.max(1, parseInt($("num-groups").value, 10) || 1);
-  const cardsPerGroup = Math.max(1, parseInt($("cards-per-group").value, 10) || 1);
-  const allowRepeat = document.querySelector('input[name="draw-mode"]:checked').value === "repeat";
+  const drawMode = document.querySelector('input[name="draw-mode"]:checked').value;
+  const isManual = drawMode === "manual";
 
-  const { assignments, error: assignError } = assignCardsToGroups(deckCards, numGroups, cardsPerGroup, allowRepeat);
-  if (assignError) {
-    $("groups-error").textContent = assignError;
-    return;
+  let assignments = Array.from({ length: numGroups }, () => []); // implicit gol, pt modul manual
+  if (!isManual) {
+    const cardsPerGroup = Math.max(1, parseInt($("cards-per-group").value, 10) || 1);
+    const allowRepeat = drawMode === "repeat";
+    const result = assignCardsToGroups(deckCards, numGroups, cardsPerGroup, allowRepeat);
+    if (result.error) {
+      $("groups-error").textContent = result.error;
+      return;
+    }
+    assignments = result.assignments;
   }
 
   $("create-session-btn").disabled = true;
@@ -490,13 +504,16 @@ $("create-session-btn").addEventListener("click", async () => {
     groupRows.forEach((g, i) => {
       assignments[i].forEach((cardId) => cardRows.push({ session_id: sessionRow.id, group_id: g.id, card_id: cardId, is_flippable: false }));
     });
-    const { error: cardErr } = await supabase.from("session_group_cards").insert(cardRows);
-    if (cardErr) throw cardErr;
+    if (cardRows.length > 0) {
+      const { error: cardErr } = await supabase.from("session_group_cards").insert(cardRows);
+      if (cardErr) throw cardErr;
+    }
 
     currentSession = sessionRow;
     groups = groupRows;
     currentGroupId = groups[0]?.id || null;
     renderSessionPanel();
+    if (isManual) $("card-picker-panel").style.display = "block"; // deschide direct gestionarea manuala
   } catch (err) {
     $("groups-error").textContent = "Eroare: " + err.message;
   } finally {
