@@ -43,7 +43,7 @@ function secondsToHMS(total) {
 function updateTimerDisplay() {
   const bar = $("session-timer-bar");
   const status = sessionInfo.timer_status || "not_started";
-  if (status === "not_started") {
+  if (status === "not_started" || status === "none") {
     bar.style.display = "none";
     return;
   }

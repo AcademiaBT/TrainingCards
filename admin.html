@@ -92,13 +92,19 @@
           <h4 class="serif" style="margin:0 0 10px;">Cronometru sesiune</h4>
 
           <div id="timer-setup-box">
-            <p style="font-size:12px; color:var(--grey); margin:0 0 8px;">Cursanții nu văd cardurile până pornești cronometrul.</p>
+            <p style="font-size:12px; color:var(--grey); margin:0 0 8px;">Cursanții nu văd cardurile până pornești cronometrul (sau alegi să sari peste el).</p>
             <div style="display:flex; gap:6px; align-items:center; font-size:13px; flex-wrap:wrap;">
               <input id="timer-h" type="number" min="0" value="0" style="width:55px;" /><span>h</span>
               <input id="timer-m" type="number" min="0" max="59" value="15" style="width:55px;" /><span>m</span>
               <input id="timer-s" type="number" min="0" max="59" value="0" style="width:55px;" /><span>s</span>
               <button class="btn gold" id="timer-start-btn">Pornește cronometrul</button>
             </div>
+            <button class="btn outline" id="timer-skip-btn" style="margin-top:10px;">Începe sesiunea fără cronometru</button>
+          </div>
+
+          <div id="timer-none-box" style="display:none;">
+            <p style="font-size:13px; color:var(--grey); margin:0 0 10px;">Sesiunea rulează fără cronometru — cardurile sunt vizibile la cursanți, fără limită de timp.</p>
+            <button class="btn outline" id="timer-enable-btn">Activează un cronometru acum</button>
           </div>
 
           <div id="timer-running-box" style="display:none;">
