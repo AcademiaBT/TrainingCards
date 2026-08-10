@@ -83,7 +83,12 @@ function renderDeck() {
     tile.className = "card-tile";
     tile.innerHTML = `
       ${locked ? "" : `<div style="padding:8px 8px 0; text-align:left;"><input type="checkbox" data-select="${c.id}" style="width:auto;" ${selectedCardIds.has(c.id) ? "checked" : ""} /></div>`}
-      <img src="${c.front_image_url}" alt="față" />
+      <div class="mini-flip" data-flip>
+        <div class="mini-flip-inner">
+          <img class="mini-flip-face front" src="${c.front_image_url}" alt="față" />
+          <img class="mini-flip-face back" src="${c.back_image_url}" alt="verso" />
+        </div>
+      </div>
       <div class="tile-label">${escapeHtml(c.title)}</div>
       <div class="tile-controls">
         <button class="toggle-flip show-back-btn">Vezi verso</button>
@@ -91,13 +96,13 @@ function renderDeck() {
         ${locked ? "" : `<button class="toggle-flip" style="border-color:var(--red); color:var(--red);" data-delete="${c.id}">Șterge</button>`}
       </div>
     `;
-    const img = tile.querySelector("img");
+    const flipEl = tile.querySelector("[data-flip]");
     let showingBack = false;
-    img.addEventListener("click", () => openLightbox(img.src));
+    flipEl.addEventListener("click", () => openLightbox(showingBack ? c.back_image_url : c.front_image_url));
     tile.querySelector(".show-back-btn").addEventListener("click", (e) => {
       e.stopPropagation();
       showingBack = !showingBack;
-      img.src = showingBack ? c.back_image_url : c.front_image_url;
+      flipEl.classList.toggle("flipped", showingBack);
       e.target.textContent = showingBack ? "Vezi față" : "Vezi verso";
     });
     if (!locked) {
@@ -658,7 +663,12 @@ async function renderControlGrid() {
     tile.className = "card-tile" + (isHighlighted ? " highlighted" : "");
     tile.dataset.cardId = c.id;
     tile.innerHTML = `
-      <img src="${previewBack ? c.back_image_url : c.front_image_url}" alt="${escapeHtml(c.title)}" />
+      <div class="mini-flip${previewBack ? " flipped" : ""}" data-flip>
+        <div class="mini-flip-inner">
+          <img class="mini-flip-face front" src="${c.front_image_url}" alt="${escapeHtml(c.title)}" />
+          <img class="mini-flip-face back" src="${c.back_image_url}" alt="${escapeHtml(c.title)}" />
+        </div>
+      </div>
       <div class="tile-label">${escapeHtml(c.title)}</div>
       <div class="tile-controls">
         <button class="toggle-flip" data-preview>${previewBack ? "Vezi față" : "Vezi verso"}</button>
@@ -668,7 +678,7 @@ async function renderControlGrid() {
         </button>
       </div>
     `;
-    tile.querySelector("img").addEventListener("click", () => highlightCard(c.id));
+    tile.querySelector("[data-flip]").addEventListener("click", () => highlightCard(c.id));
     tile.querySelector(".tile-label").addEventListener("click", () => highlightCard(c.id));
     tile.querySelector("[data-preview]").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -770,7 +780,7 @@ function togglePreview(cardId) {
   controlPreviewBack[cardId] = next;
   const tile = document.querySelector(`#control-grid .card-tile[data-card-id="${cardId}"]`);
   if (!tile) return;
-  tile.querySelector("img").src = next ? cached.back_image_url : cached.front_image_url;
+  tile.querySelector(".mini-flip").classList.toggle("flipped", next);
   const previewBtn = tile.querySelector("[data-preview]");
   previewBtn.textContent = next ? "Vezi față" : "Vezi verso";
 }

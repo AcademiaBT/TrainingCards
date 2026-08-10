@@ -145,7 +145,7 @@ function render() {
       e.stopPropagation();
       const frontDisplay = c.initial_face === "back" ? c.back_image_url : c.front_image_url;
       const backDisplay = c.initial_face === "back" ? c.front_image_url : c.back_image_url;
-      openLightbox(isFlipped ? backDisplay : frontDisplay);
+      openLightbox(flippedLocal[c.id] ? backDisplay : frontDisplay);
     });
 
     const flip = document.createElement("div");
@@ -158,8 +158,21 @@ function render() {
     `;
     if (canFlip) {
       flip.addEventListener("click", () => {
-        flippedLocal[c.id] = !flippedLocal[c.id];
-        render();
+        const newState = !flippedLocal[c.id];
+        flippedLocal[c.id] = newState;
+        flip.classList.toggle("flipped", newState); // actualizare directa - permite animatiei sa ruleze
+        let expEl = wrap.querySelector(".card-explanation");
+        if (newState && c.explanation) {
+          if (!expEl) {
+            expEl = document.createElement("div");
+            expEl.className = "card-explanation";
+            expEl.style.cssText = "font-size:12px; color:var(--grey); margin-top:6px; text-align:center;";
+            expEl.textContent = c.explanation;
+            wrap.appendChild(expEl);
+          }
+        } else if (expEl) {
+          expEl.remove();
+        }
       });
     }
 
@@ -173,10 +186,8 @@ function render() {
 
     if (isFlipped && c.explanation) {
       const exp = document.createElement("div");
-      exp.style.fontSize = "12px";
-      exp.style.color = "var(--grey)";
-      exp.style.marginTop = "6px";
-      exp.style.textAlign = "center";
+      exp.className = "card-explanation";
+      exp.style.cssText = "font-size:12px; color:var(--grey); margin-top:6px; text-align:center;";
       exp.textContent = c.explanation;
       wrap.appendChild(exp);
     }
