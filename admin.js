@@ -632,6 +632,127 @@ function renderGroupTabs() {
   });
 }
 
+// ---------- CRONOMETRU SESIUNE ----------
+let timerInterval = null;
+
+function liveRemaining(session) {
+  if (!session) return 0;
+  if (session.timer_status === "running" && session.timer_started_at) {
+    const elapsed = (Date.now() - new Date(session.timer_started_at).getTime()) / 1000;
+    return Math.max(0, (session.timer_remaining_seconds || 0) - elapsed);
+  }
+  return session.timer_remaining_seconds || 0;
+}
+
+function secondsToHMS(total) {
+  total = Math.max(0, Math.round(total));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
+function renderTimerPanel() {
+  if (!currentSession) return;
+  const status = currentSession.timer_status || "not_started";
+  $("timer-setup-box").style.display = status === "not_started" ? "block" : "none";
+  $("timer-running-box").style.display = status === "not_started" ? "none" : "block";
+
+  if (status !== "not_started") {
+    $("timer-display").textContent = secondsToHMS(liveRemaining(currentSession));
+    const labels = { running: "Cronometru pornit — vizibil live la cursanți", paused: "Pauză — cursanții văd timpul înghețat", expired: "⏰ Timpul a expirat" };
+    $("timer-status-label").textContent = labels[status] || "";
+    $("timer-status-label").style.color = status === "expired" ? "var(--red)" : "var(--grey)";
+    $("timer-pause-btn").textContent = status === "paused" ? "Reia" : "Pauză";
+    $("timer-pause-btn").style.display = status === "expired" ? "none" : "inline-block";
+  }
+}
+
+function tickTimer() {
+  if (!currentSession || currentSession.timer_status !== "running") return;
+  const remaining = liveRemaining(currentSession);
+  $("timer-display").textContent = secondsToHMS(remaining);
+  if (remaining <= 0) expireTimer();
+}
+
+async function expireTimer() {
+  if (!currentSession) return;
+  currentSession.timer_status = "expired";
+  currentSession.timer_remaining_seconds = 0;
+  currentSession.timer_started_at = null;
+  renderTimerPanel();
+  await supabase.from("training_sessions").update({ timer_status: "expired", timer_remaining_seconds: 0, timer_started_at: null }).eq("id", currentSession.id);
+}
+
+$("timer-start-btn").addEventListener("click", async () => {
+  const h = parseInt($("timer-h").value, 10) || 0;
+  const m = parseInt($("timer-m").value, 10) || 0;
+  const s = parseInt($("timer-s").value, 10) || 0;
+  const total = h * 3600 + m * 60 + s;
+  if (total <= 0) {
+    alert("Setează o durată mai mare de 0.");
+    return;
+  }
+  const startedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("training_sessions")
+    .update({ timer_total_seconds: total, timer_remaining_seconds: total, timer_status: "running", timer_started_at: startedAt })
+    .eq("id", currentSession.id);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  Object.assign(currentSession, { timer_total_seconds: total, timer_remaining_seconds: total, timer_status: "running", timer_started_at: startedAt });
+  renderTimerPanel();
+});
+
+$("timer-pause-btn").addEventListener("click", async () => {
+  const isPaused = currentSession.timer_status === "paused";
+  let update;
+  if (isPaused) {
+    update = { timer_status: "running", timer_started_at: new Date().toISOString() };
+  } else {
+    update = { timer_status: "paused", timer_remaining_seconds: Math.round(liveRemaining(currentSession)), timer_started_at: null };
+  }
+  const { error } = await supabase.from("training_sessions").update(update).eq("id", currentSession.id);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  Object.assign(currentSession, update);
+  renderTimerPanel();
+});
+
+$("timer-extend-btn").addEventListener("click", async () => {
+  const extraMin = Math.max(1, parseInt($("timer-extend-min").value, 10) || 0);
+  const extraSeconds = extraMin * 60;
+  let update;
+  if (currentSession.timer_status === "running") {
+    const newRemaining = Math.round(liveRemaining(currentSession)) + extraSeconds;
+    update = {
+      timer_remaining_seconds: newRemaining,
+      timer_started_at: new Date().toISOString(),
+      timer_total_seconds: (currentSession.timer_total_seconds || 0) + extraSeconds,
+    };
+  } else {
+    // paused sau expired: reporneste cronometrul cu timpul adaugat
+    const newRemaining = (currentSession.timer_remaining_seconds || 0) + extraSeconds;
+    update = {
+      timer_remaining_seconds: newRemaining,
+      timer_status: "running",
+      timer_started_at: new Date().toISOString(),
+      timer_total_seconds: (currentSession.timer_total_seconds || 0) + extraSeconds,
+    };
+  }
+  const { error } = await supabase.from("training_sessions").update(update).eq("id", currentSession.id);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  Object.assign(currentSession, update);
+  renderTimerPanel();
+});
+
 function renderSessionPanel() {
   syncDeckLockUI();
   if (currentSession) {
@@ -644,10 +765,16 @@ function renderSessionPanel() {
     renderGroupsList();
     renderGroupTabs();
     renderControlGrid();
+    renderTimerPanel();
+    if (!timerInterval) timerInterval = setInterval(tickTimer, 1000);
   } else {
     $("no-session-box").style.display = "block";
     $("active-session-box").style.display = "none";
     $("control-panel").style.display = "none";
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
   }
 }
 

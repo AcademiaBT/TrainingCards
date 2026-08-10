@@ -9,16 +9,47 @@ const groupCode = params.get("g");
 
 let group = null;       // randul din session_groups
 let sessionId = null;   // id-ul sesiunii parinte (pentru verificarea statusului)
+let sessionInfo = {};   // status + campurile de cronometru ale sesiunii
 let cards = [];         // cardurile alocate acestei grupe
 let flippableMap = {};  // card_id -> bool, sincronizat de la trainer
 let flippedLocal = {};  // card_id -> bool, doar local, la acest user
 let lastScrolledHighlight = undefined;
 let pollTimer = null; // fallback prin polling, pentru retele care blocheaza WebSocket (Supabase Realtime)
+let timerTickInterval = null;
 
 function escapeHtml(str) {
   const d = document.createElement("div");
   d.textContent = str || "";
   return d.innerHTML;
+}
+
+// ---------- CRONOMETRU ----------
+function liveRemaining() {
+  if (sessionInfo.timer_status === "running" && sessionInfo.timer_started_at) {
+    const elapsed = (Date.now() - new Date(sessionInfo.timer_started_at).getTime()) / 1000;
+    return Math.max(0, (sessionInfo.timer_remaining_seconds || 0) - elapsed);
+  }
+  return sessionInfo.timer_remaining_seconds || 0;
+}
+
+function secondsToHMS(total) {
+  total = Math.max(0, Math.round(total));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
+function updateTimerDisplay() {
+  const bar = $("session-timer-bar");
+  const status = sessionInfo.timer_status || "not_started";
+  if (status === "not_started") {
+    bar.style.display = "none";
+    return;
+  }
+  bar.style.display = "block";
+  $("learner-timer-display").textContent = secondsToHMS(liveRemaining());
+  $("learner-timer-display").style.color = status === "expired" ? "var(--red)" : status === "paused" ? "var(--grey)" : "var(--green)";
 }
 
 async function init() {
@@ -42,7 +73,7 @@ async function init() {
 
   const { data: sessionData } = await supabase
     .from("training_sessions")
-    .select("status")
+    .select("status, timer_total_seconds, timer_remaining_seconds, timer_status, timer_started_at")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -50,6 +81,7 @@ async function init() {
     $("status-box").innerHTML = `<div class="empty-state">Sesiunea nu există sau s-a încheiat. Cere trainerului un link nou.</div>`;
     return;
   }
+  sessionInfo = sessionData;
 
   const { data: groupCardRows } = await supabase
     .from("session_group_cards")
@@ -71,6 +103,13 @@ async function init() {
   render();
   subscribeRealtime();
   startPolling();
+  timerTickInterval = setInterval(() => {
+    updateTimerDisplay();
+    if (sessionInfo.timer_status === "running" && liveRemaining() <= 0) {
+      sessionInfo.timer_status = "expired";
+      updateTimerDisplay();
+    }
+  }, 1000);
 }
 
 // fallback: unele retele (firewall/proxy de firma) blocheaza conexiunile WebSocket folosite de Realtime.
@@ -82,13 +121,24 @@ function startPolling() {
 async function pollUpdates() {
   if (!group) return;
   try {
-    const { data: sessionData } = await supabase.from("training_sessions").select("status").eq("id", sessionId).maybeSingle();
+    const { data: sessionData } = await supabase
+      .from("training_sessions")
+      .select("status, timer_total_seconds, timer_remaining_seconds, timer_status, timer_started_at")
+      .eq("id", sessionId)
+      .maybeSingle();
     if (!sessionData || sessionData.status !== "active") {
       showSessionEnded();
       return;
     }
 
     let changed = false;
+
+    if (JSON.stringify(sessionData) !== JSON.stringify(sessionInfo)) {
+      const wasNotStarted = (sessionInfo.timer_status || "not_started") === "not_started";
+      sessionInfo = sessionData;
+      updateTimerDisplay();
+      if (wasNotStarted && sessionInfo.timer_status !== "not_started") changed = true;
+    }
 
     const { data: groupData } = await supabase
       .from("session_groups")
@@ -122,6 +172,13 @@ async function pollUpdates() {
 
 function render() {
   const grid = $("learner-grid");
+  updateTimerDisplay();
+
+  if ((sessionInfo.timer_status || "not_started") === "not_started") {
+    grid.innerHTML = `<div class="empty-state">⏳ Sesiunea nu a început încă. Așteaptă ca trainerul să pornească cronometrul.</div>`;
+    return;
+  }
+
   grid.innerHTML = "";
   if (cards.length === 0) {
     grid.innerHTML = `<div class="empty-state">Trainerul nu a alocat încă niciun card pentru grupa ta.</div>`;
@@ -215,9 +272,11 @@ $("learner-lightbox").addEventListener("click", () => ($("learner-lightbox").sty
 
 function showSessionEnded() {
   if (pollTimer) clearInterval(pollTimer);
+  if (timerTickInterval) clearInterval(timerTickInterval);
   supabase.removeAllChannels();
   $("learner-grid").innerHTML = "";
   $("learner-lightbox").style.display = "none";
+  $("session-timer-bar").style.display = "none";
   $("status-box").innerHTML = `<div class="empty-state">Sesiunea nu există sau s-a încheiat. Cere trainerului un link nou.</div>`;
 }
 
@@ -228,7 +287,14 @@ function subscribeRealtime() {
       "postgres_changes",
       { event: "*", schema: "public", table: "training_sessions", filter: `id=eq.${sessionId}` },
       (payload) => {
-        if (payload.new.status !== "active") showSessionEnded();
+        if (payload.new.status !== "active") {
+          showSessionEnded();
+          return;
+        }
+        const wasNotStarted = (sessionInfo.timer_status || "not_started") === "not_started";
+        sessionInfo = payload.new;
+        if (wasNotStarted && sessionInfo.timer_status !== "not_started") render();
+        else updateTimerDisplay();
       }
     )
     .on(

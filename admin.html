@@ -87,6 +87,32 @@
           <p style="font-size:14px; margin:0;">Sesiune activă: <span class="badge" id="session-code-badge"></span></p>
           <button class="btn danger" id="end-session-btn">Încheie sesiunea (toate grupele)</button>
         </div>
+
+        <div id="timer-panel" style="margin-top:16px; padding:14px; border:1px solid var(--parchment-dark); border-radius:10px; background:var(--card-bg);">
+          <h4 class="serif" style="margin:0 0 10px;">Cronometru sesiune</h4>
+
+          <div id="timer-setup-box">
+            <p style="font-size:12px; color:var(--grey); margin:0 0 8px;">Cursanții nu văd cardurile până pornești cronometrul.</p>
+            <div style="display:flex; gap:6px; align-items:center; font-size:13px; flex-wrap:wrap;">
+              <input id="timer-h" type="number" min="0" value="0" style="width:55px;" /><span>h</span>
+              <input id="timer-m" type="number" min="0" max="59" value="15" style="width:55px;" /><span>m</span>
+              <input id="timer-s" type="number" min="0" max="59" value="0" style="width:55px;" /><span>s</span>
+              <button class="btn gold" id="timer-start-btn">Pornește cronometrul</button>
+            </div>
+          </div>
+
+          <div id="timer-running-box" style="display:none;">
+            <div id="timer-display" style="font-size:34px; font-family:'Fraunces',serif; font-weight:700; color:var(--green);">00:00:00</div>
+            <p id="timer-status-label" style="font-size:12px; color:var(--grey); margin:2px 0 12px;"></p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button class="btn outline" id="timer-pause-btn">Pauză</button>
+              <input id="timer-extend-min" type="number" min="1" value="5" style="width:60px;" />
+              <span style="font-size:12px;">minute</span>
+              <button class="btn outline" id="timer-extend-btn">Adaugă timp</button>
+            </div>
+          </div>
+        </div>
+
         <button class="btn outline" id="toggle-groups-list-btn" style="margin-top:16px;">Arată linkurile și codurile QR ale grupelor ▾</button>
         <div id="groups-list" style="display:none; flex-direction:column; gap:12px; margin-top:14px;"></div>
       </div>
