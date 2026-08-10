@@ -996,25 +996,26 @@ async function deactivateAndResetFlip() {
 }
 $("flip-all-reset-btn").addEventListener("click", deactivateAndResetFlip);
 
-async function setAllFlippableAllGroups() {
+async function setAllFlippableAllGroups(value) {
   if (!currentSession) return;
-  const btn = $("flip-all-groups-btn");
+  const btn = value ? $("flip-all-groups-btn") : $("flip-all-groups-off-btn");
   btn.disabled = true;
   const original = btn.textContent;
   btn.textContent = "Se aplică la toate grupele...";
-  const { error } = await supabase.from("session_group_cards").update({ is_flippable: true }).eq("session_id", currentSession.id);
+  const { error } = await supabase.from("session_group_cards").update({ is_flippable: value }).eq("session_id", currentSession.id);
   if (error) {
     alert("Eroare: " + error.message);
   } else {
     // actualizeaza si vizual grupa curent afisata (celelalte grupe se vor incarca corect la schimbarea tab-ului)
     controlGroupCards.forEach((c) => {
-      c.is_flippable = true;
-      updateTileFlipButton(c.id, true);
+      c.is_flippable = value;
+      updateTileFlipButton(c.id, value);
     });
   }
   btn.disabled = false;
   btn.textContent = original;
 }
-$("flip-all-groups-btn").addEventListener("click", setAllFlippableAllGroups);
+$("flip-all-groups-btn").addEventListener("click", () => setAllFlippableAllGroups(true));
+$("flip-all-groups-off-btn").addEventListener("click", () => setAllFlippableAllGroups(false));
 
 checkAuth();
