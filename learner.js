@@ -90,9 +90,19 @@ async function pollUpdates() {
 
     let changed = false;
 
-    const { data: groupData } = await supabase.from("session_groups").select("highlighted_card_id").eq("id", group.id).maybeSingle();
+    const { data: groupData } = await supabase
+      .from("session_groups")
+      .select("highlighted_card_id, flip_reset_at")
+      .eq("id", group.id)
+      .maybeSingle();
     if (groupData && groupData.highlighted_card_id !== group.highlighted_card_id) {
       group.highlighted_card_id = groupData.highlighted_card_id;
+      changed = true;
+    }
+    if (groupData && groupData.flip_reset_at !== group.flip_reset_at) {
+      group.flip_reset_at = groupData.flip_reset_at;
+      flippedLocal = {};
+      $("learner-lightbox").style.display = "none";
       changed = true;
     }
 
@@ -214,7 +224,12 @@ function subscribeRealtime() {
       "postgres_changes",
       { event: "*", schema: "public", table: "session_groups", filter: `id=eq.${group.id}` },
       (payload) => {
+        const flipWasReset = payload.new.flip_reset_at !== group.flip_reset_at;
         group = { ...group, ...payload.new };
+        if (flipWasReset) {
+          flippedLocal = {};
+          $("learner-lightbox").style.display = "none";
+        }
         render();
       }
     )

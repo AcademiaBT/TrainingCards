@@ -369,65 +369,13 @@ $("bulk-save-btn").addEventListener("click", async () => {
 });
 
 // ---------- SESSION + GRUPE ----------
-let groups = [];        // session_groups pentru sesiunea curenta, cu memberCount atasat
+let groups = [];        // session_groups pentru sesiunea curenta
 let currentGroupId = null; // grupa selectata in panoul de control
 
 function randomCode(len = 6) {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
   let out = "";
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-
-// -- parsare email-uri --
-const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
-
-function parseEmails(text) {
-  const matches = (text || "").match(EMAIL_RE) || [];
-  return [...new Set(matches.map((e) => e.toLowerCase()))];
-}
-
-function readXlsxEmails(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        const text = rows.flat().join(" ");
-        resolve(parseEmails(text));
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(new Error("Nu am putut citi fișierul."));
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function updateEmailsCount() {
-  const pasted = parseEmails($("emails-paste").value);
-  $("emails-count").textContent = pasted.length > 0 ? `${pasted.length} email-uri valide detectate (din text)` : "";
-  const hasEmails = pasted.length > 0 || $("emails-xlsx").files.length > 0;
-  $("group-size").style.opacity = hasEmails ? "1" : "0.5";
-  $("group-size-hint").textContent = hasEmails
-    ? "Se vor forma grupe de această mărime din lista de email-uri."
-    : "Contează doar dacă ai completat o listă de email-uri. Cu lista goală (ca acum), se creează automat o singură grupă cu toți cursanții, indiferent ce pui aici.";
-}
-$("emails-paste").addEventListener("input", updateEmailsCount);
-$("emails-xlsx").addEventListener("change", updateEmailsCount);
-updateEmailsCount();
-
-document.querySelectorAll('input[name="dist-mode"]').forEach((r) => {
-  r.addEventListener("change", () => {
-    $("fixed-options").style.display = document.querySelector('input[name="dist-mode"]:checked').value === "fixed" ? "flex" : "none";
-  });
-});
-
-function chunkArray(arr, size) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
 
@@ -440,30 +388,27 @@ function shuffle(arr) {
   return copy;
 }
 
-function assignCardsToGroups(deck, numGroups, mode, fixedCount, allowRepeat) {
+function assignCardsToGroups(deck, numGroups, cardsPerGroup, allowRepeat) {
   const result = Array.from({ length: numGroups }, () => []);
-  if (mode === "all") {
-    for (let g = 0; g < numGroups; g++) result[g] = deck.map((c) => c.id);
-    return { assignments: result, error: null };
-  }
-  if (mode === "split") {
-    shuffle(deck).forEach((c, i) => result[i % numGroups].push(c.id));
-    return { assignments: result, error: null };
-  }
-  // mode === "fixed"
   if (allowRepeat) {
-    for (let g = 0; g < numGroups; g++) result[g] = shuffle(deck).slice(0, fixedCount).map((c) => c.id);
+    if (cardsPerGroup > deck.length) {
+      return {
+        assignments: null,
+        error: `Deck-ul are doar ${deck.length} carduri, dar ai cerut ${cardsPerGroup} per grupă. Redu numărul de carduri per grupă.`,
+      };
+    }
+    for (let g = 0; g < numGroups; g++) result[g] = shuffle(deck).slice(0, cardsPerGroup).map((c) => c.id);
     return { assignments: result, error: null };
   }
-  const needed = fixedCount * numGroups;
+  const needed = cardsPerGroup * numGroups;
   if (needed > deck.length) {
     return {
       assignments: null,
-      error: `Ai nevoie de ${needed} carduri unice (${fixedCount} × ${numGroups} grupe), dar deck-ul are doar ${deck.length}. Redu numărul per grupă, activează repetarea, sau adaugă mai multe carduri.`,
+      error: `Ai nevoie de ${needed} carduri unice (${cardsPerGroup} × ${numGroups} grupe), dar deck-ul are doar ${deck.length}. Redu numărul per grupă, activează extragerea „dintr-un deck nou”, sau adaugă mai multe carduri.`,
     };
   }
   const shuffled = shuffle(deck);
-  for (let g = 0; g < numGroups; g++) result[g] = shuffled.slice(g * fixedCount, (g + 1) * fixedCount).map((c) => c.id);
+  for (let g = 0; g < numGroups; g++) result[g] = shuffled.slice(g * cardsPerGroup, (g + 1) * cardsPerGroup).map((c) => c.id);
   return { assignments: result, error: null };
 }
 
@@ -495,13 +440,7 @@ async function loadGroups() {
     .select("*")
     .eq("session_id", currentSession.id)
     .order("created_at", { ascending: true });
-  const { data: memberRows } = await supabase
-    .from("session_group_members")
-    .select("group_id")
-    .eq("session_id", currentSession.id);
-  const counts = {};
-  (memberRows || []).forEach((r) => (counts[r.group_id] = (counts[r.group_id] || 0) + 1));
-  groups = (groupRows || []).map((g) => ({ ...g, memberCount: counts[g.id] || 0 }));
+  groups = groupRows || [];
   if (!currentGroupId || !groups.find((g) => g.id === currentGroupId)) currentGroupId = groups[0]?.id || null;
 }
 
@@ -512,27 +451,11 @@ $("create-session-btn").addEventListener("click", async () => {
     return;
   }
 
-  let emails = parseEmails($("emails-paste").value);
-  const xlsxFile = $("emails-xlsx").files[0];
-  if (xlsxFile) {
-    try {
-      const xlsxEmails = await readXlsxEmails(xlsxFile);
-      emails = [...new Set([...emails, ...xlsxEmails])];
-    } catch (err) {
-      $("groups-error").textContent = "Eroare la citirea fișierului: " + err.message;
-      return;
-    }
-  }
+  const numGroups = Math.max(1, parseInt($("num-groups").value, 10) || 1);
+  const cardsPerGroup = Math.max(1, parseInt($("cards-per-group").value, 10) || 1);
+  const allowRepeat = document.querySelector('input[name="draw-mode"]:checked').value === "repeat";
 
-  const groupSize = Math.max(1, parseInt($("group-size").value, 10) || 1);
-  const mode = document.querySelector('input[name="dist-mode"]:checked').value;
-  const fixedCount = Math.max(1, parseInt($("fixed-count").value, 10) || 1);
-  const allowRepeat = $("allow-repeat").checked;
-
-  const emailGroups = emails.length > 0 ? chunkArray(emails, groupSize) : [[]];
-  const numGroups = emailGroups.length;
-
-  const { assignments, error: assignError } = assignCardsToGroups(deckCards, numGroups, mode, fixedCount, allowRepeat);
+  const { assignments, error: assignError } = assignCardsToGroups(deckCards, numGroups, cardsPerGroup, allowRepeat);
   if (assignError) {
     $("groups-error").textContent = assignError;
     return;
@@ -550,22 +473,13 @@ $("create-session-btn").addEventListener("click", async () => {
       .single();
     if (sessErr) throw sessErr;
 
-    const groupInserts = emailGroups.map((_, i) => ({
+    const groupInserts = Array.from({ length: numGroups }, (_, i) => ({
       session_id: sessionRow.id,
-      name: numGroups === 1 && emails.length === 0 ? "Toți cursanții" : `Grupa ${i + 1}`,
+      name: `Grupa ${i + 1}`,
       group_code: randomCode(8),
     }));
     const { data: groupRows, error: groupErr } = await supabase.from("session_groups").insert(groupInserts).select();
     if (groupErr) throw groupErr;
-
-    const memberRows = [];
-    groupRows.forEach((g, i) => {
-      emailGroups[i].forEach((email) => memberRows.push({ session_id: sessionRow.id, group_id: g.id, email }));
-    });
-    if (memberRows.length > 0) {
-      const { error: memErr } = await supabase.from("session_group_members").insert(memberRows);
-      if (memErr) throw memErr;
-    }
 
     const cardRows = [];
     groupRows.forEach((g, i) => {
@@ -575,7 +489,7 @@ $("create-session-btn").addEventListener("click", async () => {
     if (cardErr) throw cardErr;
 
     currentSession = sessionRow;
-    groups = groupRows.map((g, i) => ({ ...g, memberCount: emailGroups[i].length }));
+    groups = groupRows;
     currentGroupId = groups[0]?.id || null;
     renderSessionPanel();
   } catch (err) {
@@ -640,7 +554,6 @@ function renderGroupsList() {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <strong class="serif">${escapeHtml(g.name)}</strong>
-        <span class="badge">${g.memberCount} membri</span>
       </div>
       <div class="session-link-box" style="margin-top:8px;">
         <span>${link}</span>
@@ -729,6 +642,7 @@ async function renderControlGrid() {
     .filter(Boolean)
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   const currentGroup = groups.find((g) => g.id === currentGroupId);
+  renderCardPicker();
 
   grid.innerHTML = "";
   if (controlGroupCards.length === 0) {
@@ -778,6 +692,48 @@ function updateHighlightUI(cardId) {
   document.querySelectorAll("#control-grid .card-tile").forEach((tile) => {
     tile.classList.toggle("highlighted", tile.dataset.cardId === cardId);
   });
+}
+
+// ---------- CARD PICKER: alegere manuala a cardurilor per grupa ----------
+$("toggle-picker-btn").addEventListener("click", () => {
+  const panel = $("card-picker-panel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+});
+
+function renderCardPicker() {
+  const box = $("card-picker");
+  box.innerHTML = "";
+  const assignedIds = new Set(controlGroupCards.map((c) => c.id));
+  deckCards.forEach((c) => {
+    const checked = assignedIds.has(c.id);
+    const row = document.createElement("label");
+    row.className = "picker-row";
+    row.innerHTML = `
+      <input type="checkbox" ${checked ? "checked" : ""} />
+      <img src="${c.front_image_url}" alt="" />
+      <span>${escapeHtml(c.title)}</span>
+    `;
+    row.querySelector("input").addEventListener("change", (e) => {
+      if (e.target.checked) addCardToGroup(c.id);
+      else removeCardFromGroup(c.id);
+    });
+    box.appendChild(row);
+  });
+}
+
+async function addCardToGroup(cardId) {
+  await supabase.from("session_group_cards").insert({
+    session_id: currentSession.id,
+    group_id: currentGroupId,
+    card_id: cardId,
+    is_flippable: false,
+  });
+  await renderControlGrid();
+}
+
+async function removeCardFromGroup(cardId) {
+  await supabase.from("session_group_cards").delete().eq("group_id", currentGroupId).eq("card_id", cardId);
+  await renderControlGrid();
 }
 
 async function highlightCard(cardId) {
@@ -842,15 +798,22 @@ async function deactivateAndResetFlip() {
   btn.disabled = true;
   const original = btn.textContent;
   btn.textContent = "Se aplică...";
-  await supabase.from("session_group_cards").update({ is_flippable: false }).eq("group_id", currentGroupId);
-  // trimite semnalul de resetare: toti cursantii din aceasta grupa isi intorc cardurile inapoi cu fata
-  await supabase.from("session_groups").update({ flip_reset_at: new Date().toISOString() }).eq("id", currentGroupId);
-  controlGroupCards.forEach((c) => {
-    c.is_flippable = false;
-    updateTileFlipButton(c.id, false);
-  });
-  btn.disabled = false;
-  btn.textContent = original;
+  try {
+    const { error: e1 } = await supabase.from("session_group_cards").update({ is_flippable: false }).eq("group_id", currentGroupId);
+    if (e1) throw e1;
+    // trimite semnalul de resetare: toti cursantii din aceasta grupa isi intorc cardurile inapoi cu fata
+    const { error: e2 } = await supabase.from("session_groups").update({ flip_reset_at: new Date().toISOString() }).eq("id", currentGroupId);
+    if (e2) throw e2;
+    controlGroupCards.forEach((c) => {
+      c.is_flippable = false;
+      updateTileFlipButton(c.id, false);
+    });
+  } catch (err) {
+    alert("Eroare: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
 }
 $("flip-all-reset-btn").addEventListener("click", deactivateAndResetFlip);
 
