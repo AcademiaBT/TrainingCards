@@ -622,6 +622,8 @@ function renderSessionPanel() {
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
     $("session-code-badge").textContent = currentSession.session_code;
+    $("groups-list").style.display = "none";
+    $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
     renderGroupsList();
     renderGroupTabs();
     renderControlGrid();
@@ -631,6 +633,13 @@ function renderSessionPanel() {
     $("control-panel").style.display = "none";
   }
 }
+
+$("toggle-groups-list-btn").addEventListener("click", () => {
+  const box = $("groups-list");
+  const open = box.style.display !== "none";
+  box.style.display = open ? "none" : "flex";
+  $("toggle-groups-list-btn").textContent = `${open ? "Arată" : "Ascunde"} linkurile și codurile QR ale grupelor (${groups.length}) ${open ? "▾" : "▴"}`;
+});
 
 let controlGroupCards = []; // cache local pentru grupa curent afisata in panoul de control (evita rebuild complet la fiecare click)
 
