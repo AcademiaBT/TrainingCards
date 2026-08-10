@@ -155,15 +155,19 @@ input, textarea, select {
 
 /* --- Cursant: carduri flip --- */
 .learner-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 22px;
 }
+
+.flip-card-wrap { display: flex; flex-direction: column; align-items: center; }
 
 .flip-card {
   perspective: 1200px;
-  aspect-ratio: 3 / 4;
-  height: auto;
+  height: clamp(190px, 46vh, 480px); /* dinamic: procent din inaltimea ecranului, cu limite */
+  width: auto;
+  aspect-ratio: 3 / 4; /* latimea se calculeaza automat din inaltime */
 }
 .flip-card-inner {
   position: relative;
@@ -319,7 +323,7 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   padding: 60px 20px;
   color: var(--grey);
 }
-.learner-grid .empty-state { grid-column: 1 / -1; }
+.learner-grid .empty-state { flex: 1 1 100%; }
 
 /* --- Responsive / mobil --- */
 @media (max-width: 640px) {
@@ -332,7 +336,8 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   .card-tile .tile-label { font-size: 13px; padding: 8px 6px 2px; }
   .tile-controls { flex-wrap: wrap; }
   .toggle-flip { font-size: 10px; padding: 4px 6px; }
-  .learner-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+  .learner-grid { gap: 14px; }
+  .flip-card { height: clamp(220px, 55vh, 420px); }
   .card-title { font-size: 12px; }
   .zoom-btn { padding: 6px 9px; font-size: 14px; }
   #qr-canvas { width: 160px !important; height: 160px !important; }
