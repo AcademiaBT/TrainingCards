@@ -42,14 +42,18 @@ function secondsToHMS(total) {
 
 function updateTimerDisplay() {
   const bar = $("session-timer-bar");
+  const overlay = $("expired-overlay");
   const status = sessionInfo.timer_status || "not_started";
   if (status === "not_started" || status === "none") {
     bar.style.display = "none";
+    overlay.style.display = "none";
     return;
   }
   bar.style.display = "block";
+  $("learner-group-name").textContent = group ? group.name : "";
   $("learner-timer-display").textContent = secondsToHMS(liveRemaining());
   $("learner-timer-display").style.color = status === "expired" ? "var(--red)" : status === "paused" ? "var(--grey)" : "var(--green)";
+  overlay.style.display = status === "expired" ? "flex" : "none";
 }
 
 async function init() {
@@ -277,6 +281,7 @@ function showSessionEnded() {
   $("learner-grid").innerHTML = "";
   $("learner-lightbox").style.display = "none";
   $("session-timer-bar").style.display = "none";
+  $("expired-overlay").style.display = "none";
   $("status-box").innerHTML = `<div class="empty-state">Sesiunea nu există sau s-a încheiat. Cere trainerului un link nou.</div>`;
 }
 

@@ -18,20 +18,28 @@
 <main id="learner-main">
   <div id="status-box"></div>
   <div id="session-timer-bar" style="display:none; text-align:center; margin-bottom:24px;">
-    <div style="font-size:13px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-family:'Inter',sans-serif;">Timp rămas</div>
+    <div style="font-size:13px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-family:'Inter',sans-serif;">Timp rămas · <span id="learner-group-name"></span></div>
     <div id="learner-timer-display" style="font-size:44px; font-family:'Fraunces',serif; font-weight:700; color:var(--green);">00:00:00</div>
   </div>
   <div class="learner-grid" id="learner-grid"></div>
 </main>
 
+<div id="expired-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); z-index:80; align-items:center; justify-content:center; text-align:center; padding:20px;">
+  <div>
+    <div style="font-size:56px; margin-bottom:12px;">⏰</div>
+    <div style="font-family:'Fraunces',serif; font-size:32px; font-weight:700; color:#fff;">Timpul a expirat</div>
+    <div style="font-family:'Inter',sans-serif; font-size:14px; color:#ddd; margin-top:8px;">Așteaptă instrucțiunile trainerului.</div>
+  </div>
+</div>
+
 <style>
   #learner-main { max-width: 1900px; }
-  .learner-grid { grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .learner-grid { grid-template-columns: repeat(3, minmax(0, 280px)); justify-content: center; gap: 22px; }
   @media (max-width: 1000px) {
-    .learner-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .learner-grid { grid-template-columns: repeat(2, minmax(0, 280px)); gap: 18px; }
   }
   @media (max-width: 640px) {
-    .learner-grid { grid-template-columns: 1fr; gap: 18px; }
+    .learner-grid { grid-template-columns: 1fr; justify-content: stretch; gap: 18px; }
   }
 </style>
 

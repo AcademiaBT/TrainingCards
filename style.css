@@ -319,6 +319,7 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   padding: 60px 20px;
   color: var(--grey);
 }
+.learner-grid .empty-state { grid-column: 1 / -1; }
 
 /* --- Responsive / mobil --- */
 @media (max-width: 640px) {
