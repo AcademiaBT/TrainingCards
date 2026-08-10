@@ -188,8 +188,12 @@ function syncDeckLockUI() {
 let deckLocked = false; // adevarat daca EXISTA orice sesiune activa, a oricarui trainer (nu doar a mea)
 
 async function refreshDeckLockState() {
-  const { data } = await supabase.from("training_sessions").select("id").eq("status", "active").limit(1);
+  const { data } = await supabase.from("training_sessions").select("admin_email, session_code").eq("status", "active");
   deckLocked = !!(data && data.length > 0);
+  if (deckLocked) {
+    const who = [...new Set(data.map((s) => s.admin_email))].join(", ");
+    $("deck-locked-note").innerHTML = `🔒 Editarea deck-ului e dezactivată — există ${data.length} sesiune${data.length > 1 ? "i" : ""} activă${data.length > 1 ? "" : ""}, deschisă de: <strong>${escapeHtml(who)}</strong>. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
+  }
   syncDeckLockUI();
 }
 
