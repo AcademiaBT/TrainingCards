@@ -29,6 +29,12 @@
   </header>
 
   <main>
+    <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
+      <button class="btn gold" id="tab-sessions-btn">Sesiuni & Control live</button>
+      <button class="btn outline" id="tab-deck-btn">Deck de carduri</button>
+    </div>
+
+    <div id="view-sessions">
     <div class="panel" id="control-panel" style="display:none;">
       <h3>Control carduri (sesiune live)</h3>
       <p style="font-size:13px; color:var(--grey);">Click pe un card pentru a-l evidenția la grupa selectată. Butonul „Permite răsturnarea” activează flip-ul pentru acel card, doar la această grupă.</p>
@@ -127,7 +133,9 @@
         <div id="groups-list" style="display:none; flex-direction:column; gap:12px; margin-top:14px;"></div>
       </div>
     </div>
+    </div>
 
+    <div id="view-deck" style="display:none;">
     <div class="panel">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
         <h3 style="margin:0;">Deck-ul de carduri (MVP)</h3>
@@ -137,13 +145,14 @@
         </div>
       </div>
       <p id="deck-locked-note" style="display:none; font-size:13px; color:var(--red); margin:-4px 0 12px;">
-        🔒 Editarea deck-ului e dezactivată cât timp sesiunea e activă, ca să eviți modificări accidentale în timpul unui training live. Încheie sesiunea pentru a adăuga, edita sau șterge carduri.
+        🔒 Editarea deck-ului e dezactivată cât timp <strong>orice</strong> sesiune e activă (a ta sau a altui trainer), ca să eviți modificări accidentale în timpul unui training live.
       </p>
       <div id="deck-bulk-bar" style="display:none; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
         <button class="btn outline" id="select-all-btn">Selectează tot</button>
         <button class="btn danger" id="bulk-delete-btn" disabled>Șterge selectate (<span id="selected-count">0</span>)</button>
       </div>
       <div class="card-grid" id="deck-grid"></div>
+    </div>
     </div>
   </main>
 </div>

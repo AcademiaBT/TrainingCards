@@ -47,9 +47,25 @@ $("logout-btn").addEventListener("click", async () => {
 async function showAdmin() {
   $("login-view").style.display = "none";
   $("admin-view").style.display = "block";
+  await refreshDeckLockState();
   await loadDeck();
   await loadActiveSession();
 }
+
+// ---------- TAB-URI: Sesiuni vs Deck ----------
+$("tab-sessions-btn").addEventListener("click", () => {
+  $("view-sessions").style.display = "block";
+  $("view-deck").style.display = "none";
+  $("tab-sessions-btn").className = "btn gold";
+  $("tab-deck-btn").className = "btn outline";
+});
+$("tab-deck-btn").addEventListener("click", async () => {
+  $("view-sessions").style.display = "none";
+  $("view-deck").style.display = "block";
+  $("tab-deck-btn").className = "btn gold";
+  $("tab-sessions-btn").className = "btn outline";
+  await refreshDeckLockState(); // verificare proaspata la intrarea pe tab
+});
 
 // ---------- DECK ----------
 async function loadDeck() {
@@ -69,7 +85,7 @@ async function loadDeck() {
 
 function renderDeck() {
   const grid = $("deck-grid");
-  const locked = !!currentSession;
+  const locked = deckLocked;
   grid.style.display = locked ? "none" : "grid";
   $("deck-bulk-bar").style.display = !locked && deckCards.length > 0 ? "flex" : "none";
   if (locked) return;
@@ -163,11 +179,27 @@ $("bulk-delete-btn").addEventListener("click", async () => {
 });
 
 function syncDeckLockUI() {
-  const locked = !!currentSession;
+  const locked = deckLocked;
   $("deck-edit-actions").style.display = locked ? "none" : "flex";
   $("deck-locked-note").style.display = locked ? "block" : "none";
   renderDeck();
 }
+
+let deckLocked = false; // adevarat daca EXISTA orice sesiune activa, a oricarui trainer (nu doar a mea)
+
+async function refreshDeckLockState() {
+  const { data } = await supabase.from("training_sessions").select("id").eq("status", "active").limit(1);
+  deckLocked = !!(data && data.length > 0);
+  syncDeckLockUI();
+}
+
+// se tine la curent live, indiferent care trainer porneste/incheie o sesiune
+supabase
+  .channel("global-session-lock-watch")
+  .on("postgres_changes", { event: "*", schema: "public", table: "training_sessions" }, () => {
+    refreshDeckLockState();
+  })
+  .subscribe();
 
 function escapeHtml(str) {
   const d = document.createElement("div");
@@ -513,6 +545,7 @@ $("create-session-btn").addEventListener("click", async () => {
     groups = groupRows;
     currentGroupId = groups[0]?.id || null;
     renderSessionPanel();
+    refreshDeckLockState();
     if (isManual) $("card-picker-panel").style.display = "block"; // deschide direct gestionarea manuala
   } catch (err) {
     $("groups-error").textContent = "Eroare: " + err.message;
@@ -530,6 +563,7 @@ $("end-session-btn").addEventListener("click", async () => {
   groups = [];
   currentGroupId = null;
   renderSessionPanel();
+  refreshDeckLockState();
 });
 
 function groupLink(code) {
