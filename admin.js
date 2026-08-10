@@ -192,7 +192,11 @@ async function refreshDeckLockState() {
   deckLocked = !!(data && data.length > 0);
   if (deckLocked) {
     const who = [...new Set(data.map((s) => s.admin_email))].join(", ");
-    $("deck-locked-note").innerHTML = `🔒 Editarea deck-ului e dezactivată — există ${data.length} sesiune${data.length > 1 ? "i" : ""} activă${data.length > 1 ? "" : ""}, deschisă de: <strong>${escapeHtml(who)}</strong>. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
+    const count = data.length;
+    const noun = count > 1 ? "sesiuni" : "sesiune";
+    const adj = count > 1 ? "active" : "activă";
+    const deschisa = count > 1 ? "deschise" : "deschisă";
+    $("deck-locked-note").innerHTML = `🔒 Editarea deck-ului e dezactivată — există ${count} ${noun} ${adj}, ${deschisa} de: <strong>${escapeHtml(who)}</strong>. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
   }
   syncDeckLockUI();
 }
