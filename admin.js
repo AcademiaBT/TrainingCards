@@ -1013,8 +1013,19 @@ $("timer-extend-btn").addEventListener("click", async () => {
   renderTimerPanel();
 });
 
+function syncSwitcherLockUI() {
+  const locked = !!currentSession;
+  ["game-select", "set-select", "game-new-btn", "game-edit-btn", "game-delete-btn", "set-new-btn", "set-edit-btn", "set-delete-btn"].forEach((id) => {
+    $(id).disabled = locked;
+  });
+  $("gs-switcher-error").textContent = locked
+    ? "🔒 Joc / set blocate cât timp ai o sesiune activă — încheie sesiunea pentru a schimba selecția."
+    : "";
+}
+
 function renderSessionPanel() {
   syncDeckLockUI();
+  syncSwitcherLockUI();
   if (currentSession) {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
