@@ -80,6 +80,7 @@ $("game-select").addEventListener("change", async (e) => {
 $("set-select").addEventListener("change", async (e) => {
   activeSetId = e.target.value;
   localStorage.setItem("activeSetId", activeSetId);
+  updateDeckTitle();
   await refreshDeckLockState();
   await loadDeck();
 });
