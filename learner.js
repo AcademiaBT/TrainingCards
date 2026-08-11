@@ -50,10 +50,15 @@ function updateTimerDisplay() {
     return;
   }
   bar.style.display = "block";
-  $("learner-group-name").textContent = group ? group.name : "";
   $("learner-timer-display").textContent = secondsToHMS(liveRemaining());
   $("learner-timer-display").style.color = status === "expired" ? "var(--red)" : status === "paused" ? "var(--grey)" : "var(--green)";
   overlay.style.display = status === "expired" ? "flex" : "none";
+}
+
+function updateGroupBadge() {
+  if (!group) return;
+  $("learner-group-bar").style.display = "block";
+  $("learner-group-badge").textContent = group.name;
 }
 
 async function init() {
@@ -177,6 +182,7 @@ async function pollUpdates() {
 function render() {
   const grid = $("learner-grid");
   updateTimerDisplay();
+  updateGroupBadge();
 
   if ((sessionInfo.timer_status || "not_started") === "not_started") {
     grid.innerHTML = `<div class="empty-state">⏳ Sesiunea nu a început încă. Așteaptă ca trainerul să pornească cronometrul.</div>`;
@@ -281,6 +287,7 @@ function showSessionEnded() {
   $("learner-grid").innerHTML = "";
   $("learner-lightbox").style.display = "none";
   $("session-timer-bar").style.display = "none";
+  $("learner-group-bar").style.display = "none";
   $("expired-overlay").style.display = "none";
   $("status-box").innerHTML = `<div class="empty-state">Sesiunea nu există sau s-a încheiat. Cere trainerului un link nou.</div>`;
 }
