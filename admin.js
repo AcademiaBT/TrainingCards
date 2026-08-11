@@ -41,6 +41,7 @@ async function loadSets() {
     cardSets = [];
     activeSetId = null;
     renderSetSelect();
+    await refreshDeckLockState();
     await loadDeck();
     return;
   }
@@ -49,6 +50,7 @@ async function loadSets() {
   const savedSetId = localStorage.getItem("activeSetId");
   activeSetId = cardSets.find((s) => s.id === savedSetId)?.id || cardSets[0]?.id || null;
   renderSetSelect();
+  await refreshDeckLockState();
   await loadDeck();
 }
 
@@ -59,18 +61,26 @@ function renderSetSelect() {
   const hasSets = cardSets.length > 0;
   $("set-edit-btn").disabled = !hasSets;
   $("set-delete-btn").disabled = !hasSets;
+  updateDeckTitle();
+}
+
+function updateDeckTitle() {
+  const g = games.find((g) => g.id === activeGameId);
+  const s = cardSets.find((s) => s.id === activeSetId);
+  $("deck-title").textContent = g && s ? `Carduri: ${g.name} — ${s.name}` : "Carduri";
 }
 
 $("game-select").addEventListener("change", async (e) => {
   activeGameId = e.target.value;
   localStorage.setItem("activeGameId", activeGameId);
   localStorage.removeItem("activeSetId"); // setul salvat apartinea altui joc
-  await loadSets();
+  await loadSets(); // seteaza activeSetId corect, apoi verifica blocarea, apoi incarca deck-ul
 });
 
 $("set-select").addEventListener("change", async (e) => {
   activeSetId = e.target.value;
   localStorage.setItem("activeSetId", activeSetId);
+  await refreshDeckLockState();
   await loadDeck();
 });
 
@@ -209,8 +219,7 @@ $("logout-btn").addEventListener("click", async () => {
 async function showAdmin() {
   $("login-view").style.display = "none";
   $("admin-view").style.display = "block";
-  await refreshDeckLockState();
-  await loadGames(); // incarca jocuri -> seturi -> deck, in cascada
+  await loadGames(); // incarca jocuri -> seturi -> deck -> verificare blocare, in cascada corecta
   await loadActiveSession();
 }
 
@@ -356,15 +365,27 @@ function syncDeckLockUI() {
 let deckLocked = false; // adevarat daca EXISTA orice sesiune activa, a oricarui trainer (nu doar a mea)
 
 async function refreshDeckLockState() {
-  const { data } = await supabase.from("training_sessions").select("admin_email, session_code").eq("status", "active");
+  if (!activeGameId || !activeSetId) {
+    deckLocked = false;
+    syncDeckLockUI();
+    return;
+  }
+  const { data } = await supabase
+    .from("training_sessions")
+    .select("admin_email, session_code")
+    .eq("status", "active")
+    .eq("game_id", activeGameId)
+    .eq("set_id", activeSetId);
   deckLocked = !!(data && data.length > 0);
   if (deckLocked) {
+    const gameName = games.find((g) => g.id === activeGameId)?.name || "acest joc";
+    const setName = cardSets.find((s) => s.id === activeSetId)?.name || "acest set";
     const who = [...new Set(data.map((s) => s.admin_email))].join(", ");
     const count = data.length;
     const noun = count > 1 ? "sesiuni" : "sesiune";
     const adj = count > 1 ? "active" : "activă";
     const deschisa = count > 1 ? "deschise" : "deschisă";
-    $("deck-locked-note").innerHTML = `🔒 Editarea deck-ului e dezactivată — există ${count} ${noun} ${adj}, ${deschisa} de: <strong>${escapeHtml(who)}</strong>. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
+    $("deck-locked-note").innerHTML = `🔒 Editarea setului „${escapeHtml(setName)}” din jocul „${escapeHtml(gameName)}” e dezactivată — există ${count} ${noun} ${adj}, ${deschisa} de: <strong>${escapeHtml(who)}</strong>. Alte jocuri și seturi rămân editabile. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
   }
   syncDeckLockUI();
 }
@@ -708,7 +729,7 @@ $("create-session-btn").addEventListener("click", async () => {
     const code = randomCode();
     const { data: sessionRow, error: sessErr } = await supabase
       .from("training_sessions")
-      .insert({ session_code: code, game_id: activeGameId, admin_email: user.email, status: "active" })
+      .insert({ session_code: code, game_id: activeGameId, set_id: activeSetId, admin_email: user.email, status: "active" })
       .select()
       .single();
     if (sessErr) throw sessErr;
