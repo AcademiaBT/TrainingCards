@@ -1273,4 +1273,33 @@ async function setAllFlippableAllGroups(value) {
 $("flip-all-groups-btn").addEventListener("click", () => setAllFlippableAllGroups(true));
 $("flip-all-groups-off-btn").addEventListener("click", () => setAllFlippableAllGroups(false));
 
+async function resetAllGroupsFlip() {
+  if (!currentSession || groups.length === 0) return;
+  const btn = $("flip-all-groups-reset-btn");
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "Se aplică la toate grupele...";
+  try {
+    const { error: e1 } = await supabase.from("session_group_cards").update({ is_flippable: false }).eq("session_id", currentSession.id);
+    if (e1) throw e1;
+    // trimite semnalul de resetare catre FIECARE grupa a sesiunii, nu doar cea selectata
+    const resetAt = new Date().toISOString();
+    const { error: e2 } = await supabase
+      .from("session_groups")
+      .update({ flip_reset_at: resetAt })
+      .in("id", groups.map((g) => g.id));
+    if (e2) throw e2;
+    controlGroupCards.forEach((c) => {
+      c.is_flippable = false;
+      updateTileFlipButton(c.id, false);
+    });
+  } catch (err) {
+    alert("Eroare: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+$("flip-all-groups-reset-btn").addEventListener("click", resetAllGroupsFlip);
+
 checkAuth();

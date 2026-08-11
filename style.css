@@ -125,7 +125,6 @@ input, textarea, select {
   background: var(--card-bg);
   border: 2px solid var(--parchment-dark);
   border-radius: 10px;
-  overflow: hidden;
   cursor: pointer;
   transition: transform 0.15s, border-color 0.15s;
   text-align: center;
@@ -136,8 +135,16 @@ input, textarea, select {
   animation: tile-highlight-pulse 1.6s ease-in-out infinite;
 }
 @keyframes tile-highlight-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px var(--green-deep); }
-  50% { box-shadow: 0 0 0 7px rgba(33, 58, 46, 0.3); }
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px var(--green-deep),
+      0 0 14px 5px rgba(33, 58, 46, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px var(--green-deep),
+      0 0 28px 12px rgba(33, 58, 46, 0.2);
+  }
 }
 .card-tile img {
   width: 100%;
@@ -198,13 +205,22 @@ input, textarea, select {
 .flip-face img { width: 100%; height: 100%; object-fit: cover; }
 .flip-face.back { transform: rotateY(180deg); }
 
-.flip-card.is-highlighted .flip-face {
-  border-color: var(--green-deep);
+.flip-card.is-highlighted .flip-face { border-color: var(--green-deep); }
+.flip-card.is-highlighted {
+  border-radius: 12px;
   animation: card-highlight-pulse 1.6s ease-in-out infinite;
 }
 @keyframes card-highlight-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px var(--green-deep); }
-  50% { box-shadow: 0 0 0 9px rgba(33, 58, 46, 0.35); }
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px var(--green-deep),
+      0 0 16px 6px rgba(33, 58, 46, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px var(--green-deep),
+      0 0 34px 14px rgba(33, 58, 46, 0.25);
+  }
 }
 .flip-card.can-flip { cursor: pointer; }
 .flip-card.can-flip .flip-face.front::after {
@@ -312,6 +328,8 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   width: 100%;
   aspect-ratio: 3 / 4;
   cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden; /* rotunjeste doar imaginea, fara sa taie glow-ul de pe tot tile-ul */
 }
 .mini-flip-inner {
   position: relative;
