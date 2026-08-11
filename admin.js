@@ -277,7 +277,7 @@ function renderDeck() {
     tile.className = "card-tile";
     tile.innerHTML = `
       ${locked ? "" : `<div style="padding:8px 8px 0; text-align:left;"><input type="checkbox" data-select="${c.id}" style="width:auto;" ${selectedCardIds.has(c.id) ? "checked" : ""} /></div>`}
-      <div class="mini-flip" data-flip>
+      <div class="mini-flip" data-flip style="aspect-ratio:${c.aspect_ratio || 0.75};">
         <div class="mini-flip-inner">
           <img class="mini-flip-face front" src="${c.front_image_url}" alt="față" />
           <img class="mini-flip-face back" src="${c.back_image_url}" alt="verso" />
@@ -452,6 +452,23 @@ function wirePreview(fileInputId, previewId) {
 wirePreview("f-front-file", "f-front-preview");
 wirePreview("f-back-file", "f-back-preview");
 
+function getImageAspectRatio(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      URL.revokeObjectURL(url);
+      resolve(ratio);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Nu am putut citi dimensiunile imaginii."));
+    };
+    img.src = url;
+  });
+}
+
 async function uploadImage(file) {
   const ext = file.name.split(".").pop();
   const path = `${crypto.randomUUID()}.${ext}`;
@@ -481,10 +498,12 @@ $("modal-save-btn").addEventListener("click", async () => {
   try {
     const frontUrl = frontFile ? await uploadImage(frontFile) : editingCard.front_image_url;
     const backUrl = backFile ? await uploadImage(backFile) : editingCard.back_image_url;
+    const aspectRatio = frontFile ? await getImageAspectRatio(frontFile) : editingCard?.aspect_ratio ?? 0.75;
     const payload = {
       title,
       front_image_url: frontUrl,
       back_image_url: backUrl,
+      aspect_ratio: aspectRatio,
       initial_face: $("f-initial-face").value,
       flippable_default: $("f-flippable").checked,
       explanation: $("f-explanation").value.trim(),
@@ -589,10 +608,12 @@ $("bulk-save-btn").addEventListener("click", async () => {
       $("bulk-progress").textContent = `Se încarcă ${done + 1}/${bulkPairs.length}: ${p.title}...`;
       const frontUrl = await uploadImage(p.frontFile);
       const backUrl = await uploadImage(p.backFile);
+      const aspectRatio = await getImageAspectRatio(p.frontFile);
       const { error } = await supabase.from("cards").insert({
         title: p.title,
         front_image_url: frontUrl,
         back_image_url: backUrl,
+        aspect_ratio: aspectRatio,
         initial_face: "front",
         flippable_default: true,
         explanation: "",
@@ -1088,7 +1109,7 @@ async function renderControlGrid() {
     tile.className = "card-tile" + (isHighlighted ? " highlighted" : "");
     tile.dataset.cardId = c.id;
     tile.innerHTML = `
-      <div class="mini-flip${previewBack ? " flipped" : ""}" data-flip>
+      <div class="mini-flip${previewBack ? " flipped" : ""}" data-flip style="aspect-ratio:${c.aspect_ratio || 0.75};">
         <div class="mini-flip-inner">
           <img class="mini-flip-face front" src="${c.front_image_url}" alt="${escapeHtml(c.title)}" />
           <img class="mini-flip-face back" src="${c.back_image_url}" alt="${escapeHtml(c.title)}" />

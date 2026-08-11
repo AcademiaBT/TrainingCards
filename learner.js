@@ -217,6 +217,7 @@ function render() {
 
     const flip = document.createElement("div");
     flip.className = "flip-card" + (isHighlighted ? " is-highlighted" : "") + (canFlip ? " can-flip" : "") + (isFlipped ? " flipped" : "");
+    flip.style.aspectRatio = c.aspect_ratio || 0.75;
     flip.innerHTML = `
       <div class="flip-card-inner">
         <div class="flip-face front"><img src="${c.initial_face === "back" ? c.back_image_url : c.front_image_url}" /></div>
