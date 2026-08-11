@@ -29,6 +29,31 @@
   </header>
 
   <main>
+    <div class="panel" id="game-set-switcher" style="margin-bottom:16px;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Joc de training</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select id="game-select" style="min-width:170px;"></select>
+            <button class="btn outline" id="game-new-btn" title="Joc nou" style="padding:8px 10px;">+ Nou</button>
+            <button class="btn outline" id="game-edit-btn" title="Editează" style="padding:8px 10px;">✏️</button>
+            <button class="btn outline" id="game-delete-btn" title="Șterge" style="padding:8px 10px; border-color:var(--red); color:var(--red);">🗑</button>
+          </div>
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:600; margin-bottom:4px;">Set de cărți</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select id="set-select" style="min-width:170px;"></select>
+            <button class="btn outline" id="set-new-btn" title="Set nou" style="padding:8px 10px;">+ Nou</button>
+            <button class="btn outline" id="set-edit-btn" title="Editează" style="padding:8px 10px;">✏️</button>
+            <button class="btn outline" id="set-delete-btn" title="Șterge" style="padding:8px 10px; border-color:var(--red); color:var(--red);">🗑</button>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px; color:var(--grey); margin:10px 0 0;">Alegerea de mai sus determină ce carduri vezi în „Administrare carduri” și ce deck se folosește la crearea unei sesiuni noi.</p>
+      <div class="error-msg" id="gs-switcher-error"></div>
+    </div>
+
     <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;">
       <button class="btn gold" id="tab-sessions-btn">Sesiuni & Control live</button>
       <button class="btn outline" id="tab-deck-btn">Administrare carduri</button>
@@ -214,6 +239,21 @@
 
 <div id="lightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:60; align-items:center; justify-content:center; padding:30px; cursor:zoom-out;">
   <img id="lightbox-img" style="max-width:90vw; max-height:90vh; border-radius:12px;" />
+</div>
+
+<div id="game-set-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:55; align-items:center; justify-content:center; padding:20px;">
+  <div class="panel" style="max-width:420px; width:100%;">
+    <h3 id="gs-modal-title">Joc nou</h3>
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Nume</label>
+    <input id="gs-name" style="width:100%;" />
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Descriere (opțional)</label>
+    <textarea id="gs-desc" rows="2" style="width:100%;"></textarea>
+    <div class="error-msg" id="gs-error"></div>
+    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+      <button class="btn outline" id="gs-cancel-btn">Anulează</button>
+      <button class="btn" id="gs-save-btn">Salvează</button>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="admin.js"></script>

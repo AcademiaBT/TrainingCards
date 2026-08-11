@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, GAME_ID } from "./config.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -10,6 +10,168 @@ let deckCards = [];
 let controlPreviewBack = {}; // card_id -> bool, doar local pentru trainer (nu afecteaza cursantii)
 let selectedCardIds = new Set(); // pentru stergere in bulk
 let editingCard = null; // cardul editat curent (null = card nou)
+
+// ---------- JOCURI & SETURI DE CARDURI ----------
+let games = [];
+let cardSets = []; // seturile jocului curent selectat
+let activeGameId = null;
+let activeSetId = null;
+
+async function loadGames() {
+  const { data } = await supabase.from("games").select("*").order("created_at", { ascending: true });
+  games = data || [];
+  const savedGameId = localStorage.getItem("activeGameId");
+  activeGameId = games.find((g) => g.id === savedGameId)?.id || games[0]?.id || null;
+  renderGameSelect();
+  await loadSets();
+}
+
+function renderGameSelect() {
+  const sel = $("game-select");
+  sel.innerHTML = games.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+  if (activeGameId) sel.value = activeGameId;
+  const hasGames = games.length > 0;
+  $("game-edit-btn").disabled = !hasGames;
+  $("game-delete-btn").disabled = !hasGames;
+  $("set-new-btn").disabled = !hasGames;
+}
+
+async function loadSets() {
+  if (!activeGameId) {
+    cardSets = [];
+    activeSetId = null;
+    renderSetSelect();
+    await loadDeck();
+    return;
+  }
+  const { data } = await supabase.from("card_sets").select("*").eq("game_id", activeGameId).order("created_at", { ascending: true });
+  cardSets = data || [];
+  const savedSetId = localStorage.getItem("activeSetId");
+  activeSetId = cardSets.find((s) => s.id === savedSetId)?.id || cardSets[0]?.id || null;
+  renderSetSelect();
+  await loadDeck();
+}
+
+function renderSetSelect() {
+  const sel = $("set-select");
+  sel.innerHTML = cardSets.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+  if (activeSetId) sel.value = activeSetId;
+  const hasSets = cardSets.length > 0;
+  $("set-edit-btn").disabled = !hasSets;
+  $("set-delete-btn").disabled = !hasSets;
+}
+
+$("game-select").addEventListener("change", async (e) => {
+  activeGameId = e.target.value;
+  localStorage.setItem("activeGameId", activeGameId);
+  localStorage.removeItem("activeSetId"); // setul salvat apartinea altui joc
+  await loadSets();
+});
+
+$("set-select").addEventListener("change", async (e) => {
+  activeSetId = e.target.value;
+  localStorage.setItem("activeSetId", activeSetId);
+  await loadDeck();
+});
+
+// -- modal comun pentru creare/editare joc sau set --
+let gsModalMode = null; // 'game-new' | 'game-edit' | 'set-new' | 'set-edit'
+
+function openGsModal(mode) {
+  gsModalMode = mode;
+  $("gs-error").textContent = "";
+  $("gs-name").value = "";
+  $("gs-desc").value = "";
+  if (mode === "game-new") $("gs-modal-title").textContent = "Joc nou";
+  if (mode === "set-new") $("gs-modal-title").textContent = "Set nou";
+  if (mode === "game-edit") {
+    const g = games.find((g) => g.id === activeGameId);
+    $("gs-modal-title").textContent = "Editează joc";
+    $("gs-name").value = g?.name || "";
+    $("gs-desc").value = g?.description || "";
+  }
+  if (mode === "set-edit") {
+    const s = cardSets.find((s) => s.id === activeSetId);
+    $("gs-modal-title").textContent = "Editează set";
+    $("gs-name").value = s?.name || "";
+    $("gs-desc").value = s?.description || "";
+  }
+  $("game-set-modal").style.display = "flex";
+}
+$("gs-cancel-btn").addEventListener("click", () => ($("game-set-modal").style.display = "none"));
+
+$("game-new-btn").addEventListener("click", () => openGsModal("game-new"));
+$("game-edit-btn").addEventListener("click", () => activeGameId && openGsModal("game-edit"));
+$("set-new-btn").addEventListener("click", () => activeGameId && openGsModal("set-new"));
+$("set-edit-btn").addEventListener("click", () => activeSetId && openGsModal("set-edit"));
+
+$("gs-save-btn").addEventListener("click", async () => {
+  const name = $("gs-name").value.trim();
+  const description = $("gs-desc").value.trim();
+  if (!name) {
+    $("gs-error").textContent = "Numele este obligatoriu.";
+    return;
+  }
+  try {
+    if (gsModalMode === "game-new") {
+      const { data, error } = await supabase.from("games").insert({ name, description }).select().single();
+      if (error) throw error;
+      await loadGames();
+      activeGameId = data.id;
+      localStorage.setItem("activeGameId", activeGameId);
+      renderGameSelect();
+      await loadSets();
+    } else if (gsModalMode === "game-edit") {
+      const { error } = await supabase.from("games").update({ name, description }).eq("id", activeGameId);
+      if (error) throw error;
+      await loadGames();
+    } else if (gsModalMode === "set-new") {
+      const { data, error } = await supabase.from("card_sets").insert({ game_id: activeGameId, name, description }).select().single();
+      if (error) throw error;
+      activeSetId = data.id;
+      localStorage.setItem("activeSetId", activeSetId);
+      await loadSets();
+    } else if (gsModalMode === "set-edit") {
+      const { error } = await supabase.from("card_sets").update({ name, description }).eq("id", activeSetId);
+      if (error) throw error;
+      await loadSets();
+    }
+    $("game-set-modal").style.display = "none";
+  } catch (err) {
+    $("gs-error").textContent = "Eroare: " + err.message;
+  }
+});
+
+$("game-delete-btn").addEventListener("click", async () => {
+  if (!activeGameId) return;
+  const g = games.find((g) => g.id === activeGameId);
+  if (cardSets.length > 0) {
+    alert(`Nu poți șterge „${g?.name}” — are ${cardSets.length} set(uri) de carduri. Șterge întâi seturile.`);
+    return;
+  }
+  if (!confirm(`Ștergi definitiv jocul „${g?.name}”?`)) return;
+  const { error } = await supabase.from("games").delete().eq("id", activeGameId);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  localStorage.removeItem("activeGameId");
+  localStorage.removeItem("activeSetId");
+  await loadGames();
+});
+
+$("set-delete-btn").addEventListener("click", async () => {
+  if (!activeSetId) return;
+  const s = cardSets.find((s) => s.id === activeSetId);
+  if (!confirm(`Ștergi setul „${s?.name}”? Cardurile din el NU se șterg, dar rămân fără set asignat.`)) return;
+  const { error } = await supabase.from("card_sets").delete().eq("id", activeSetId);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  localStorage.removeItem("activeSetId");
+  await loadSets();
+});
 
 // ---------- AUTH ----------
 async function checkAuth() {
@@ -48,7 +210,7 @@ async function showAdmin() {
   $("login-view").style.display = "none";
   $("admin-view").style.display = "block";
   await refreshDeckLockState();
-  await loadDeck();
+  await loadGames(); // incarca jocuri -> seturi -> deck, in cascada
   await loadActiveSession();
 }
 
@@ -69,10 +231,16 @@ $("tab-deck-btn").addEventListener("click", async () => {
 
 // ---------- DECK ----------
 async function loadDeck() {
+  if (!activeGameId || !activeSetId) {
+    deckCards = [];
+    renderDeck();
+    return;
+  }
   const { data, error } = await supabase
     .from("cards")
     .select("*")
-    .eq("game_id", GAME_ID)
+    .eq("game_id", activeGameId)
+    .eq("set_id", activeSetId)
     .order("order_index", { ascending: true });
   if (error) {
     console.error(error);
@@ -281,6 +449,10 @@ $("modal-save-btn").addEventListener("click", async () => {
     $("modal-error").textContent = "Titlul este obligatoriu" + (editingCard ? "." : ", iar la un card nou, ambele imagini (față + verso) sunt obligatorii.");
     return;
   }
+  if (!editingCard && (!activeGameId || !activeSetId)) {
+    $("modal-error").textContent = "Alege întâi un joc și un set de carduri, sus, în panoul de selecție.";
+    return;
+  }
 
   $("modal-save-btn").disabled = true;
   $("modal-save-btn").textContent = "Se salvează...";
@@ -299,7 +471,7 @@ $("modal-save-btn").addEventListener("click", async () => {
     if (editingCard) {
       ({ error } = await supabase.from("cards").update(payload).eq("id", editingCard.id));
     } else {
-      ({ error } = await supabase.from("cards").insert({ ...payload, game_id: GAME_ID, order_index: deckCards.length }));
+      ({ error } = await supabase.from("cards").insert({ ...payload, game_id: activeGameId, set_id: activeSetId, order_index: deckCards.length }));
     }
     if (error) throw error;
     $("card-modal").style.display = "none";
@@ -383,6 +555,10 @@ function renderBulkPreview() {
 }
 
 $("bulk-save-btn").addEventListener("click", async () => {
+  if (!activeGameId || !activeSetId) {
+    $("bulk-error").textContent = "Alege întâi un joc și un set de carduri, sus, în panoul de selecție.";
+    return;
+  }
   $("bulk-save-btn").disabled = true;
   $("bulk-error").textContent = "";
   let done = 0;
@@ -398,7 +574,8 @@ $("bulk-save-btn").addEventListener("click", async () => {
         initial_face: "front",
         flippable_default: true,
         explanation: "",
-        game_id: GAME_ID,
+        game_id: activeGameId,
+        set_id: activeSetId,
         order_index: p.order,
       });
       if (error) throw error;
@@ -499,6 +676,10 @@ document.querySelectorAll('input[name="draw-mode"]').forEach((r) => {
 
 $("create-session-btn").addEventListener("click", async () => {
   $("groups-error").textContent = "";
+  if (!activeGameId || !activeSetId) {
+    $("groups-error").textContent = "Alege întâi un joc și un set de carduri, sus, în panoul de selecție.";
+    return;
+  }
   if (deckCards.length === 0) {
     $("groups-error").textContent = "Adaugă cel puțin un card în deck înainte de a crea o sesiune.";
     return;
@@ -527,7 +708,7 @@ $("create-session-btn").addEventListener("click", async () => {
     const code = randomCode();
     const { data: sessionRow, error: sessErr } = await supabase
       .from("training_sessions")
-      .insert({ session_code: code, game_id: GAME_ID, admin_email: user.email, status: "active" })
+      .insert({ session_code: code, game_id: activeGameId, admin_email: user.email, status: "active" })
       .select()
       .single();
     if (sessErr) throw sessErr;
