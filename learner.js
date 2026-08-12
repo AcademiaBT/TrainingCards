@@ -82,7 +82,7 @@ async function init() {
 
   const { data: sessionData } = await supabase
     .from("training_sessions")
-    .select("status, timer_total_seconds, timer_remaining_seconds, timer_status, timer_started_at")
+    .select("status, timer_total_seconds, timer_remaining_seconds, timer_status, timer_started_at, games(name)")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -91,6 +91,10 @@ async function init() {
     return;
   }
   sessionInfo = sessionData;
+  if (sessionData.games?.name) {
+    $("learner-game-title").textContent = sessionData.games.name;
+    document.title = sessionData.games.name;
+  }
 
   const { data: groupCardRows } = await supabase
     .from("session_group_cards")
@@ -142,9 +146,9 @@ async function pollUpdates() {
 
     let changed = false;
 
-    if (JSON.stringify(sessionData) !== JSON.stringify(sessionInfo)) {
+    if (JSON.stringify(sessionData) !== JSON.stringify({ ...sessionInfo, games: undefined })) {
       const wasNotStarted = (sessionInfo.timer_status || "not_started") === "not_started";
-      sessionInfo = sessionData;
+      sessionInfo = { ...sessionInfo, ...sessionData }; // pastreaza numele jocului deja incarcat
       updateTimerDisplay();
       if (wasNotStarted && sessionInfo.timer_status !== "not_started") changed = true;
     }
@@ -305,7 +309,7 @@ function subscribeRealtime() {
           return;
         }
         const wasNotStarted = (sessionInfo.timer_status || "not_started") === "not_started";
-        sessionInfo = payload.new;
+        sessionInfo = { ...sessionInfo, ...payload.new }; // pastreaza numele jocului deja incarcat (realtime nu include join-uri)
         if (wasNotStarted && sessionInfo.timer_status !== "not_started") render();
         else updateTimerDisplay();
       }

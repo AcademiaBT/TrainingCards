@@ -19,21 +19,23 @@ let activeSetId = null;
 
 async function loadGames() {
   const { data } = await supabase.from("games").select("*").order("created_at", { ascending: true });
-  games = data || [];
+  games = (data || []).sort((a, b) => a.name.localeCompare(b.name, "ro"));
   const savedGameId = localStorage.getItem("activeGameId");
-  activeGameId = games.find((g) => g.id === savedGameId)?.id || games[0]?.id || null;
+  activeGameId = games.find((g) => g.id === savedGameId)?.id || null; // fara auto-selectie a primului din lista
   renderGameSelect();
   await loadSets();
 }
 
 function renderGameSelect() {
   const sel = $("game-select");
-  sel.innerHTML = games.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
-  if (activeGameId) sel.value = activeGameId;
+  sel.innerHTML =
+    `<option value="">— Alege un joc —</option>` +
+    games.map((g) => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join("");
+  sel.value = activeGameId || "";
   const hasGames = games.length > 0;
-  $("game-edit-btn").disabled = !hasGames;
-  $("game-delete-btn").disabled = !hasGames;
-  $("set-new-btn").disabled = !hasGames;
+  $("game-edit-btn").disabled = !activeGameId;
+  $("game-delete-btn").disabled = !activeGameId;
+  $("set-new-btn").disabled = !activeGameId;
 }
 
 async function loadSets() {
@@ -46,9 +48,9 @@ async function loadSets() {
     return;
   }
   const { data } = await supabase.from("card_sets").select("*").eq("game_id", activeGameId).order("created_at", { ascending: true });
-  cardSets = data || [];
+  cardSets = (data || []).sort((a, b) => a.name.localeCompare(b.name, "ro"));
   const savedSetId = localStorage.getItem("activeSetId");
-  activeSetId = cardSets.find((s) => s.id === savedSetId)?.id || cardSets[0]?.id || null;
+  activeSetId = cardSets.find((s) => s.id === savedSetId)?.id || null; // fara auto-selectie a primului din lista
   renderSetSelect();
   await refreshDeckLockState();
   await loadDeck();
@@ -56,11 +58,12 @@ async function loadSets() {
 
 function renderSetSelect() {
   const sel = $("set-select");
-  sel.innerHTML = cardSets.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
-  if (activeSetId) sel.value = activeSetId;
-  const hasSets = cardSets.length > 0;
-  $("set-edit-btn").disabled = !hasSets;
-  $("set-delete-btn").disabled = !hasSets;
+  sel.innerHTML =
+    `<option value="">— Alege un set —</option>` +
+    cardSets.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+  sel.value = activeSetId || "";
+  $("set-edit-btn").disabled = !activeSetId;
+  $("set-delete-btn").disabled = !activeSetId;
   updateDeckTitle();
 }
 
@@ -80,15 +83,17 @@ function updateDeckTitle() {
 }
 
 $("game-select").addEventListener("change", async (e) => {
-  activeGameId = e.target.value;
-  localStorage.setItem("activeGameId", activeGameId);
+  activeGameId = e.target.value || null;
+  if (activeGameId) localStorage.setItem("activeGameId", activeGameId);
+  else localStorage.removeItem("activeGameId");
   localStorage.removeItem("activeSetId"); // setul salvat apartinea altui joc
   await loadSets(); // seteaza activeSetId corect, apoi verifica blocarea, apoi incarca deck-ul
 });
 
 $("set-select").addEventListener("change", async (e) => {
-  activeSetId = e.target.value;
-  localStorage.setItem("activeSetId", activeSetId);
+  activeSetId = e.target.value || null;
+  if (activeSetId) localStorage.setItem("activeSetId", activeSetId);
+  else localStorage.removeItem("activeSetId");
   updateDeckTitle();
   await refreshDeckLockState();
   await loadDeck();
