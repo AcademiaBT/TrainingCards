@@ -25,7 +25,10 @@
       <div class="eyebrow">Panou Trainer</div>
       <h1>Carduri de training · Admin</h1>
     </div>
-    <button class="btn outline" id="logout-btn" style="border-color:var(--gold-soft); color:var(--gold-soft);">Deconectare</button>
+    <div style="display:flex; gap:8px;">
+      <a href="manual.html" target="_blank" class="btn outline" style="border-color:var(--gold-soft); color:var(--gold-soft); text-decoration:none; display:inline-block;">📖 Manual</a>
+      <button class="btn outline" id="logout-btn" style="border-color:var(--gold-soft); color:var(--gold-soft);">Deconectare</button>
+    </div>
   </header>
 
   <main>
@@ -101,6 +104,7 @@
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;" id="cards-per-group-label">Carduri per grupă</label>
         <input id="cards-per-group" type="number" min="1" style="width:100px;" />
         <p id="deck-total-hint" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
+        <div class="error-msg" id="groups-error"></div>
 
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 6px;">Cum se extrag cardurile?</label>
         <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
@@ -118,7 +122,6 @@
           </label>
         </div>
 
-        <div class="error-msg" id="groups-error"></div>
         <button class="btn gold" id="create-session-btn" style="margin-top:18px;">Creează sesiune și generează grupe</button>
       </div>
 

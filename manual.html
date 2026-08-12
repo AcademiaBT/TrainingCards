@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de utilizare · Carduri de training</title>
+<link rel="stylesheet" href="style.css" />
+<style>
+  .manual-wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  .manual-wrap h2 { font-size: 22px; margin-top: 46px; padding-top: 10px; border-top: 1px solid var(--parchment-dark); }
+  .manual-wrap h2:first-of-type { border-top: none; margin-top: 20px; }
+  .manual-wrap h3 { font-size: 17px; margin-top: 26px; color: var(--green-deep); }
+  .manual-wrap p, .manual-wrap li { font-size: 15px; line-height: 1.65; }
+  .manual-wrap ul, .manual-wrap ol { padding-left: 22px; }
+  .manual-wrap li { margin-bottom: 6px; }
+  .manual-wrap code { background: var(--parchment-dark); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .toc { background: var(--card-bg); border: 1px solid var(--parchment-dark); border-radius: 12px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc h3 { margin: 0 0 10px; color: var(--ink); }
+  .toc ol { columns: 2; column-gap: 30px; }
+  .toc a { color: var(--green-deep); text-decoration: none; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+  .note { background: var(--parchment); border-left: 4px solid var(--gold); border-radius: 6px; padding: 10px 16px; font-size: 14px; margin: 14px 0; }
+  .warn { background: #FCEAE8; border-left: 4px solid var(--red); border-radius: 6px; padding: 10px 16px; font-size: 14px; margin: 14px 0; }
+  @media (max-width: 640px) { .toc ol { columns: 1; } }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div>
+    <div class="eyebrow">Documentație</div>
+    <h1>Manual de utilizare</h1>
+  </div>
+  <a href="admin.html" class="btn outline" style="border-color:var(--gold-soft); color:var(--gold-soft); text-decoration:none; display:inline-block;">← Înapoi la Admin</a>
+</header>
+
+<main class="manual-wrap">
+
+<p>Acest manual explică cele două interfețe ale aplicației: <strong>panoul de Admin</strong> (folosit de trainer) și <strong>pagina Cursant</strong> (văzută de participanți, prin link/cod QR).</p>
+
+<div class="toc">
+  <h3>Cuprins</h3>
+  <ol>
+    <li><a href="#autentificare">Autentificare</a></li>
+    <li><a href="#jocuri-seturi">Jocuri și seturi de carduri</a></li>
+    <li><a href="#admin-carduri">Administrare carduri</a></li>
+    <li><a href="#bulk-upload">Încărcare în bulk</a></li>
+    <li><a href="#creare-sesiune">Creare sesiune și grupe</a></li>
+    <li><a href="#linkuri-qr">Linkuri și coduri QR</a></li>
+    <li><a href="#cronometru">Cronometrul sesiunii</a></li>
+    <li><a href="#control-live">Control live (highlight și flip)</a></li>
+    <li><a href="#gestiune-manuala">Gestionarea manuală a cardurilor unei grupe</a></li>
+    <li><a href="#incheiere">Încheierea sesiunii</a></li>
+    <li><a href="#pagina-cursant">Ce vede cursantul</a></li>
+    <li><a href="#blocaje">Blocaje de siguranță</a></li>
+    <li><a href="#probleme">Probleme frecvente</a></li>
+  </ol>
+</div>
+
+<h2 id="autentificare">1. Autentificare</h2>
+<p>Accesează pagina <code>admin.html</code> și introdu email-ul și parola contului tău de trainer (create în Supabase Authentication). Poți apăsa <strong>Enter</strong> din orice câmp pentru a te loga, nu doar clic pe buton.</p>
+
+<h2 id="jocuri-seturi">2. Jocuri și seturi de carduri</h2>
+<p>Sus, în admin, ai un <strong>switcher</strong> mereu vizibil, cu două selectoare:</p>
+<ul>
+  <li><strong>Joc de training</strong> — ex. „Biasuri cognitive”, „Think Again”</li>
+  <li><strong>Set de cărți</strong> — o subdiviziune a jocului, ex. „Exerciții practice”, „Strategii de recadrare”</li>
+</ul>
+<p>Lângă fiecare selector ai butoanele <strong>+ Nou</strong>, <strong>✏️ Editează</strong> și <strong>🗑 Șterge</strong>. Alegerea din switcher determină ce carduri vezi în tab-ul „Administrare carduri” și ce deck se folosește la crearea unei sesiuni noi.</p>
+<div class="note">Opțiunile din dropdown sunt sortate alfabetic. Dacă nu ai nicio alegere salvată, dropdown-ul pornește pe „— Alege un joc —” / „— Alege un set —”, nu selectează automat primul din listă.</div>
+<p><strong>Ștergerea</strong> unui joc e blocată dacă mai are seturi (șterge întâi seturile). Ștergerea unui set nu șterge cardurile din el — ele rămân în bază, doar fără set asignat.</p>
+
+<h2 id="admin-carduri">3. Administrare carduri</h2>
+<p>În tab-ul „Administrare carduri” vezi toate cardurile jocului + setului selectate în switcher.</p>
+<ul>
+  <li><strong>+ Card nou</strong> — deschide un formular: titlu, imagine față, imagine verso, fața afișată inițial la cursanți, dacă poate fi întors implicit, și o explicație (afișată cursantului când întoarce cardul)</li>
+  <li><strong>Editează</strong> — poți schimba titlul/explicația și, opțional, înlocui doar una dintre imagini (dacă lași câmpul de fișier gol, se păstrează imaginea existentă)</li>
+  <li><strong>Șterge</strong> — un singur card, sau <strong>Selectează tot</strong> + <strong>Șterge selectate</strong> pentru ștergere în bulk</li>
+  <li><strong>Vezi verso</strong> — răstoarnă miniatura cu animație, ca să verifici versoul fără să deschizi nimic</li>
+  <li><strong>🔍 (lupă)</strong> — mărește cardul pe tot ecranul</li>
+</ul>
+<div class="note">Format și proporții: orice imagine funcționează — portret, landscape sau pătrat. Aplicația detectează automat dimensiunile reale ale imaginii de față la upload și afișează cardul cu forma corectă, fără decupare.</div>
+
+<h2 id="bulk-upload">4. Încărcare în bulk</h2>
+<p>Pentru mai multe carduri deodată, apasă <strong>„Încarcă în bulk”</strong> și selectează toate imaginile simultan. Fișierele trebuie denumite după modelul:</p>
+<p><code>01_titlu-card_fata.jpg</code> și <code>01_titlu-card_verso.jpg</code></p>
+<p>Separatorul obligatoriu înaintea cuvântului „fata”/„verso” este underscore (<code>_</code>). Aplicația recunoaște automat perechile, le sortează după numărul din față, și îți arată un preview cu titlul reconstituit din nume (îl poți edita manual înainte de încărcare).</p>
+
+<h2 id="creare-sesiune">5. Creare sesiune și grupe</h2>
+<p>În tab-ul „Sesiuni & Control live”, dacă nu ai o sesiune activă, vezi formularul de creare:</p>
+<ul>
+  <li><strong>Număr de grupe</strong> — câte grupe separate vrei</li>
+  <li><strong>Carduri per grupă</strong> — se presetează automat cu totalul disponibil în set (util mai ales pentru o singură grupă)</li>
+  <li><strong>Cum se extrag cardurile?</strong>
+    <ul>
+      <li><em>Dintr-un deck nou de fiecare dată</em> — aceeași carte poate apărea la mai multe grupe</li>
+      <li><em>Prin scădere</em> — o carte extrasă pentru o grupă nu mai e disponibilă pentru celelalte (necesită suficiente carduri unice: <code>carduri per grupă × număr grupe ≤ total carduri din set</code>)</li>
+      <li><em>Aleg eu manual</em> — grupele pornesc complet goale; alegi ulterior exact ce carduri primește fiecare (vezi secțiunea 9)</li>
+    </ul>
+  </li>
+</ul>
+<p>Apasă <strong>„Creează sesiune și generează grupe”</strong>. Cât timp sesiunea e activă, switcherul de joc/set și editarea deck-ului se blochează automat (vezi secțiunea 12).</p>
+
+<h2 id="linkuri-qr">6. Linkuri și coduri QR</h2>
+<p>Fiecare grupă primește un <strong>link unic</strong> și un <strong>cod QR</strong> propriu. Lista de grupe e pliată implicit — apasă <strong>„Arată linkurile și codurile QR ale grupelor”</strong> ca să le vezi.</p>
+<p>Pentru fiecare grupă poți: <strong>Copiază</strong> linkul, <strong>Arată codul QR</strong> (preview în pagină), sau <strong>⬇ Descarcă PNG/JPG</strong> — o versiune la rezoluție mare (600×600px), potrivită pentru afișare pe un ecran separat sau print.</p>
+<p>Distribuie fiecare link grupei corespunzătoare (ex. pe canale separate de Teams/Zoom, sau afișând codul QR pe ecranul partajat).</p>
+
+<h2 id="cronometru">7. Cronometrul sesiunii</h2>
+<p>Cronometrul e la nivel de <strong>întreagă sesiune</strong> (nu per grupă) — pornește/pauzează/se extinde deodată pentru toate grupele.</p>
+<ul>
+  <li>Setezi ore:minute:secunde și apeși <strong>„Pornește cronometrul”</strong></li>
+  <li>Sau apeși <strong>„Începe sesiunea fără cronometru”</strong> — cardurile devin vizibile la cursanți fără nicio numărătoare afișată</li>
+  <li><strong>Pauză / Reia</strong> — îngheață/repornește numărătoarea la toți cursanții deodată</li>
+  <li><strong>Adaugă timp</strong> — introduci minute suplimentare, funcționează indiferent dacă cronometrul e pornit sau în pauză</li>
+</ul>
+<div class="warn">Înainte de a porni cronometrul (sau de a alege „fără cronometru”), cursanții văd doar un mesaj de așteptare — nu li se afișează cardurile.</div>
+<p>La expirare, cursanții văd un overlay negru semitransparent cu „⏰ Timpul a expirat”. Cardurile nu se blochează — rămâi tu să decizi când închei efectiv sesiunea.</p>
+
+<h2 id="control-live">8. Control live (highlight și flip)</h2>
+<p>Panoul „Control carduri (sesiune live)” are un <strong>tab pentru fiecare grupă</strong>. Selectezi o grupă și acțiunile de mai jos se aplică <em>doar</em> acelei grupe, decât dacă alegi explicit varianta „TOATE grupele”.</p>
+<ul>
+  <li><strong>Click pe un card</strong> — îl evidențiază live la cursanții din grupa selectată (contur verde pulsatoriu, vizibil pe orice fundal)</li>
+  <li><strong>Permite răsturnarea</strong> — activează flip-ul pentru acel card specific, doar la acea grupă</li>
+  <li><strong>Grupa curentă:</strong> Activează/Dezactivează flip pe toate cardurile grupei, sau Dezactivează + întoarce toate cardurile ei la față (semnal trimis live cursanților, indiferent în ce stare le-au lăsat ei)</li>
+  <li><strong>Toate grupele:</strong> aceleași trei acțiuni, dar aplicate simultan la fiecare grupă din sesiune</li>
+</ul>
+
+<h2 id="gestiune-manuala">9. Gestionarea manuală a cardurilor unei grupe</h2>
+<p>Apasă <strong>„Gestionează manual cardurile grupei”</strong> pentru a deschide o listă cu bife — toate cardurile din deck, bifat = alocat grupei selectate. Poți adăuga/elimina carduri oricând, chiar și în timpul unei sesiuni live. Util mai ales dacă ai ales modul „Aleg eu manual” la creare, sau vrei să ajustezi fin o distribuție automată.</p>
+
+<h2 id="incheiere">10. Încheierea sesiunii</h2>
+<p>Butonul <strong>„Încheie sesiunea (toate grupele)”</strong> e mereu vizibil, sus, lângă codul sesiunii. Închide toate grupele deodată — cursanții primesc live mesajul de sesiune încheiată, fără să dea refresh. Editarea deck-ului și switcherul de joc/set se deblochează automat.</p>
+
+<h2 id="pagina-cursant">11. Ce vede cursantul</h2>
+<ul>
+  <li>Numele grupei — badge mereu vizibil, indiferent dacă există cronometru</li>
+  <li>Cardurile alocate grupei lui, cu forma reală (portret/landscape), mărite responsive pe ecran</li>
+  <li>Click pe un card flippable → animație 3D de răsturnare; apare eticheta „Click pentru a reveni” pe verso</li>
+  <li>🔍 lângă fiecare card → vizualizare mărită a feței curente</li>
+  <li>Auto-scroll — când trainerul evidențiază un card nou, pagina derulează automat la el</li>
+</ul>
+<p>Cursanții nu au nevoie de cont — intră direct pe link. Funcționează și pe rețele care blochează WebSocket (fallback automat prin verificare periodică, la 4 secunde).</p>
+
+<h2 id="blocaje">12. Blocaje de siguranță</h2>
+<ul>
+  <li><strong>Deck blocat</strong> — editarea cardurilor dintr-un (joc + set) e dezactivată cât timp există o sesiune activă care folosește exact acea combinație, la orice trainer, nu doar la tine. Mesajul arată exact cine are sesiunea deschisă.</li>
+  <li><strong>Switcher blocat</strong> — cât timp tu ai o sesiune proprie activă, nu poți schimba jocul/setul selectat, ca să nu amesteci accidental carduri din alt set în sesiunea live.</li>
+</ul>
+
+<h2 id="probleme">13. Probleme frecvente</h2>
+<p><strong>Nu apare codul QR / linkul are „admin” în el în loc de „index.html”</strong> — reîncearcă din pagina de admin cu adresa completă din bara de sus; problema a fost reparată să funcționeze indiferent de URL.</p>
+<p><strong>Eroare la ștergerea cardurilor</strong> — dacă apare un mesaj despre o constrângere de bază de date, cardul a fost deja folosit într-o sesiune anterioară; ștergerea rămâne totuși permisă (istoricul acelei sesiuni rămâne fără acel card, ceea ce e ok).</p>
+<p><strong>Nu găsești o eroare</strong> — mesajele de eroare apar acum ca banner roșu, cu iconiță ⚠️, sub formulare — verifică imediat sub butonul pe care l-ai apăsat.</p>
+
+</main>
+</body>
+</html>
