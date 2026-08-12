@@ -113,6 +113,23 @@ input, textarea, select {
 .login-wrap label { display: block; font-size: 13px; margin: 12px 0 4px; font-weight: 600; }
 .login-wrap input { width: 100%; }
 .error-msg { color: var(--red); font-size: 13px; margin-top: 10px; }
+.error-msg:not(:empty) {
+  background: #FCEAE8;
+  border: 1px solid var(--red);
+  border-left: 4px solid var(--red);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  animation: error-pop 0.25s ease-out;
+}
+.error-msg:not(:empty)::before { content: "⚠️"; flex-shrink: 0; }
+@keyframes error-pop {
+  0% { transform: scale(0.97); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 /* --- Admin: grid de carduri --- */
 .card-grid {
