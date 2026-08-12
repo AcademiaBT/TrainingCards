@@ -71,15 +71,18 @@
         <div id="card-picker" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
       </div>
 
-      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-        <button class="btn gold" id="flip-all-on-btn">Activează flip pe toate (grupa curentă)</button>
+      <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--grey); margin:0 0 6px;">Grupa curentă</p>
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <button class="btn gold" id="flip-all-on-btn">Activează flip pe toate</button>
         <button class="btn outline" id="flip-all-off-btn">Dezactivează flip pe toate</button>
-        <button class="btn outline" id="flip-all-reset-btn" style="border-color:var(--red); color:var(--red);">Dezactivează și întoarce toate cardurile la față</button>
+        <button class="btn outline" id="flip-all-reset-btn" style="border-color:var(--red); color:var(--red);">Dezactivează și întoarce la față</button>
       </div>
+
+      <p style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--grey); margin:0 0 6px;">Toate grupele</p>
       <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-        <button class="btn gold" id="flip-all-groups-btn" style="border:2px solid var(--green);">Activează flip pe toate cardurile — TOATE grupele</button>
-        <button class="btn outline" id="flip-all-groups-off-btn" style="border:2px solid var(--red); color:var(--red);">Dezactivează flip pe toate cardurile — TOATE grupele</button>
-        <button class="btn outline" id="flip-all-groups-reset-btn" style="border:2px solid var(--red); color:var(--red);">Dezactivează și întoarce la față — TOATE grupele</button>
+        <button class="btn gold" id="flip-all-groups-btn" style="border:2px solid var(--green);">Activează flip pe toate</button>
+        <button class="btn outline" id="flip-all-groups-off-btn" style="border:2px solid var(--red); color:var(--red);">Dezactivează flip pe toate</button>
+        <button class="btn outline" id="flip-all-groups-reset-btn" style="border:2px solid var(--red); color:var(--red);">Dezactivează și întoarce la față</button>
       </div>
       <div class="card-grid" id="control-grid"></div>
     </div>
@@ -96,7 +99,8 @@
         <input id="num-groups" type="number" min="1" value="4" style="width:100px;" />
 
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;" id="cards-per-group-label">Carduri per grupă</label>
-        <input id="cards-per-group" type="number" min="1" value="3" style="width:100px;" />
+        <input id="cards-per-group" type="number" min="1" style="width:100px;" />
+        <p id="deck-total-hint" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
 
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 6px;">Cum se extrag cardurile?</label>
         <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">

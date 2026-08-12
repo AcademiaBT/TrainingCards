@@ -64,6 +64,15 @@ function renderSetSelect() {
   updateDeckTitle();
 }
 
+function updateDeckTotalHint() {
+  const total = deckCards.length;
+  const hint = $("deck-total-hint");
+  if (!hint) return;
+  hint.textContent = total > 0 ? `Setul selectat are ${total} carduri disponibile.` : "Setul selectat nu are încă niciun card.";
+  const input = $("cards-per-group");
+  if (input && !input.value) input.value = total > 0 ? total : 1; // presetare utila, mai ales pentru o singura grupa
+}
+
 function updateDeckTitle() {
   const g = games.find((g) => g.id === activeGameId);
   const s = cardSets.find((s) => s.id === activeSetId);
@@ -264,6 +273,7 @@ async function loadDeck() {
 function renderDeck() {
   const grid = $("deck-grid");
   const locked = deckLocked;
+  updateDeckTotalHint();
   grid.style.display = locked ? "none" : "grid";
   $("deck-bulk-bar").style.display = !locked && deckCards.length > 0 ? "flex" : "none";
   if (locked) return;
