@@ -805,7 +805,7 @@ $("create-session-btn").addEventListener("click", async () => {
   }
 });
 
-$("end-session-btn").addEventListener("click", async () => {
+async function endSession() {
   if (!currentSession) return;
   if (!confirm("Închei sesiunea curentă pentru toate grupele?")) return;
   await supabase.from("training_sessions").update({ status: "ended" }).eq("id", currentSession.id);
@@ -815,7 +815,9 @@ $("end-session-btn").addEventListener("click", async () => {
   cardsPerGroupUserEdited = false;
   renderSessionPanel();
   refreshDeckLockState();
-});
+}
+$("end-session-btn").addEventListener("click", endSession);
+$("end-session-btn-top").addEventListener("click", endSession);
 
 function groupLink(code) {
   // functioneaza indiferent daca adresa curenta contine "admin.html" sau doar "admin" (URL curat, fara extensie)

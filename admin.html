@@ -64,7 +64,10 @@
 
     <div id="view-sessions">
     <div class="panel" id="control-panel" style="display:none;">
-      <h3>Control carduri (sesiune live)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
+        <h3 style="margin:0;">Control carduri (sesiune live)</h3>
+        <button class="btn danger" id="end-session-btn-top">Încheie sesiunea (toate grupele)</button>
+      </div>
       <p style="font-size:13px; color:var(--grey);">Click pe un card pentru a-l evidenția la grupa selectată. Butonul „Permite răsturnarea” activează flip-ul pentru acel card, doar la această grupă.</p>
       <div id="group-tabs" style="display:flex; gap:8px; margin:12px 0; flex-wrap:wrap;"></div>
 
