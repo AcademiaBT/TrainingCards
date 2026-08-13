@@ -67,13 +67,15 @@ function renderSetSelect() {
   updateDeckTitle();
 }
 
+let cardsPerGroupUserEdited = false; // devine true doar cand trainerul chiar tasteaza o valoare
+
 function updateDeckTotalHint() {
   const total = deckCards.length;
   const hint = $("deck-total-hint");
   if (!hint) return;
   hint.textContent = total > 0 ? `Setul selectat are ${total} carduri disponibile.` : "Setul selectat nu are încă niciun card.";
   const input = $("cards-per-group");
-  if (input && !input.value) input.value = total > 0 ? total : 1; // presetare utila, mai ales pentru o singura grupa
+  if (input && !cardsPerGroupUserEdited) input.value = total > 0 ? total : 1; // se resincronizeaza la fiecare schimbare de set, pana la o editare manuala
 }
 
 function updateDeckTitle() {
@@ -794,6 +796,7 @@ $("create-session-btn").addEventListener("click", async () => {
     renderSessionPanel();
     refreshDeckLockState();
     if (isManual) $("card-picker-panel").style.display = "block"; // deschide direct gestionarea manuala
+    cardsPerGroupUserEdited = false; // pentru urmatoarea sesiune, campul se resincronizeaza automat din nou
   } catch (err) {
     $("groups-error").textContent = "Eroare: " + err.message;
   } finally {
@@ -809,6 +812,7 @@ $("end-session-btn").addEventListener("click", async () => {
   currentSession = null;
   groups = [];
   currentGroupId = null;
+  cardsPerGroupUserEdited = false;
   renderSessionPanel();
   refreshDeckLockState();
 });
@@ -1338,5 +1342,9 @@ async function resetAllGroupsFlip() {
   }
 }
 $("flip-all-groups-reset-btn").addEventListener("click", resetAllGroupsFlip);
+
+$("cards-per-group").addEventListener("input", () => {
+  cardsPerGroupUserEdited = true;
+});
 
 checkAuth();
