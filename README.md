@@ -1,10 +1,11 @@
-# Joc de training · Biasuri cognitive
+# Carduri de training
 
 Aplicație web fără build (HTML + JS simplu), conectată la Supabase.
 
 ## Structură
 - `index.html` + `learner.js` — pagina cursanților (link/QR primit de la trainer)
-- `admin.html` + `admin.js` — panoul trainerului (login, management carduri, control sesiune live)
+- `admin.html` + `admin.js` — panoul trainerului (login, jocuri/seturi, management carduri, sesiuni și grupe, control live, cronometru)
+- `manual.html` — manualul de utilizare, cu cuprins, accesibil din admin
 - `config.js` — cheile Supabase (URL + anon key)
 - `style.css` — identitate vizuală comună
 
@@ -17,16 +18,18 @@ Aplicație web fără build (HTML + JS simplu), conectată la Supabase.
 5. După 1-2 minute, aplicația va fi live la:
    `https://<username-ul-tau>.github.io/<numele-repo-ului>/`
 
-## Cum se folosește
+## Cum se folosește, pe scurt
 
 1. **Tu (trainer):** intri pe `.../admin.html`, te loghezi cu email + parola contului creat în Supabase Authentication
-2. Adaugi carduri (titlu, imagine față, imagine verso, explicație) — o singură dată, rămân în deck pentru toate sesiunile viitoare
-3. Apeși **„Generează sesiune nouă”** → primești un link unic + cod QR
-4. Trimiți link-ul pe Teams/Zoom sau afișezi codul QR pe ecranul partajat
-5. Cursanții intră pe link (fără cont) și văd toate cardurile cu fața inițială
-6. Din panoul de control, apeși pe un card → se evidențiază live la toți cursanții
-7. Apeși **„Permite răsturnarea”** pe cardul respectiv → cursanții pot da click pentru a-l întoarce (animație, local la fiecare, nu se sincronizează între ei)
+2. Din selectorul de sus, creezi un **joc** și un **set de cărți** (butoanele „+ Nou”)
+3. Adaugi carduri (individual sau în bulk) — rămân salvate pentru toate sesiunile viitoare din acel set
+4. În tab-ul „Sesiuni & Control live”, alegi numărul de grupe și modul de distribuire a cărților → **„Creează sesiune și generează grupe”**
+5. Distribui link-ul/codul QR fiecărei grupe (Teams, Zoom, sau afișat pe ecranul partajat)
+6. Cursanții intră pe linkul lor (fără cont) și așteaptă până pornești cronometrul (sau alegi „fără cronometru”)
+7. Din panoul de control, selectezi tab-ul grupei, dai click pe un card ca să-l evidențiezi live, apeși „Permite răsturnarea” ca să-i lași să-l întoarcă
 8. La final, apeși **„Încheie sesiunea”**
+
+Instrucțiuni complete, pas cu pas, sunt disponibile în `manual.html` (buton „📖 Manual” din header-ul paginii de admin).
 
 ## Notă despre securitate
 
