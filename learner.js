@@ -183,6 +183,8 @@ async function pollUpdates() {
   }
 }
 
+let lastRenderedCardIds = null; // detecteaza daca s-a schimbat efectiv setul de carduri (nu doar starea lor)
+
 function render() {
   const grid = $("learner-grid");
   updateTimerDisplay();
@@ -190,20 +192,32 @@ function render() {
 
   if ((sessionInfo.timer_status || "not_started") === "not_started") {
     grid.innerHTML = `<div class="empty-state">⏳ Sesiunea nu a început încă. Așteaptă ca trainerul să o pornească.</div>`;
+    lastRenderedCardIds = null;
     return;
   }
 
-  grid.innerHTML = "";
   if (cards.length === 0) {
     grid.innerHTML = `<div class="empty-state">Trainerul nu a alocat încă niciun card pentru grupa ta.</div>`;
+    lastRenderedCardIds = null;
     return;
   }
 
-  cards.forEach((c) => {
-    const isHighlighted = group.highlighted_card_id === c.id;
-    const canFlip = !!flippableMap[c.id];
-    const isFlipped = !!flippedLocal[c.id];
+  const currentIds = cards.map((c) => c.id).join(",");
+  if (currentIds !== lastRenderedCardIds) {
+    buildGrid(); // structura s-a schimbat (carduri adaugate/eliminate din grupa) - reconstruim complet
+    lastRenderedCardIds = currentIds;
+  } else {
+    cards.forEach(updateCardTile); // doar starea s-a schimbat - actualizare chirurgicala, animatiile ruleaza normal
+  }
 
+  scrollToHighlighted();
+}
+
+function buildGrid() {
+  const grid = $("learner-grid");
+  grid.innerHTML = "";
+
+  cards.forEach((c) => {
     const wrap = document.createElement("div");
     wrap.className = "flip-card-wrap";
     wrap.dataset.cardId = c.id;
@@ -220,7 +234,7 @@ function render() {
     });
 
     const flip = document.createElement("div");
-    flip.className = "flip-card" + (isHighlighted ? " is-highlighted" : "") + (canFlip ? " can-flip" : "") + (isFlipped ? " flipped" : "");
+    flip.className = "flip-card";
     flip.style.setProperty("--ar", c.aspect_ratio || 0.75);
     flip.innerHTML = `
       <div class="flip-card-inner">
@@ -228,25 +242,15 @@ function render() {
         <div class="flip-face back"><img src="${c.initial_face === "back" ? c.front_image_url : c.back_image_url}" /></div>
       </div>
     `;
-    if (canFlip) {
-      flip.addEventListener("click", () => {
-        const newState = !flippedLocal[c.id];
-        flippedLocal[c.id] = newState;
-        flip.classList.toggle("flipped", newState); // actualizare directa - permite animatiei sa ruleze
-        let expEl = wrap.querySelector(".card-explanation");
-        if (newState && c.explanation) {
-          if (!expEl) {
-            expEl = document.createElement("div");
-            expEl.className = "card-explanation";
-            expEl.style.cssText = "font-size:12px; color:var(--grey); margin-top:6px; text-align:center;";
-            expEl.textContent = c.explanation;
-            wrap.appendChild(expEl);
-          }
-        } else if (expEl) {
-          expEl.remove();
-        }
-      });
-    }
+    // handler-ul e mereu atasat; verifica starea LIVE la fiecare click, nu una capturata la creare
+    // (necesar acum ca flip-ul poate fi activat/dezactivat fara sa se recreeze elementul)
+    flip.addEventListener("click", () => {
+      if (!flippableMap[c.id]) return;
+      const newState = !flippedLocal[c.id];
+      flippedLocal[c.id] = newState;
+      flip.classList.toggle("flipped", newState);
+      updateExplanation(wrap, c, newState);
+    });
 
     const label = document.createElement("div");
     label.className = "card-title";
@@ -255,19 +259,40 @@ function render() {
     wrap.appendChild(zoomBtn);
     wrap.appendChild(flip);
     wrap.appendChild(label);
-
-    if (isFlipped && c.explanation) {
-      const exp = document.createElement("div");
-      exp.className = "card-explanation";
-      exp.style.cssText = "font-size:12px; color:var(--grey); margin-top:6px; text-align:center;";
-      exp.textContent = c.explanation;
-      wrap.appendChild(exp);
-    }
-
     grid.appendChild(wrap);
-  });
 
-  scrollToHighlighted();
+    updateCardTile(c); // seteaza starea initiala corecta (highlight, can-flip, flipped, explicatie)
+  });
+}
+
+function updateCardTile(c) {
+  const wrap = document.querySelector(`.flip-card-wrap[data-card-id="${c.id}"]`);
+  if (!wrap) return;
+  const flip = wrap.querySelector(".flip-card");
+  const isHighlighted = group.highlighted_card_id === c.id;
+  const canFlip = !!flippableMap[c.id];
+  const isFlipped = !!flippedLocal[c.id];
+
+  flip.classList.toggle("is-highlighted", isHighlighted);
+  flip.classList.toggle("can-flip", canFlip);
+  flip.classList.toggle("flipped", isFlipped); // doar comuta clasa pe elementul existent - animatia CSS ruleaza normal
+
+  updateExplanation(wrap, c, isFlipped);
+}
+
+function updateExplanation(wrap, c, isFlipped) {
+  let expEl = wrap.querySelector(".card-explanation");
+  if (isFlipped && c.explanation) {
+    if (!expEl) {
+      expEl = document.createElement("div");
+      expEl.className = "card-explanation";
+      expEl.style.cssText = "font-size:12px; color:var(--grey); margin-top:6px; text-align:center;";
+      wrap.appendChild(expEl);
+    }
+    expEl.textContent = c.explanation;
+  } else if (expEl) {
+    expEl.remove();
+  }
 }
 
 function scrollToHighlighted() {
