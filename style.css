@@ -196,9 +196,11 @@ input, textarea, select {
 
 .flip-card {
   perspective: 1200px;
-  height: clamp(220px, 62vh, 620px); /* dinamic: procent din inaltimea ecranului, cu limite */
-  width: auto;
-  aspect-ratio: 3 / 4; /* latimea se calculeaza automat din inaltime */
+  --ar: 0.75; /* suprascris inline, per card, cu raportul real latime/inaltime */
+  height: min(62vh, 88vw / var(--ar)); /* alege automat limita mai restrictiva - inaltime sau latime - deci functioneaza corect in orice orientare */
+  width: calc(min(62vh, 88vw / var(--ar)) * var(--ar));
+  min-height: 170px;
+  max-height: 620px;
 }
 .flip-card-inner {
   position: relative;
@@ -386,7 +388,6 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   .tile-controls { flex-wrap: wrap; }
   .toggle-flip { font-size: 10px; padding: 4px 6px; }
   .learner-grid { gap: 14px; }
-  .flip-card { height: clamp(240px, 65vh, 500px); }
   .card-title { font-size: 12px; }
   .zoom-btn { padding: 6px 9px; font-size: 14px; }
   #qr-canvas { width: 160px !important; height: 160px !important; }

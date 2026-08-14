@@ -189,7 +189,7 @@ function render() {
   updateGroupBadge();
 
   if ((sessionInfo.timer_status || "not_started") === "not_started") {
-    grid.innerHTML = `<div class="empty-state">⏳ Sesiunea nu a început încă. Așteaptă ca trainerul să pornească cronometrul.</div>`;
+    grid.innerHTML = `<div class="empty-state">⏳ Sesiunea nu a început încă. Așteaptă ca trainerul să o pornească.</div>`;
     return;
   }
 
@@ -221,7 +221,7 @@ function render() {
 
     const flip = document.createElement("div");
     flip.className = "flip-card" + (isHighlighted ? " is-highlighted" : "") + (canFlip ? " can-flip" : "") + (isFlipped ? " flipped" : "");
-    flip.style.aspectRatio = c.aspect_ratio || 0.75;
+    flip.style.setProperty("--ar", c.aspect_ratio || 0.75);
     flip.innerHTML = `
       <div class="flip-card-inner">
         <div class="flip-face front"><img src="${c.initial_face === "back" ? c.back_image_url : c.front_image_url}" /></div>
