@@ -252,13 +252,8 @@ function buildGrid() {
       updateExplanation(wrap, c, newState);
     });
 
-    const label = document.createElement("div");
-    label.className = "card-title";
-    label.textContent = c.title;
-
     wrap.appendChild(zoomBtn);
     wrap.appendChild(flip);
-    wrap.appendChild(label);
     grid.appendChild(wrap);
 
     updateCardTile(c); // seteaza starea initiala corecta (highlight, can-flip, flipped, explicatie)
