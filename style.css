@@ -527,3 +527,18 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   background: #E4F5E7;
   box-shadow: 0 0 0 2px var(--green);
 }
+
+/* Sesiuni & Control live: doua coloane cat timp o sesiune e activa (control in stanga,
+   sesiune/linkuri/cronometru in dreapta) - clasa se adauga/elimina din JS, ca sa nu ramana
+   o coloana goala cand doar sesion-panel e vizibil (inainte de creare sesiune). */
+#sessions-grid-wrap.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  #sessions-grid-wrap.two-col {
+    grid-template-columns: 1fr; /* pe ecrane mai mici (inclusiv mobil), cele doua panouri cad intr-o singura coloana, cu scroll normal */
+  }
+}

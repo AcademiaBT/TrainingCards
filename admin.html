@@ -63,6 +63,7 @@
     </div>
 
     <div id="view-sessions">
+    <div id="sessions-grid-wrap">
     <div class="panel" id="control-panel" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
         <h3 style="margin:0;">Control carduri (sesiune live)</h3>
@@ -125,11 +126,8 @@
 
       <div id="selection-mode-panel" style="display:none;">
         <h4 class="serif" style="margin:6px 0 10px;">Progres — toate grupele</h4>
+        <p style="font-size:12px; color:var(--grey); margin:0 0 10px;">Click pe o grupă pentru a-i vedea alegerile cursanților, direct sub ea.</p>
         <div id="selection-groups-overview" style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px;"></div>
-
-        <h4 class="serif" style="margin:6px 0 4px;">Detalii — grupa selectată</h4>
-        <p id="selection-progress" style="font-size:14px; font-weight:600; margin:0 0 14px;"></p>
-        <div id="selection-participants-list" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
     </div>
 
@@ -197,6 +195,9 @@
           <button class="btn danger" id="end-session-btn">Încheie sesiunea (toate grupele)</button>
         </div>
 
+        <button class="btn outline" id="toggle-groups-list-btn" style="margin-top:16px;">Arată linkurile și codurile QR ale grupelor ▾</button>
+        <div id="groups-list" style="display:none; flex-direction:column; gap:12px; margin-top:14px;"></div>
+
         <div id="timer-panel" style="margin-top:16px; padding:14px; border:1px solid var(--parchment-dark); border-radius:10px; background:var(--card-bg);">
           <h4 class="serif" style="margin:0 0 10px;">Cronometru sesiune</h4>
 
@@ -207,8 +208,8 @@
               <input id="timer-m" type="number" min="0" max="59" value="15" style="width:55px;" /><span>m</span>
               <input id="timer-s" type="number" min="0" max="59" value="0" style="width:55px;" /><span>s</span>
               <button class="btn gold" id="timer-start-btn">Pornește cronometrul</button>
+              <button class="btn outline" id="timer-skip-btn">Începe sesiunea fără cronometru</button>
             </div>
-            <button class="btn outline" id="timer-skip-btn" style="margin-top:10px;">Începe sesiunea fără cronometru</button>
           </div>
 
           <div id="timer-none-box" style="display:none;">
@@ -227,10 +228,8 @@
             </div>
           </div>
         </div>
-
-        <button class="btn outline" id="toggle-groups-list-btn" style="margin-top:16px;">Arată linkurile și codurile QR ale grupelor ▾</button>
-        <div id="groups-list" style="display:none; flex-direction:column; gap:12px; margin-top:14px;"></div>
       </div>
+    </div>
     </div>
     </div>
 

@@ -1046,7 +1046,6 @@ function renderGroupTabs() {
       await renderControlGrid();
       if (isColourblindGame()) await loadParticipants();
       if (!isColourblindGame() && !isSelectionGame()) await loadPresence();
-      if (isSelectionGame()) await loadSelectionParticipants();
       if (isSelectionGame()) await loadSelectionGroupsOverview();
     });
     box.appendChild(btn);
@@ -1109,8 +1108,8 @@ $("timer-skip-btn").addEventListener("click", async () => {
   if (isSelectionGame()) {
     const { allDone, summary } = await checkAllGroupsSelectionComplete();
     if (!allDone) {
-      alert(`Nu toți cursanții au ales încă, în toate grupele:\n${summary}`);
-      return;
+      const proceed = confirm(`Nu toți cursanții au ales încă, în toate grupele:\n${summary}\n\nVrei să pornești sesiunea oricum?`);
+      if (!proceed) return;
     }
   }
   const { error } = await supabase.from("training_sessions").update({ timer_status: "none" }).eq("id", currentSession.id);
@@ -1147,8 +1146,8 @@ $("timer-start-btn").addEventListener("click", async () => {
   if (isSelectionGame()) {
     const { allDone, summary } = await checkAllGroupsSelectionComplete();
     if (!allDone) {
-      alert(`Nu poți porni cronometrul — nu toți cursanții au ales încă, în toate grupele:\n${summary}`);
-      return;
+      const proceed = confirm(`Nu toți cursanții au ales încă, în toate grupele:\n${summary}\n\nVrei să pornești cronometrul oricum?`);
+      if (!proceed) return;
     }
   }
   const h = parseInt($("timer-h").value, 10) || 0;
@@ -1236,6 +1235,7 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
+    $("sessions-grid-wrap").classList.add("two-col");
     $("session-code-badge").textContent = currentSession.session_code;
     $("groups-list").style.display = "none";
     $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
@@ -1244,7 +1244,6 @@ async function renderSessionPanel() {
     syncGameModeUI();
     await renderControlGrid();
     if (isColourblindGame()) await loadParticipants();
-    if (isSelectionGame()) await loadSelectionParticipants();
     if (!isColourblindGame() && !isSelectionGame()) await loadPresence();
     if (isSelectionGame()) await loadSelectionGroupsOverview();
     renderTimerPanel();
@@ -1253,6 +1252,7 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "block";
     $("active-session-box").style.display = "none";
     $("control-panel").style.display = "none";
+    $("sessions-grid-wrap").classList.remove("two-col");
     if (timerInterval) {
       clearInterval(timerInterval);
       timerInterval = null;
@@ -1782,6 +1782,8 @@ $("reveal-solution-btn").addEventListener("click", async () => {
 });
 
 // ---------- SELECTION (Hardiness): progres live al grupei selectate ----------
+let expandedSelectionGroupId = null; // ce grupa e "desfacuta" (acordeon) in lista de progres
+
 async function loadSelectionGroupsOverview() {
   const box = $("selection-groups-overview");
   if (!box) return;
@@ -1791,29 +1793,84 @@ async function loadSelectionGroupsOverview() {
   }
   const { data: allParts } = await supabase
     .from("session_participants")
-    .select("group_id, submitted_at")
-    .in("group_id", groups.map((g) => g.id));
+    .select("*")
+    .in("group_id", groups.map((g) => g.id))
+    .order("created_at", { ascending: true });
+  const partsByGroup = {};
+  groups.forEach((g) => (partsByGroup[g.id] = []));
+  (allParts || []).forEach((p) => {
+    if (partsByGroup[p.group_id]) partsByGroup[p.group_id].push(p);
+  });
+
+  const allPartIds = (allParts || []).map((p) => p.id);
+  const { data: pcRows } = await supabase
+    .from("session_participant_cards")
+    .select("*")
+    .in("participant_id", allPartIds.length > 0 ? allPartIds : ["00000000-0000-0000-0000-000000000000"]);
+  const choicesMap = {};
+  (pcRows || []).forEach((r) => {
+    if (!choicesMap[r.participant_id]) choicesMap[r.participant_id] = [];
+    choicesMap[r.participant_id].push(r.card_id);
+  });
 
   box.innerHTML = "";
   groups.forEach((g) => {
     const expected = g.expected_participants || 0;
-    const parts = (allParts || []).filter((p) => p.group_id === g.id);
+    const parts = partsByGroup[g.id] || [];
     const submitted = parts.filter((p) => p.submitted_at).length;
     const complete = expected > 0 && submitted >= expected;
     const isSelected = g.id === currentGroupId;
+    const isExpanded = g.id === expandedSelectionGroupId;
+
+    const wrap = document.createElement("div");
 
     const row = document.createElement("button");
     row.className = complete ? "btn group-complete" + (isSelected ? " group-complete-selected" : "") : "btn " + (isSelected ? "gold" : "outline");
     row.style.cssText = "display:flex; justify-content:space-between; align-items:center; text-align:left; width:100%;";
-    row.innerHTML = `<span>${escapeHtml(g.name)}</span><span style="font-weight:700;">${complete ? "✓ " : ""}${submitted} / ${expected || "?"}</span>`;
+    row.innerHTML = `<span>${isExpanded ? "▾" : "▸"} ${escapeHtml(g.name)}</span><span style="font-weight:700;">${complete ? "✓ " : ""}${submitted} / ${expected || "?"}</span>`;
     row.addEventListener("click", async () => {
       currentGroupId = g.id;
+      expandedSelectionGroupId = expandedSelectionGroupId === g.id ? null : g.id;
       renderGroupTabs();
       await renderControlGrid();
-      await loadSelectionParticipants();
       await loadSelectionGroupsOverview();
     });
-    box.appendChild(row);
+    wrap.appendChild(row);
+
+    if (isExpanded) {
+      const details = document.createElement("div");
+      details.style.cssText = "padding:10px 4px 4px 14px; display:flex; flex-direction:column; gap:8px;";
+      if (parts.length === 0) {
+        details.innerHTML = `<p style="font-size:13px; color:var(--grey); margin:0;">Niciun cursant nu s-a alăturat încă acestei grupe.</p>`;
+      } else {
+        parts.forEach((p, idx) => {
+          const cardIds = choicesMap[p.id] || [];
+          const titles = cardIds.map((id) => deckCards.find((c) => c.id === id)?.title).filter(Boolean).join(", ");
+          const prow = document.createElement("div");
+          prow.className = "panel";
+          prow.style.cssText = "padding:10px 14px; margin:0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;";
+          prow.innerHTML = `
+            <strong>Cursant ${idx + 1}</strong>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:13px; color:${p.submitted_at ? "var(--green)" : "var(--grey)"};">
+                ${p.submitted_at ? `✓ A ales: ${escapeHtml(titles) || "—"}` : "…încă alege"}
+              </span>
+              <button class="toggle-flip" data-remove-participant style="border-color:var(--red); color:var(--red);">🗑 Elimină</button>
+            </div>
+          `;
+          prow.querySelector("[data-remove-participant]").addEventListener("click", async () => {
+            if (!confirm(`Elimini „Cursant ${idx + 1}” din grupă? Alegerea lui (dacă a făcut-o) se șterge și ea.`)) return;
+            await supabase.from("session_participant_cards").delete().eq("participant_id", p.id);
+            await supabase.from("session_participants").delete().eq("id", p.id);
+            await loadSelectionGroupsOverview();
+          });
+          details.appendChild(prow);
+        });
+      }
+      wrap.appendChild(details);
+    }
+
+    box.appendChild(wrap);
 
     // coloreaza si tab-ul corespunzator de sus (Grupa 1, Grupa 2...), la fel ca randul din lista
     const tabBtn = document.querySelector(`#group-tabs button[data-group-id="${g.id}"]`);
@@ -1823,74 +1880,13 @@ async function loadSelectionGroupsOverview() {
   });
 }
 
-async function loadSelectionParticipants() {
-  const box = $("selection-participants-list");
-  const progressEl = $("selection-progress");
-  if (!currentGroupId) {
-    box.innerHTML = "";
-    progressEl.textContent = "";
-    return;
-  }
-  const g = groups.find((g) => g.id === currentGroupId);
-  const expected = g?.expected_participants || 0;
-
-  const { data: pRows } = await supabase.from("session_participants").select("*").eq("group_id", currentGroupId).order("created_at", { ascending: true });
-  const parts = pRows || [];
-
-  const { data: pcRows } = await supabase
-    .from("session_participant_cards")
-    .select("*")
-    .in("participant_id", parts.length > 0 ? parts.map((p) => p.id) : ["00000000-0000-0000-0000-000000000000"]);
-  const choicesMap = {};
-  (pcRows || []).forEach((r) => {
-    if (!choicesMap[r.participant_id]) choicesMap[r.participant_id] = [];
-    choicesMap[r.participant_id].push(r.card_id);
-  });
-
-  const submittedCount = parts.filter((p) => p.submitted_at).length;
-  progressEl.textContent = `${submittedCount} / ${expected} au ales`;
-  progressEl.style.color = expected > 0 && submittedCount >= expected ? "var(--green)" : "var(--ink)";
-
-  box.innerHTML = "";
-  if (parts.length === 0) {
-    box.innerHTML = `<p style="font-size:13px; color:var(--grey); margin:0;">Niciun cursant nu s-a alăturat încă acestei grupe.</p>`;
-    return;
-  }
-  parts.forEach((p, idx) => {
-    const cardIds = choicesMap[p.id] || [];
-    const titles = cardIds.map((id) => deckCards.find((c) => c.id === id)?.title).filter(Boolean).join(", ");
-    const row = document.createElement("div");
-    row.className = "panel";
-    row.style.cssText = "padding:10px 14px; margin:0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;";
-    row.innerHTML = `
-      <strong>Cursant ${idx + 1}</strong>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:13px; color:${p.submitted_at ? "var(--green)" : "var(--grey)"};">
-          ${p.submitted_at ? `✓ A ales: ${escapeHtml(titles) || "—"}` : "…încă alege"}
-        </span>
-        <button class="toggle-flip" data-remove-participant style="border-color:var(--red); color:var(--red);">🗑 Elimină</button>
-      </div>
-    `;
-    row.querySelector("[data-remove-participant]").addEventListener("click", async () => {
-      if (!confirm(`Elimini „Cursant ${idx + 1}” din grupă? Alegerea lui (dacă a făcut-o) se șterge și ea.`)) return;
-      await supabase.from("session_participant_cards").delete().eq("participant_id", p.id);
-      await supabase.from("session_participants").delete().eq("id", p.id);
-      await loadSelectionParticipants();
-      await loadSelectionGroupsOverview();
-    });
-    box.appendChild(row);
-  });
-}
-
 // actualizare live a progresului, indiferent cine scrie (admin nu trebuie sa dea refresh manual)
 supabase
   .channel("selection-progress-watch")
   .on("postgres_changes", { event: "*", schema: "public", table: "session_participants" }, () => {
-    if (isSelectionGame() && currentGroupId) loadSelectionParticipants();
     if (isSelectionGame()) loadSelectionGroupsOverview();
   })
   .on("postgres_changes", { event: "*", schema: "public", table: "session_participant_cards" }, () => {
-    if (isSelectionGame() && currentGroupId) loadSelectionParticipants();
     if (isSelectionGame()) loadSelectionGroupsOverview();
   })
   .subscribe();
@@ -1898,10 +1894,7 @@ supabase
 // plasa de siguranta: reverifica progresul periodic, indiferent daca abonarea live de mai sus
 // functioneaza sau nu (conexiuni WebSocket instabile, tab-uri lasate deschise mult timp etc.)
 setInterval(() => {
-  if (currentSession && isSelectionGame()) {
-    loadSelectionGroupsOverview();
-    if (currentGroupId) loadSelectionParticipants();
-  }
+  if (currentSession && isSelectionGame()) loadSelectionGroupsOverview();
 }, 5000);
 
 // ---------- PREZENTA (mod Standard): cati au deschis linkul, din cati sunt asteptati ----------
