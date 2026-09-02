@@ -878,7 +878,6 @@ async function endSession() {
   renderSessionPanel();
   refreshDeckLockState();
 }
-$("end-session-btn").addEventListener("click", endSession);
 $("end-session-btn-tabs").addEventListener("click", endSession);
 
 function groupLink(code) {
