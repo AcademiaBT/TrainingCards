@@ -879,6 +879,7 @@ async function endSession() {
   refreshDeckLockState();
 }
 $("end-session-btn-tabs").addEventListener("click", endSession);
+$("cancel-session-btn").addEventListener("click", endSession);
 
 function groupLink(code) {
   // functioneaza indiferent daca adresa curenta contine "admin.html" sau doar "admin" (URL curat, fara extensie)
@@ -1080,6 +1081,11 @@ function renderTimerPanel() {
   $("timer-none-box").style.display = status === "none" ? "block" : "none";
   $("timer-running-box").style.display = status === "running" || status === "paused" || status === "expired" ? "block" : "none";
 
+  // "Incheie sesiunea" de sus apare doar dupa ce chiar a fost lansata catre cursanti
+  // (cronometru pornit, sau ales explicit "fara cronometru") - nu doar creata.
+  $("end-session-btn-tabs").style.display = status !== "not_started" ? "inline-block" : "none";
+  $("cancel-session-btn").style.display = status === "not_started" ? "inline-block" : "none";
+
   if (status === "running" || status === "paused" || status === "expired") {
     $("timer-display").textContent = secondsToHMS(liveRemaining(currentSession));
     const labels = { running: "Cronometru pornit — vizibil live la cursanți", paused: "Pauză — cursanții văd timpul înghețat", expired: "⏰ Timpul a expirat" };
@@ -1237,7 +1243,6 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
-    $("end-session-btn-tabs").style.display = "inline-block";
     // Standard = grila de carduri conteaza, ii dam toata latimea (o coloana).
     // Colourblind/Selectie = trainerul nu vede/nu da click pe carduri aici, doua coloane compacte au sens.
     $("sessions-grid-wrap").classList.toggle("two-col", isColourblindGame() || isSelectionGame());
