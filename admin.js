@@ -1864,10 +1864,20 @@ async function loadSelectionParticipants() {
     row.style.cssText = "padding:10px 14px; margin:0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;";
     row.innerHTML = `
       <strong>Cursant ${idx + 1}</strong>
-      <span style="font-size:13px; color:${p.submitted_at ? "var(--green)" : "var(--grey)"};">
-        ${p.submitted_at ? `✓ A ales: ${escapeHtml(titles) || "—"}` : "…încă alege"}
-      </span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:13px; color:${p.submitted_at ? "var(--green)" : "var(--grey)"};">
+          ${p.submitted_at ? `✓ A ales: ${escapeHtml(titles) || "—"}` : "…încă alege"}
+        </span>
+        <button class="toggle-flip" data-remove-participant style="border-color:var(--red); color:var(--red);">🗑 Elimină</button>
+      </div>
     `;
+    row.querySelector("[data-remove-participant]").addEventListener("click", async () => {
+      if (!confirm(`Elimini „Cursant ${idx + 1}” din grupă? Alegerea lui (dacă a făcut-o) se șterge și ea.`)) return;
+      await supabase.from("session_participant_cards").delete().eq("participant_id", p.id);
+      await supabase.from("session_participants").delete().eq("id", p.id);
+      await loadSelectionParticipants();
+      await loadSelectionGroupsOverview();
+    });
     box.appendChild(row);
   });
 }
