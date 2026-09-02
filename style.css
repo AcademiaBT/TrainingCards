@@ -139,6 +139,7 @@ input, textarea, select {
 }
 
 .card-tile {
+  position: relative;
   background: var(--card-bg);
   border: 2px solid var(--parchment-dark);
   border-radius: 10px;
@@ -224,6 +225,17 @@ input, textarea, select {
 .flip-face img { width: 100%; height: 100%; object-fit: contain; }
 .flip-face.back { transform: rotateY(180deg); }
 
+/* card static, fara flip (folosit pentru mana privata a unui participant, la modul Colourblind) */
+.static-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 3px solid var(--parchment-dark);
+  background: var(--card-bg);
+  overflow: hidden;
+}
+.static-card img { width: 100%; height: 100%; object-fit: contain; }
+
 .flip-card.is-highlighted .flip-face { border-color: var(--green-deep); }
 .flip-card.is-highlighted {
   border-radius: 12px;
@@ -243,7 +255,7 @@ input, textarea, select {
 }
 .flip-card.can-flip { cursor: pointer; }
 .flip-card.can-flip .flip-face.front::after {
-  content: "Click pentru a întoarce";
+  content: attr(data-hint);
   position: absolute;
   bottom: 0; left: 0; right: 0;
   background: rgba(47,75,60,0.85);
@@ -253,7 +265,7 @@ input, textarea, select {
   padding: 5px;
 }
 .flip-card.can-flip .flip-face.back::after {
-  content: "Click pentru a reveni";
+  content: attr(data-hint);
   position: absolute;
   bottom: 0; left: 0; right: 0;
   background: rgba(201,153,46,0.9);
@@ -316,15 +328,65 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   inset: 0;
   background: rgba(0,0,0,0.8);
   z-index: 60;
-  align-items: center;
-  justify-content: center;
   padding: 30px;
   cursor: zoom-out;
+  overflow: auto; /* permite derularea peste imaginea marita, cand e in modul de super-zoom */
 }
 #learner-lightbox img {
+  display: block;
+  margin: auto; /* centreaza cat timp incape pe ecran; spre deosebire de align-items:center pe
+                   container, asta permite derularea completa (inclusiv pana sus/stanga) odata
+                   ce imaginea devine mai mare decat ecranul - un bug clasic de CSS altfel */
   max-width: 90vw;
   max-height: 90vh;
   border-radius: 12px;
+  cursor: zoom-in;
+  transition: transform 0.15s;
+}
+#learner-lightbox img.super-zoom {
+  transform: scale(1.5); /* marire proportionala fata de dimensiunea deja "potrivita pe ecran" - moderata, nu uriasa */
+  cursor: zoom-out;
+}
+
+/* eticheta "pagina X din 2" - apare doar la cardurile cu al doilea verso, cat timp e afisat versoul */
+#lightbox-page-label {
+  display: none;
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(201,153,46,0.95);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  z-index: 65;
+  pointer-events: none;
+}
+
+#lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 60;
+  padding: 30px;
+  cursor: zoom-out;
+  overflow: auto;
+}
+#lightbox img {
+  display: block;
+  margin: auto;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  cursor: zoom-in;
+  transition: transform 0.15s;
+}
+#lightbox img.super-zoom {
+  transform: scale(1.5);
+  cursor: zoom-out;
 }
 
 .picker-row {
@@ -343,6 +405,7 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
 
 /* --- Flip 3D pentru miniaturile din admin (deck + panou de control) --- */
 .mini-flip {
+  position: relative;
   perspective: 900px;
   width: 100%;
   aspect-ratio: 3 / 4;
@@ -369,6 +432,22 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
 }
 .mini-flip-face.back { transform: rotateY(180deg); }
 
+/* indicatie "poti intoarce cardul" - doar la mana privata de alegere (Hardiness) */
+.mini-flip-hint {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  font-size: 10px;
+  text-align: center;
+  padding: 4px;
+  color: #fff;
+  pointer-events: none;
+  z-index: 3;
+}
+.mini-flip-hint.front-hint { background: rgba(47,75,60,0.85); }
+.mini-flip-hint.back-hint { background: rgba(201,153,46,0.9); color: var(--ink); display: none; }
+.mini-flip.flipped .mini-flip-hint.front-hint { display: none; }
+.mini-flip.flipped .mini-flip-hint.back-hint { display: block; }
+
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -392,4 +471,59 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   .zoom-btn { padding: 6px 9px; font-size: 14px; }
   #qr-canvas { width: 160px !important; height: 160px !important; }
   .session-link-box { font-size: 12px; }
+}
+
+/* comutator on/off (toggle switch) */
+.switch { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider { position: absolute; cursor: pointer; inset: 0; background: var(--parchment-dark); transition: 0.2s; border-radius: 24px; }
+.switch .slider::before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; transition: 0.2s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.switch input:checked + .slider { background: var(--green); }
+.switch input:checked + .slider::before { transform: translateX(22px); }
+.switch-row { display: flex; align-items: center; gap: 12px; }
+
+/* grupa completa (mod Selectie) - toti cursantii au ales */
+.btn.group-complete { background: #88d45f; color: var(--green-deep); border-color: #6bbf3f; }
+.btn.group-complete.group-complete-selected { box-shadow: 0 0 0 3px var(--gold); }
+
+/* butonul "Am ales" - floating, mereu la vedere, indiferent de scroll (mobil si desktop) */
+#selection-submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  display: flex;
+  justify-content: center;
+  z-index: 40;
+  pointer-events: none; /* zona goala din jurul butonului nu blocheaza click-urile pe carduri */
+}
+#selection-submit-bar .btn {
+  pointer-events: auto;
+  box-shadow: 0 6px 20px rgba(33, 58, 46, 0.35);
+  padding: 14px 36px;
+  font-size: 15px;
+}
+
+/* selectarea cardurilor la modul Selectie (Hardiness) - bifa vizibila, cu evidentiere puternica a cardului */
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+.pick-row input[type="checkbox"] {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--green);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.card-tile.selected {
+  border-color: var(--green);
+  background: #E4F5E7;
+  box-shadow: 0 0 0 2px var(--green);
 }

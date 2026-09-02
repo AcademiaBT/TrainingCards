@@ -65,6 +65,7 @@ function renderSetSelect() {
   $("set-edit-btn").disabled = !activeSetId;
   $("set-delete-btn").disabled = !activeSetId;
   updateDeckTitle();
+  syncSessionCreationFields();
 }
 
 let cardsPerGroupUserEdited = false; // devine true doar cand trainerul chiar tasteaza o valoare
@@ -76,6 +77,7 @@ function updateDeckTotalHint() {
   hint.textContent = total > 0 ? `Setul selectat are ${total} carduri disponibile.` : "Setul selectat nu are încă niciun card.";
   const input = $("cards-per-group");
   if (input && !cardsPerGroupUserEdited) input.value = total > 0 ? total : 1; // se resincronizeaza la fiecare schimbare de set, pana la o editare manuala
+  if (typeof updateDepleteWarning === "function") updateDepleteWarning();
 }
 
 function updateDeckTitle() {
@@ -104,20 +106,24 @@ $("set-select").addEventListener("change", async (e) => {
 // -- modal comun pentru creare/editare joc sau set --
 let gsModalMode = null; // 'game-new' | 'game-edit' | 'set-new' | 'set-edit'
 
-function openGsModal(mode) {
-  gsModalMode = mode;
+function openGsModal(modalMode) {
+  gsModalMode = modalMode;
   $("gs-error").textContent = "";
   $("gs-name").value = "";
   $("gs-desc").value = "";
-  if (mode === "game-new") $("gs-modal-title").textContent = "Joc nou";
-  if (mode === "set-new") $("gs-modal-title").textContent = "Set nou";
-  if (mode === "game-edit") {
+  const isGame = modalMode === "game-new" || modalMode === "game-edit";
+  $("gs-mode-row").style.display = isGame ? "block" : "none";
+  document.querySelector('input[name="gs-mode"][value="standard"]').checked = true;
+  if (modalMode === "game-new") $("gs-modal-title").textContent = "Joc nou";
+  if (modalMode === "set-new") $("gs-modal-title").textContent = "Set nou";
+  if (modalMode === "game-edit") {
     const g = games.find((g) => g.id === activeGameId);
     $("gs-modal-title").textContent = "Editează joc";
     $("gs-name").value = g?.name || "";
     $("gs-desc").value = g?.description || "";
+    document.querySelector(`input[name="gs-mode"][value="${g?.mode || "standard"}"]`).checked = true;
   }
-  if (mode === "set-edit") {
+  if (modalMode === "set-edit") {
     const s = cardSets.find((s) => s.id === activeSetId);
     $("gs-modal-title").textContent = "Editează set";
     $("gs-name").value = s?.name || "";
@@ -141,7 +147,8 @@ $("gs-save-btn").addEventListener("click", async () => {
   }
   try {
     if (gsModalMode === "game-new") {
-      const { data, error } = await supabase.from("games").insert({ name, description }).select().single();
+      const gameMode = document.querySelector('input[name="gs-mode"]:checked').value;
+      const { data, error } = await supabase.from("games").insert({ name, description, mode: gameMode }).select().single();
       if (error) throw error;
       await loadGames();
       activeGameId = data.id;
@@ -149,7 +156,8 @@ $("gs-save-btn").addEventListener("click", async () => {
       renderGameSelect();
       await loadSets();
     } else if (gsModalMode === "game-edit") {
-      const { error } = await supabase.from("games").update({ name, description }).eq("id", activeGameId);
+      const gameMode = document.querySelector('input[name="gs-mode"]:checked').value;
+      const { error } = await supabase.from("games").update({ name, description, mode: gameMode }).eq("id", activeGameId);
       if (error) throw error;
       await loadGames();
     } else if (gsModalMode === "set-new") {
@@ -423,16 +431,25 @@ function escapeHtml(str) {
 }
 
 function openLightbox(src) {
-  $("lightbox-img").src = src;
+  const img = $("lightbox-img");
+  img.src = src;
+  img.classList.remove("super-zoom");
+  $("lightbox").scrollTo(0, 0);
   $("lightbox").style.display = "flex";
 }
 $("lightbox").addEventListener("click", () => ($("lightbox").style.display = "none"));
+$("lightbox-img").addEventListener("click", (e) => {
+  e.stopPropagation();
+  e.target.classList.toggle("super-zoom");
+  $("lightbox").scrollTo(0, 0);
+});
 
 // ---------- ADD / EDIT CARD MODAL ----------
 $("add-card-btn").addEventListener("click", () => openCardModal(null));
 
 function openCardModal(card) {
   editingCard = card;
+  clearBack2 = false;
   $("modal-title").textContent = card ? `Editează: ${card.title}` : "Card nou";
   $("f-title").value = card ? card.title : "";
   $("f-explanation").value = card ? (card.explanation || "") : "";
@@ -440,6 +457,7 @@ function openCardModal(card) {
   $("f-flippable").checked = card ? card.flippable_default : true;
   $("f-front-file").value = "";
   $("f-back-file").value = "";
+  $("f-back2-file").value = "";
   $("label-front").textContent = card ? "Imagine față (lasă gol pentru a păstra actuala)" : "Imagine față";
   $("label-back").textContent = card ? "Imagine verso (lasă gol pentru a păstra actuala)" : "Imagine verso";
   if (card) {
@@ -451,11 +469,27 @@ function openCardModal(card) {
     $("f-front-preview").style.display = "none";
     $("f-back-preview").style.display = "none";
   }
+  if (card && card.back_image_url_2) {
+    $("f-back2-preview").src = card.back_image_url_2;
+    $("f-back2-preview").style.display = "block";
+    $("f-back2-clear-btn").style.display = "inline-block";
+  } else {
+    $("f-back2-preview").style.display = "none";
+    $("f-back2-clear-btn").style.display = "none";
+  }
   $("modal-error").textContent = "";
   $("modal-save-btn").textContent = "Salvează";
   $("card-modal").style.display = "flex";
 }
 $("modal-cancel-btn").addEventListener("click", () => ($("card-modal").style.display = "none"));
+
+let clearBack2 = false;
+$("f-back2-clear-btn").addEventListener("click", () => {
+  clearBack2 = true;
+  $("f-back2-file").value = "";
+  $("f-back2-preview").style.display = "none";
+  $("f-back2-clear-btn").style.display = "none";
+});
 
 function wirePreview(fileInputId, previewId) {
   $(fileInputId).addEventListener("change", () => {
@@ -464,10 +498,15 @@ function wirePreview(fileInputId, previewId) {
     const url = URL.createObjectURL(file);
     $(previewId).src = url;
     $(previewId).style.display = "block";
+    if (fileInputId === "f-back2-file") {
+      clearBack2 = false;
+      $("f-back2-clear-btn").style.display = "inline-block";
+    }
   });
 }
 wirePreview("f-front-file", "f-front-preview");
 wirePreview("f-back-file", "f-back-preview");
+wirePreview("f-back2-file", "f-back2-preview");
 
 function getImageAspectRatio(file) {
   return new Promise((resolve, reject) => {
@@ -499,6 +538,7 @@ $("modal-save-btn").addEventListener("click", async () => {
   const title = $("f-title").value.trim();
   const frontFile = $("f-front-file").files[0];
   const backFile = $("f-back-file").files[0];
+  const back2File = $("f-back2-file").files[0];
   $("modal-error").textContent = "";
 
   if (!title || (!editingCard && (!frontFile || !backFile))) {
@@ -515,11 +555,17 @@ $("modal-save-btn").addEventListener("click", async () => {
   try {
     const frontUrl = frontFile ? await uploadImage(frontFile) : editingCard.front_image_url;
     const backUrl = backFile ? await uploadImage(backFile) : editingCard.back_image_url;
+    const back2Url = back2File
+      ? await uploadImage(back2File)
+      : clearBack2
+      ? null
+      : editingCard?.back_image_url_2 ?? null;
     const aspectRatio = frontFile ? await getImageAspectRatio(frontFile) : editingCard?.aspect_ratio ?? 0.75;
     const payload = {
       title,
       front_image_url: frontUrl,
       back_image_url: backUrl,
+      back_image_url_2: back2Url,
       aspect_ratio: aspectRatio,
       initial_face: $("f-initial-face").value,
       flippable_default: $("f-flippable").checked,
@@ -682,15 +728,14 @@ function assignCardsToGroups(deck, numGroups, cardsPerGroup, allowRepeat) {
     for (let g = 0; g < numGroups; g++) result[g] = shuffle(deck).slice(0, cardsPerGroup).map((c) => c.id);
     return { assignments: result, error: null };
   }
-  const needed = cardsPerGroup * numGroups;
-  if (needed > deck.length) {
-    return {
-      assignments: null,
-      error: `Ai nevoie de ${needed} carduri unice (${cardsPerGroup} × ${numGroups} grupe), dar deck-ul are doar ${deck.length}. Redu numărul per grupă, activează extragerea „dintr-un deck nou”, sau adaugă mai multe carduri.`,
-    };
-  }
+  // "Prin scadere": deck-ul se scurge progresiv, grupa cu grupa - fiecare primeste
+  // cate poate din ce a mai ramas, nu se blocheaza daca nu ajunge pentru toate.
   const shuffled = shuffle(deck);
-  for (let g = 0; g < numGroups; g++) result[g] = shuffled.slice(g * cardsPerGroup, (g + 1) * cardsPerGroup).map((c) => c.id);
+  let pool = shuffled.slice();
+  for (let g = 0; g < numGroups; g++) {
+    result[g] = pool.slice(0, cardsPerGroup).map((c) => c.id);
+    pool = pool.slice(cardsPerGroup);
+  }
   return { assignments: result, error: null };
 }
 
@@ -745,7 +790,13 @@ $("create-session-btn").addEventListener("click", async () => {
     return;
   }
 
-  const numGroups = Math.max(1, parseInt($("num-groups").value, 10) || 1);
+  const totalParticipants = Math.max(2, parseInt($("num-participants-total").value, 10) || 3);
+  const groupSize = Math.max(2, parseInt($("participants-per-group").value, 10) || 3);
+  const numGroups = isSelectionGame()
+    ? computeSelectionGroups(totalParticipants, groupSize).length
+    : Math.max(1, parseInt($("num-groups").value, 10) || 1);
+  const groupSizes = isSelectionGame() ? computeSelectionGroups(totalParticipants, groupSize) : null;
+  const maxChoices = isSelectionGame() ? Math.max(1, parseInt($("max-choices").value, 10) || 1) : null;
   const drawMode = document.querySelector('input[name="draw-mode"]:checked').value;
   const isManual = drawMode === "manual";
 
@@ -766,24 +817,35 @@ $("create-session-btn").addEventListener("click", async () => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     const code = randomCode();
+    const defaultFlippable = $("default-flippable-toggle").checked;
     const { data: sessionRow, error: sessErr } = await supabase
       .from("training_sessions")
-      .insert({ session_code: code, game_id: activeGameId, set_id: activeSetId, admin_email: user.email, status: "active" })
+      .insert({
+        session_code: code,
+        game_id: activeGameId,
+        set_id: activeSetId,
+        admin_email: user.email,
+        status: "active",
+        max_choices: maxChoices,
+        default_flippable: defaultFlippable,
+      })
       .select()
       .single();
     if (sessErr) throw sessErr;
 
+    const expectedPerGroupStandard = !isSelectionGame() && $("expected-per-group").value ? parseInt($("expected-per-group").value, 10) : null;
     const groupInserts = Array.from({ length: numGroups }, (_, i) => ({
       session_id: sessionRow.id,
       name: `Grupa ${i + 1}`,
       group_code: randomCode(8),
+      expected_participants: groupSizes ? groupSizes[i] : expectedPerGroupStandard,
     }));
     const { data: groupRows, error: groupErr } = await supabase.from("session_groups").insert(groupInserts).select();
     if (groupErr) throw groupErr;
 
     const cardRows = [];
     groupRows.forEach((g, i) => {
-      assignments[i].forEach((cardId) => cardRows.push({ session_id: sessionRow.id, group_id: g.id, card_id: cardId, is_flippable: false }));
+      assignments[i].forEach((cardId) => cardRows.push({ session_id: sessionRow.id, group_id: g.id, card_id: cardId, is_flippable: defaultFlippable }));
     });
     if (cardRows.length > 0) {
       const { error: cardErr } = await supabase.from("session_group_cards").insert(cardRows);
@@ -903,6 +965,73 @@ function renderGroupsList() {
   });
 }
 
+function isColourblindGame() {
+  const g = games.find((g) => g.id === activeGameId);
+  return g && g.mode === "colourblind";
+}
+
+function isSelectionGame() {
+  const g = games.find((g) => g.id === activeGameId);
+  return g && g.mode === "selection";
+}
+
+// Grupeaza un numar total de cursanti in echipe de cate 3, cu regula:
+// rest 0 -> toate grupele au 3; rest 1 -> ultima grupa are 4; rest 2 -> ultima grupa are 2.
+// Grupeaza un numar total de cursanti in echipe de marimea data (groupSize).
+// Restul impartirii: daca e MAI MIC decat jumatate din groupSize, se distribuie
+// cate unul pe primele grupe deja formate. Daca e MAI MARE SAU EGAL cu jumatate,
+// formeaza o grupa separata, incompleta, cu exact atatia membri cat e restul.
+function computeSelectionGroups(total, groupSize) {
+  groupSize = Math.max(2, groupSize || 3);
+  total = Math.max(1, total);
+  const base = Math.floor(total / groupSize);
+  const rem = total % groupSize;
+
+  if (rem === 0) return Array(base).fill(groupSize);
+
+  if (base === 0) return [rem]; // nu exista nicio grupa completa in care sa distribuim restul
+
+  if (rem < groupSize / 2) {
+    const sizes = Array(base).fill(groupSize);
+    for (let i = 0; i < rem; i++) sizes[i % base] += 1;
+    return sizes;
+  }
+  const sizes = Array(base).fill(groupSize);
+  sizes.push(rem);
+  return sizes;
+}
+
+function syncSessionCreationFields() {
+  const sel = isSelectionGame();
+  $("standard-group-fields").style.display = sel ? "none" : "block";
+  $("selection-group-fields").style.display = sel ? "block" : "none";
+  if (sel) updateSelectionGroupsPreview();
+}
+
+function updateSelectionGroupsPreview() {
+  const total = Math.max(2, parseInt($("num-participants-total").value, 10) || 3);
+  const groupSize = Math.max(2, parseInt($("participants-per-group").value, 10) || 3);
+  const sizes = computeSelectionGroups(total, groupSize);
+  $("selection-groups-preview").textContent = `Se vor crea ${sizes.length} grupe: ${sizes.join(", ")} participanți.`;
+}
+$("num-participants-total").addEventListener("input", updateSelectionGroupsPreview);
+$("participants-per-group").addEventListener("input", updateSelectionGroupsPreview);
+
+function syncGameModeUI() {
+  const cb = isColourblindGame();
+  const sel = isSelectionGame();
+  $("flip-controls-panel").style.display = cb ? "none" : "block";
+  $("card-picker-shared-panel").style.display = cb ? "none" : "block";
+  $("standard-mode-panel").style.display = cb || sel ? "none" : "block";
+  $("colourblind-mode-panel").style.display = cb ? "block" : "none";
+  $("selection-mode-panel").style.display = sel ? "block" : "none";
+  $("control-panel-hint").textContent = cb
+    ? "Grupa selectată reprezintă o echipă. Fiecare participant din ea primește propriul link, cu propriul set privat de carduri."
+    : sel
+    ? "Cursanții din grupa selectată intră toți pe același link și își aleg individual cardurile preferate din deck-ul comun."
+    : "Click pe un card pentru a-l evidenția la grupa selectată. Butonul „Permite răsturnarea” activează flip-ul pentru acel card, doar la această grupă.";
+}
+
 function renderGroupTabs() {
   const box = $("group-tabs");
   box.innerHTML = "";
@@ -910,13 +1039,19 @@ function renderGroupTabs() {
     const btn = document.createElement("button");
     btn.className = "btn " + (g.id === currentGroupId ? "gold" : "outline");
     btn.textContent = g.name;
-    btn.addEventListener("click", () => {
+    btn.dataset.groupId = g.id;
+    btn.addEventListener("click", async () => {
       currentGroupId = g.id;
       renderGroupTabs();
-      renderControlGrid();
+      await renderControlGrid();
+      if (isColourblindGame()) await loadParticipants();
+      if (!isColourblindGame() && !isSelectionGame()) await loadPresence();
+      if (isSelectionGame()) await loadSelectionParticipants();
+      if (isSelectionGame()) await loadSelectionGroupsOverview();
     });
     box.appendChild(btn);
   });
+  if (isSelectionGame()) loadSelectionGroupsOverview();
 }
 
 // ---------- CRONOMETRU SESIUNE ----------
@@ -956,7 +1091,28 @@ function renderTimerPanel() {
   }
 }
 
+async function checkAllGroupsSelectionComplete() {
+  const results = await Promise.all(
+    groups.map(async (g) => {
+      const expected = g.expected_participants || 0;
+      const { data } = await supabase.from("session_participants").select("id, submitted_at").eq("group_id", g.id);
+      const submitted = (data || []).filter((p) => p.submitted_at).length;
+      return { name: g.name, submitted, expected, done: expected > 0 && submitted >= expected };
+    })
+  );
+  const allDone = results.length > 0 && results.every((r) => r.done);
+  const summary = results.map((r) => `${r.name}: ${r.submitted}/${r.expected}`).join(" · ");
+  return { allDone, summary };
+}
+
 $("timer-skip-btn").addEventListener("click", async () => {
+  if (isSelectionGame()) {
+    const { allDone, summary } = await checkAllGroupsSelectionComplete();
+    if (!allDone) {
+      alert(`Nu toți cursanții au ales încă, în toate grupele:\n${summary}`);
+      return;
+    }
+  }
   const { error } = await supabase.from("training_sessions").update({ timer_status: "none" }).eq("id", currentSession.id);
   if (error) {
     alert("Eroare: " + error.message);
@@ -988,6 +1144,13 @@ async function expireTimer() {
 }
 
 $("timer-start-btn").addEventListener("click", async () => {
+  if (isSelectionGame()) {
+    const { allDone, summary } = await checkAllGroupsSelectionComplete();
+    if (!allDone) {
+      alert(`Nu poți porni cronometrul — nu toți cursanții au ales încă, în toate grupele:\n${summary}`);
+      return;
+    }
+  }
   const h = parseInt($("timer-h").value, 10) || 0;
   const m = parseInt($("timer-m").value, 10) || 0;
   const s = parseInt($("timer-s").value, 10) || 0;
@@ -1066,7 +1229,7 @@ function syncSwitcherLockUI() {
     : "";
 }
 
-function renderSessionPanel() {
+async function renderSessionPanel() {
   syncDeckLockUI();
   syncSwitcherLockUI();
   if (currentSession) {
@@ -1078,7 +1241,12 @@ function renderSessionPanel() {
     $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
     renderGroupsList();
     renderGroupTabs();
-    renderControlGrid();
+    syncGameModeUI();
+    await renderControlGrid();
+    if (isColourblindGame()) await loadParticipants();
+    if (isSelectionGame()) await loadSelectionParticipants();
+    if (!isColourblindGame() && !isSelectionGame()) await loadPresence();
+    if (isSelectionGame()) await loadSelectionGroupsOverview();
     renderTimerPanel();
     if (!timerInterval) timerInterval = setInterval(tickTimer, 1000);
   } else {
@@ -1115,6 +1283,10 @@ async function renderControlGrid() {
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   const currentGroup = groups.find((g) => g.id === currentGroupId);
   renderCardPicker();
+
+  const flipToggle = $("flip-toggle-current");
+  if (flipToggle) flipToggle.checked = controlGroupCards.length > 0 && controlGroupCards.every((c) => c.is_flippable);
+  syncAllGroupsFlipToggle();
 
   grid.innerHTML = "";
   if (controlGroupCards.length === 0) {
@@ -1203,7 +1375,7 @@ async function addCardToGroup(cardId) {
     session_id: currentSession.id,
     group_id: currentGroupId,
     card_id: cardId,
-    is_flippable: false,
+    is_flippable: currentSession?.default_flippable ?? false,
   });
   await renderControlGrid();
 }
@@ -1252,22 +1424,32 @@ function togglePreview(cardId) {
   previewBtn.textContent = next ? "Vezi față" : "Vezi verso";
 }
 
+async function syncAllGroupsFlipToggle() {
+  if (!currentSession) return;
+  const toggle = $("flip-toggle-all-groups");
+  if (!toggle) return;
+  const { data } = await supabase.from("session_group_cards").select("is_flippable").eq("session_id", currentSession.id);
+  toggle.checked = !!(data && data.length > 0 && data.every((r) => r.is_flippable));
+}
+
 async function setAllFlippable(value) {
   if (!currentGroupId) return;
-  const btn = value ? $("flip-all-on-btn") : $("flip-all-off-btn");
-  btn.disabled = true;
-  const original = btn.textContent;
-  btn.textContent = "Se aplică...";
-  await supabase.from("session_group_cards").update({ is_flippable: value }).eq("group_id", currentGroupId);
-  controlGroupCards.forEach((c) => {
-    c.is_flippable = value;
-    updateTileFlipButton(c.id, value);
-  });
-  btn.disabled = false;
-  btn.textContent = original;
+  const toggle = $("flip-toggle-current");
+  toggle.disabled = true;
+  const { error } = await supabase.from("session_group_cards").update({ is_flippable: value }).eq("group_id", currentGroupId);
+  if (error) {
+    alert("Eroare: " + error.message);
+    toggle.checked = !value; // revenim vizual daca actualizarea a esuat
+  } else {
+    controlGroupCards.forEach((c) => {
+      c.is_flippable = value;
+      updateTileFlipButton(c.id, value);
+    });
+    await syncAllGroupsFlipToggle(); // daca acum TOATE grupele sunt flippable (sau nu mai sunt), reflectam corect si aici
+  }
+  toggle.disabled = false;
 }
-$("flip-all-on-btn").addEventListener("click", () => setAllFlippable(true));
-$("flip-all-off-btn").addEventListener("click", () => setAllFlippable(false));
+$("flip-toggle-current").addEventListener("change", (e) => setAllFlippable(e.target.checked));
 
 async function deactivateAndResetFlip() {
   if (!currentGroupId) return;
@@ -1285,6 +1467,8 @@ async function deactivateAndResetFlip() {
       c.is_flippable = false;
       updateTileFlipButton(c.id, false);
     });
+    $("flip-toggle-current").checked = false;
+    await syncAllGroupsFlipToggle();
   } catch (err) {
     alert("Eroare: " + err.message);
   } finally {
@@ -1296,25 +1480,23 @@ $("flip-all-reset-btn").addEventListener("click", deactivateAndResetFlip);
 
 async function setAllFlippableAllGroups(value) {
   if (!currentSession) return;
-  const btn = value ? $("flip-all-groups-btn") : $("flip-all-groups-off-btn");
-  btn.disabled = true;
-  const original = btn.textContent;
-  btn.textContent = "Se aplică la toate grupele...";
+  const toggle = $("flip-toggle-all-groups");
+  toggle.disabled = true;
   const { error } = await supabase.from("session_group_cards").update({ is_flippable: value }).eq("session_id", currentSession.id);
   if (error) {
     alert("Eroare: " + error.message);
+    toggle.checked = !value;
   } else {
     // actualizeaza si vizual grupa curent afisata (celelalte grupe se vor incarca corect la schimbarea tab-ului)
     controlGroupCards.forEach((c) => {
       c.is_flippable = value;
       updateTileFlipButton(c.id, value);
     });
+    $("flip-toggle-current").checked = value; // reflecta si comutatorul grupei curente noua stare reala
   }
-  btn.disabled = false;
-  btn.textContent = original;
+  toggle.disabled = false;
 }
-$("flip-all-groups-btn").addEventListener("click", () => setAllFlippableAllGroups(true));
-$("flip-all-groups-off-btn").addEventListener("click", () => setAllFlippableAllGroups(false));
+$("flip-toggle-all-groups").addEventListener("change", (e) => setAllFlippableAllGroups(e.target.checked));
 
 async function resetAllGroupsFlip() {
   if (!currentSession || groups.length === 0) return;
@@ -1336,6 +1518,8 @@ async function resetAllGroupsFlip() {
       c.is_flippable = false;
       updateTileFlipButton(c.id, false);
     });
+    $("flip-toggle-current").checked = false;
+    $("flip-toggle-all-groups").checked = false;
   } catch (err) {
     alert("Eroare: " + err.message);
   } finally {
@@ -1347,6 +1531,403 @@ $("flip-all-groups-reset-btn").addEventListener("click", resetAllGroupsFlip);
 
 $("cards-per-group").addEventListener("input", () => {
   cardsPerGroupUserEdited = true;
+});
+
+// avertisment live (nu blocheaza crearea sesiunii) - arata clar, inainte sa apesi butonul,
+// daca la modul "Prin scadere" nu toate grupele vor primi cate carduri au cerut
+function updateDepleteWarning() {
+  const errorEl = $("groups-error");
+  const drawModeEl = document.querySelector('input[name="draw-mode"]:checked');
+  const drawMode = drawModeEl ? drawModeEl.value : "repeat";
+  if (drawMode !== "deplete") {
+    errorEl.textContent = "";
+    return;
+  }
+  const numGroups = isSelectionGame()
+    ? computeSelectionGroups(Math.max(2, parseInt($("num-participants-total").value, 10) || 3), Math.max(2, parseInt($("participants-per-group").value, 10) || 3)).length
+    : Math.max(1, parseInt($("num-groups").value, 10) || 1);
+  const cardsPerGroup = Math.max(0, parseInt($("cards-per-group").value, 10) || 0);
+  const deckLen = deckCards.length;
+
+  let pool = deckLen;
+  let shortGroups = 0;
+  for (let g = 0; g < numGroups; g++) {
+    const take = Math.min(cardsPerGroup, pool);
+    if (take < cardsPerGroup) shortGroups++;
+    pool -= take;
+  }
+
+  errorEl.textContent =
+    shortGroups > 0
+      ? `Nu ai destule carduri pentru toate grupele: deck-ul are ${deckLen}, dar ai nevoie de ${cardsPerGroup * numGroups} (${cardsPerGroup} × ${numGroups} grupe). ${shortGroups} grupă/grupe vor primi mai puține carduri decât ai cerut, sau deloc — poți crea sesiunea oricum, sau ajustează numerele mai sus.`
+      : "";
+}
+
+["num-groups", "num-participants-total", "participants-per-group", "cards-per-group", "max-choices"].forEach((id) => {
+  const el = $(id);
+  if (el) el.addEventListener("input", updateDepleteWarning);
+});
+document.querySelectorAll('input[name="draw-mode"]').forEach((el) => {
+  el.addEventListener("change", updateDepleteWarning);
+});
+
+// ---------- COLOURBLIND: participanti individuali, carduri private, tipar-tinta ----------
+let participants = []; // participantii grupei curent selectate
+let participantCardsMap = {}; // participant_id -> Set(card_id)
+let targetCardIds = new Set(); // tiparul-tinta al grupei curente
+
+function participantLink(code) {
+  const path = location.pathname.replace(/admin(\.html)?$/, "participant.html");
+  return `${location.origin}${path}?p=${code}`;
+}
+
+async function loadParticipants() {
+  if (!currentGroupId) {
+    participants = [];
+    participantCardsMap = {};
+    targetCardIds = new Set();
+    renderParticipants();
+    renderTargetPicker();
+    return;
+  }
+  const { data } = await supabase.from("session_participants").select("*").eq("group_id", currentGroupId).order("created_at", { ascending: true });
+  participants = data || [];
+
+  participantCardsMap = {};
+  participants.forEach((p) => (participantCardsMap[p.id] = new Set()));
+  if (participants.length > 0) {
+    const { data: pcRows } = await supabase
+      .from("session_participant_cards")
+      .select("*")
+      .in("participant_id", participants.map((p) => p.id));
+    (pcRows || []).forEach((r) => {
+      if (participantCardsMap[r.participant_id]) participantCardsMap[r.participant_id].add(r.card_id);
+    });
+  }
+
+  const { data: targetRows } = await supabase.from("session_group_target_cards").select("card_id").eq("group_id", currentGroupId);
+  targetCardIds = new Set((targetRows || []).map((r) => r.card_id));
+
+  renderParticipants();
+  renderTargetPicker();
+}
+
+function renderParticipants() {
+  const box = $("participants-list");
+  box.innerHTML = "";
+  if (participants.length === 0) {
+    box.innerHTML = `<p style="font-size:13px; color:var(--grey); margin:0;">Niciun participant încă. Adaugă primul mai jos.</p>`;
+    return;
+  }
+  participants.forEach((p) => {
+    const link = participantLink(p.participant_code);
+    const row = document.createElement("div");
+    row.className = "panel";
+    row.style.cssText = "padding:12px; margin:0;";
+    row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <strong class="serif">${escapeHtml(p.name)}</strong>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="toggle-flip" data-copy>Copiază link</button>
+          <button class="toggle-flip" data-cards>Cardurile lui (${participantCardsMap[p.id]?.size || 0})</button>
+          <button class="toggle-flip" style="border-color:var(--red); color:var(--red);" data-remove>Șterge</button>
+        </div>
+      </div>
+      <div data-cards-panel style="display:none; margin-top:10px; flex-wrap:wrap; gap:8px;"></div>
+    `;
+    row.querySelector("[data-copy]").addEventListener("click", (e) => {
+      navigator.clipboard.writeText(link);
+      e.target.textContent = "Copiat!";
+      setTimeout(() => (e.target.textContent = "Copiază link"), 1400);
+    });
+    const cardsPanel = row.querySelector("[data-cards-panel]");
+    row.querySelector("[data-cards]").addEventListener("click", () => {
+      const isOpen = cardsPanel.style.display !== "none";
+      cardsPanel.style.display = isOpen ? "none" : "flex";
+      if (!isOpen) renderParticipantCardPicker(p, cardsPanel);
+    });
+    row.querySelector("[data-remove]").addEventListener("click", async () => {
+      if (!confirm(`Ștergi participantul „${p.name}”?`)) return;
+      await supabase.from("session_participants").delete().eq("id", p.id);
+      await loadParticipants();
+    });
+    box.appendChild(row);
+  });
+}
+
+function renderParticipantCardPicker(p, container) {
+  container.innerHTML = "";
+  controlGroupCards.forEach((c) => {
+    const checked = participantCardsMap[p.id]?.has(c.id);
+    const row = document.createElement("label");
+    row.className = "picker-row";
+    row.innerHTML = `<input type="checkbox" ${checked ? "checked" : ""} /><img src="${c.front_image_url}" alt="" /><span>${escapeHtml(c.title)}</span>`;
+    row.querySelector("input").addEventListener("change", async (e) => {
+      if (e.target.checked) {
+        await supabase.from("session_participant_cards").insert({ session_id: currentSession.id, participant_id: p.id, card_id: c.id });
+        participantCardsMap[p.id].add(c.id);
+      } else {
+        await supabase.from("session_participant_cards").delete().eq("participant_id", p.id).eq("card_id", c.id);
+        participantCardsMap[p.id].delete(c.id);
+      }
+      renderParticipants(); // reactualizeaza numaratoarea "Cardurile lui (N)"
+    });
+    container.appendChild(row);
+  });
+}
+
+$("add-participant-btn").addEventListener("click", async () => {
+  if (!currentGroupId) return;
+  const name = $("new-participant-name").value.trim() || `Participant ${participants.length + 1}`;
+  const code = randomCode(8);
+  const { error } = await supabase
+    .from("session_participants")
+    .insert({ session_id: currentSession.id, group_id: currentGroupId, name, participant_code: code });
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  $("new-participant-name").value = "";
+  await loadParticipants();
+});
+
+$("distribute-participants-btn").addEventListener("click", async () => {
+  if (participants.length === 0) {
+    alert("Adaugă întâi cel puțin un participant.");
+    return;
+  }
+  const perParticipant = Math.max(1, parseInt($("cb-cards-per-participant").value, 10) || 1);
+  const allowRepeat = $("cb-allow-repeat").checked;
+  const pool = controlGroupCards.map((c) => c.id);
+  if (pool.length === 0) {
+    alert("Grupa selectată nu are încă niciun card alocat.");
+    return;
+  }
+  if (!allowRepeat && perParticipant * participants.length > pool.length) {
+    alert(
+      `Grupa are doar ${pool.length} carduri, dar ai nevoie de ${perParticipant * participants.length} (${perParticipant} × ${participants.length} participanți, fără repetare). Redu numărul per participant sau activează repetarea.`
+    );
+    return;
+  }
+  const btn = $("distribute-participants-btn");
+  btn.disabled = true;
+  btn.textContent = "Se distribuie...";
+  try {
+    await supabase.from("session_participant_cards").delete().in("participant_id", participants.map((p) => p.id));
+    const rows = [];
+    if (allowRepeat) {
+      participants.forEach((p) => {
+        shuffle(pool)
+          .slice(0, perParticipant)
+          .forEach((cardId) => rows.push({ session_id: currentSession.id, participant_id: p.id, card_id: cardId }));
+      });
+    } else {
+      const shuffled = shuffle(pool);
+      participants.forEach((p, i) => {
+        shuffled.slice(i * perParticipant, (i + 1) * perParticipant).forEach((cardId) =>
+          rows.push({ session_id: currentSession.id, participant_id: p.id, card_id: cardId })
+        );
+      });
+    }
+    const { error } = await supabase.from("session_participant_cards").insert(rows);
+    if (error) throw error;
+    await loadParticipants();
+  } catch (err) {
+    alert("Eroare: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Distribuie automat tuturor";
+  }
+});
+
+function renderTargetPicker() {
+  const box = $("target-picker");
+  box.innerHTML = "";
+  controlGroupCards.forEach((c) => {
+    const checked = targetCardIds.has(c.id);
+    const row = document.createElement("label");
+    row.className = "picker-row";
+    row.innerHTML = `<input type="checkbox" ${checked ? "checked" : ""} /><img src="${c.front_image_url}" alt="" /><span>${escapeHtml(c.title)}</span>`;
+    row.querySelector("input").addEventListener("change", async (e) => {
+      if (e.target.checked) {
+        await supabase.from("session_group_target_cards").insert({ session_id: currentSession.id, group_id: currentGroupId, card_id: c.id });
+        targetCardIds.add(c.id);
+      } else {
+        await supabase.from("session_group_target_cards").delete().eq("group_id", currentGroupId).eq("card_id", c.id);
+        targetCardIds.delete(c.id);
+      }
+    });
+    box.appendChild(row);
+  });
+}
+
+$("reveal-solution-btn").addEventListener("click", async () => {
+  if (!currentGroupId) return;
+  if (targetCardIds.size === 0) {
+    alert("Nu ai marcat încă niciun card ca parte din tiparul-țintă.");
+    return;
+  }
+  if (!confirm("Dezvălui soluția tuturor participanților acestei grupe? Nu mai poate fi ascunsă înapoi.")) return;
+  const { error } = await supabase
+    .from("session_groups")
+    .update({ solution_revealed_at: new Date().toISOString() })
+    .eq("id", currentGroupId);
+  if (error) {
+    alert("Eroare: " + error.message);
+    return;
+  }
+  const g = groups.find((g) => g.id === currentGroupId);
+  if (g) g.solution_revealed_at = new Date().toISOString();
+  alert("Soluția a fost dezvăluită participanților.");
+});
+
+// ---------- SELECTION (Hardiness): progres live al grupei selectate ----------
+async function loadSelectionGroupsOverview() {
+  const box = $("selection-groups-overview");
+  if (!box) return;
+  if (groups.length === 0) {
+    box.innerHTML = `<p style="font-size:13px; color:var(--grey); margin:0;">Nicio grupă formată încă.</p>`;
+    return;
+  }
+  const { data: allParts } = await supabase
+    .from("session_participants")
+    .select("group_id, submitted_at")
+    .in("group_id", groups.map((g) => g.id));
+
+  box.innerHTML = "";
+  groups.forEach((g) => {
+    const expected = g.expected_participants || 0;
+    const parts = (allParts || []).filter((p) => p.group_id === g.id);
+    const submitted = parts.filter((p) => p.submitted_at).length;
+    const complete = expected > 0 && submitted >= expected;
+    const isSelected = g.id === currentGroupId;
+
+    const row = document.createElement("button");
+    row.className = complete ? "btn group-complete" + (isSelected ? " group-complete-selected" : "") : "btn " + (isSelected ? "gold" : "outline");
+    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; text-align:left; width:100%;";
+    row.innerHTML = `<span>${escapeHtml(g.name)}</span><span style="font-weight:700;">${complete ? "✓ " : ""}${submitted} / ${expected || "?"}</span>`;
+    row.addEventListener("click", async () => {
+      currentGroupId = g.id;
+      renderGroupTabs();
+      await renderControlGrid();
+      await loadSelectionParticipants();
+      await loadSelectionGroupsOverview();
+    });
+    box.appendChild(row);
+
+    // coloreaza si tab-ul corespunzator de sus (Grupa 1, Grupa 2...), la fel ca randul din lista
+    const tabBtn = document.querySelector(`#group-tabs button[data-group-id="${g.id}"]`);
+    if (tabBtn) {
+      tabBtn.className = complete ? "btn group-complete" + (isSelected ? " group-complete-selected" : "") : "btn " + (isSelected ? "gold" : "outline");
+    }
+  });
+}
+
+async function loadSelectionParticipants() {
+  const box = $("selection-participants-list");
+  const progressEl = $("selection-progress");
+  if (!currentGroupId) {
+    box.innerHTML = "";
+    progressEl.textContent = "";
+    return;
+  }
+  const g = groups.find((g) => g.id === currentGroupId);
+  const expected = g?.expected_participants || 0;
+
+  const { data: pRows } = await supabase.from("session_participants").select("*").eq("group_id", currentGroupId).order("created_at", { ascending: true });
+  const parts = pRows || [];
+
+  const { data: pcRows } = await supabase
+    .from("session_participant_cards")
+    .select("*")
+    .in("participant_id", parts.length > 0 ? parts.map((p) => p.id) : ["00000000-0000-0000-0000-000000000000"]);
+  const choicesMap = {};
+  (pcRows || []).forEach((r) => {
+    if (!choicesMap[r.participant_id]) choicesMap[r.participant_id] = [];
+    choicesMap[r.participant_id].push(r.card_id);
+  });
+
+  const submittedCount = parts.filter((p) => p.submitted_at).length;
+  progressEl.textContent = `${submittedCount} / ${expected} au ales`;
+  progressEl.style.color = expected > 0 && submittedCount >= expected ? "var(--green)" : "var(--ink)";
+
+  box.innerHTML = "";
+  if (parts.length === 0) {
+    box.innerHTML = `<p style="font-size:13px; color:var(--grey); margin:0;">Niciun cursant nu s-a alăturat încă acestei grupe.</p>`;
+    return;
+  }
+  parts.forEach((p, idx) => {
+    const cardIds = choicesMap[p.id] || [];
+    const titles = cardIds.map((id) => deckCards.find((c) => c.id === id)?.title).filter(Boolean).join(", ");
+    const row = document.createElement("div");
+    row.className = "panel";
+    row.style.cssText = "padding:10px 14px; margin:0; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;";
+    row.innerHTML = `
+      <strong>Cursant ${idx + 1}</strong>
+      <span style="font-size:13px; color:${p.submitted_at ? "var(--green)" : "var(--grey)"};">
+        ${p.submitted_at ? `✓ A ales: ${escapeHtml(titles) || "—"}` : "…încă alege"}
+      </span>
+    `;
+    box.appendChild(row);
+  });
+}
+
+// actualizare live a progresului, indiferent cine scrie (admin nu trebuie sa dea refresh manual)
+supabase
+  .channel("selection-progress-watch")
+  .on("postgres_changes", { event: "*", schema: "public", table: "session_participants" }, () => {
+    if (isSelectionGame() && currentGroupId) loadSelectionParticipants();
+    if (isSelectionGame()) loadSelectionGroupsOverview();
+  })
+  .on("postgres_changes", { event: "*", schema: "public", table: "session_participant_cards" }, () => {
+    if (isSelectionGame() && currentGroupId) loadSelectionParticipants();
+    if (isSelectionGame()) loadSelectionGroupsOverview();
+  })
+  .subscribe();
+
+// plasa de siguranta: reverifica progresul periodic, indiferent daca abonarea live de mai sus
+// functioneaza sau nu (conexiuni WebSocket instabile, tab-uri lasate deschise mult timp etc.)
+setInterval(() => {
+  if (currentSession && isSelectionGame()) {
+    loadSelectionGroupsOverview();
+    if (currentGroupId) loadSelectionParticipants();
+  }
+}, 5000);
+
+// ---------- PREZENTA (mod Standard): cati au deschis linkul, din cati sunt asteptati ----------
+async function loadPresence() {
+  const el = $("presence-indicator");
+  if (!currentGroupId) {
+    el.style.display = "none";
+    return;
+  }
+  const g = groups.find((g) => g.id === currentGroupId);
+  const expected = g?.expected_participants;
+  if (!expected) {
+    el.style.display = "none"; // trainerul nu a completat cate sunt asteptati - indicatorul nu are sens
+    return;
+  }
+  const { data } = await supabase.from("session_participants").select("id").eq("group_id", currentGroupId);
+  const present = (data || []).length;
+  el.style.display = "block";
+  el.textContent = `👤 Prezență: ${present} / ${expected}`;
+  el.style.color = present >= expected ? "var(--green)" : "var(--ink)";
+}
+
+supabase
+  .channel("presence-watch")
+  .on("postgres_changes", { event: "*", schema: "public", table: "session_participants" }, () => {
+    if (!isColourblindGame() && !isSelectionGame() && currentGroupId) loadPresence();
+  })
+  .subscribe();
+
+// avertisment nativ de browser daca trainerul incearca sa inchida/reincarce pagina
+// cat timp are o sesiune activa (nu impiedica inchiderea, doar cere confirmare)
+window.addEventListener("beforeunload", (e) => {
+  if (currentSession) {
+    e.preventDefault();
+    e.returnValue = ""; // necesar pentru Chrome; textul afisat e mereu cel generic al browserului
+  }
 });
 
 checkAuth();
