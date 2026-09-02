@@ -879,6 +879,7 @@ async function endSession() {
   refreshDeckLockState();
 }
 $("end-session-btn").addEventListener("click", endSession);
+$("end-session-btn-tabs").addEventListener("click", endSession);
 
 function groupLink(code) {
   // functioneaza indiferent daca adresa curenta contine "admin.html" sau doar "admin" (URL curat, fara extensie)
@@ -1237,6 +1238,7 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
+    $("end-session-btn-tabs").style.display = "inline-block";
     // Standard = grila de carduri conteaza, ii dam toata latimea (o coloana).
     // Colourblind/Selectie = trainerul nu vede/nu da click pe carduri aici, doua coloane compacte au sens.
     $("sessions-grid-wrap").classList.toggle("two-col", isColourblindGame() || isSelectionGame());
@@ -1255,6 +1257,7 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "block";
     $("active-session-box").style.display = "none";
     $("control-panel").style.display = "none";
+    $("end-session-btn-tabs").style.display = "none";
     $("sessions-grid-wrap").classList.remove("two-col");
     if (timerInterval) {
       clearInterval(timerInterval);
