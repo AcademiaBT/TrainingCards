@@ -65,10 +65,7 @@
     <div id="view-sessions">
     <div id="sessions-grid-wrap">
     <div class="panel" id="control-panel" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:6px;">
-        <h3 style="margin:0;">Control carduri (sesiune live)</h3>
-        <button class="btn danger" id="end-session-btn-top">Încheie sesiunea (toate grupele)</button>
-      </div>
+      <h3 style="margin:0 0 6px;">Control carduri (sesiune live)</h3>
       <p style="font-size:13px; color:var(--grey);" id="control-panel-hint">Click pe un card pentru a-l evidenția la grupa selectată. Butonul „Permite răsturnarea” activează flip-ul pentru acel card, doar la această grupă.</p>
       <div id="group-tabs" style="display:flex; gap:8px; margin:12px 0; flex-wrap:wrap;"></div>
 
@@ -139,30 +136,38 @@
           Alege câte grupe vrei și câte carduri primește fiecare.
         </p>
 
-        <div id="standard-group-fields">
-          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr de grupe</label>
-          <input id="num-groups" type="number" min="1" value="4" style="width:100px;" />
+        <div class="form-two-col">
+          <div>
+            <div id="standard-group-fields">
+              <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr de grupe</label>
+              <input id="num-groups" type="number" min="1" value="4" style="width:100px;" />
 
-          <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Cursanți așteptați per grupă (opțional)</label>
-          <input id="expected-per-group" type="number" min="0" value="" placeholder="ex. 4" style="width:100px;" />
-          <p style="font-size:12px; color:var(--grey); margin:6px 0 0;">Dacă îl completezi, vezi live în panoul de control câți au deschis linkul din câți sunt așteptați. Lasă gol dacă nu vrei acest indicator.</p>
+              <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Cursanți așteptați per grupă (opțional)</label>
+              <input id="expected-per-group" type="number" min="0" value="" placeholder="ex. 4" style="width:100px;" />
+              <p style="font-size:12px; color:var(--grey); margin:6px 0 0;">Dacă îl completezi, vezi live în panoul de control câți au deschis linkul din câți sunt așteptați. Lasă gol dacă nu vrei acest indicator.</p>
+            </div>
+
+            <div id="selection-group-fields" style="display:none;">
+              <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr total de cursanți</label>
+              <input id="num-participants-total" type="number" min="2" value="9" style="width:100px;" />
+
+              <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Cursanți per grupă</label>
+              <input id="participants-per-group" type="number" min="2" value="3" style="width:100px;" />
+              <p id="selection-groups-preview" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
+            </div>
+          </div>
+
+          <div>
+            <div id="selection-max-choices-field" style="display:none;">
+              <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Carduri alese per cursant</label>
+              <input id="max-choices" type="number" min="1" value="1" style="width:100px;" />
+            </div>
+
+            <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;" id="cards-per-group-label">Carduri per grupă</label>
+            <input id="cards-per-group" type="number" min="1" style="width:100px;" />
+            <p id="deck-total-hint" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
+          </div>
         </div>
-
-        <div id="selection-group-fields" style="display:none;">
-          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr total de cursanți</label>
-          <input id="num-participants-total" type="number" min="2" value="9" style="width:100px;" />
-
-          <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Cursanți per grupă</label>
-          <input id="participants-per-group" type="number" min="2" value="3" style="width:100px;" />
-          <p id="selection-groups-preview" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
-
-          <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;">Carduri alese per cursant</label>
-          <input id="max-choices" type="number" min="1" value="1" style="width:100px;" />
-        </div>
-
-        <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 4px;" id="cards-per-group-label">Carduri per grupă</label>
-        <input id="cards-per-group" type="number" min="1" style="width:100px;" />
-        <p id="deck-total-hint" style="font-size:12px; color:var(--grey); margin:6px 0 0;"></p>
         <div class="error-msg" id="groups-error"></div>
 
         <label style="display:block; font-size:13px; font-weight:600; margin:16px 0 6px;">Cum se extrag cardurile?</label>
@@ -190,10 +195,7 @@
       </div>
 
       <div id="active-session-box" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <p style="font-size:14px; margin:0;">Sesiune activă: <span class="badge" id="session-code-badge"></span></p>
-          <button class="btn danger" id="end-session-btn">Încheie sesiunea (toate grupele)</button>
-        </div>
+        <button class="btn danger" id="end-session-btn">Încheie sesiunea</button>
 
         <button class="btn outline" id="toggle-groups-list-btn" style="margin-top:16px;">Arată linkurile și codurile QR ale grupelor ▾</button>
         <div id="groups-list" style="display:none; flex-direction:column; gap:12px; margin-top:14px;"></div>
@@ -222,8 +224,10 @@
             <p id="timer-status-label" style="font-size:12px; color:var(--grey); margin:2px 0 12px;"></p>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <button class="btn outline" id="timer-pause-btn">Pauză</button>
-              <input id="timer-extend-min" type="number" min="1" value="5" style="width:60px;" />
-              <span style="font-size:12px;">minute</span>
+              <input id="timer-extend-min" type="number" min="0" value="5" style="width:55px;" />
+              <span style="font-size:12px;">min</span>
+              <input id="timer-extend-sec" type="number" min="0" max="59" value="0" style="width:55px;" />
+              <span style="font-size:12px;">sec</span>
               <button class="btn outline" id="timer-extend-btn">Adaugă timp</button>
             </div>
           </div>

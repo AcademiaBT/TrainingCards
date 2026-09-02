@@ -398,7 +398,7 @@ async function refreshDeckLockState() {
   }
   const { data } = await supabase
     .from("training_sessions")
-    .select("admin_email, session_code")
+    .select("admin_email")
     .eq("status", "active")
     .eq("game_id", activeGameId)
     .eq("set_id", activeSetId);
@@ -879,7 +879,6 @@ async function endSession() {
   refreshDeckLockState();
 }
 $("end-session-btn").addEventListener("click", endSession);
-$("end-session-btn-top").addEventListener("click", endSession);
 
 function groupLink(code) {
   // functioneaza indiferent daca adresa curenta contine "admin.html" sau doar "admin" (URL curat, fara extensie)
@@ -930,8 +929,8 @@ function renderGroupsList() {
         <span>${link}</span>
         <button class="btn outline" data-copy style="padding:4px 10px; font-size:12px;">Copiază</button>
       </div>
-      <button class="btn outline" data-qr style="margin-top:8px; font-size:12px; padding:5px 10px;">Arată codul QR</button>
-      <div style="display:flex; gap:8px; margin-top:8px;">
+      <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+        <button class="btn outline" data-qr style="font-size:12px; padding:5px 10px;">Arată codul QR</button>
         <button class="btn outline" data-dl-png style="font-size:12px; padding:5px 10px;">⬇ Descarcă PNG</button>
         <button class="btn outline" data-dl-jpg style="font-size:12px; padding:5px 10px;">⬇ Descarcă JPG</button>
       </div>
@@ -1005,6 +1004,7 @@ function syncSessionCreationFields() {
   const sel = isSelectionGame();
   $("standard-group-fields").style.display = sel ? "none" : "block";
   $("selection-group-fields").style.display = sel ? "block" : "none";
+  $("selection-max-choices-field").style.display = sel ? "block" : "none";
   if (sel) updateSelectionGroupsPreview();
 }
 
@@ -1189,8 +1189,10 @@ $("timer-pause-btn").addEventListener("click", async () => {
 });
 
 $("timer-extend-btn").addEventListener("click", async () => {
-  const extraMin = Math.max(1, parseInt($("timer-extend-min").value, 10) || 0);
-  const extraSeconds = extraMin * 60;
+  const extraMin = Math.max(0, parseInt($("timer-extend-min").value, 10) || 0);
+  const extraSec = Math.max(0, parseInt($("timer-extend-sec").value, 10) || 0);
+  const extraSeconds = extraMin * 60 + extraSec;
+  if (extraSeconds <= 0) return;
   let update;
   if (currentSession.timer_status === "running") {
     const newRemaining = Math.round(liveRemaining(currentSession)) + extraSeconds;
@@ -1236,7 +1238,6 @@ async function renderSessionPanel() {
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
     $("sessions-grid-wrap").classList.add("two-col");
-    $("session-code-badge").textContent = currentSession.session_code;
     $("groups-list").style.display = "none";
     $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
     renderGroupsList();

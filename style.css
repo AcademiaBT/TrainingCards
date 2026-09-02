@@ -286,7 +286,15 @@ input, textarea, select {
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
+}
+.session-link-box span {
+  flex: 1 1 auto;
+  min-width: 0; /* permite linkului sa se ingusteze/desparta pe mai multe randuri, in loc sa impinga butonul */
   word-break: break-all;
+}
+.session-link-box button {
+  flex-shrink: 0; /* butonul "Copiaza" nu se mai comprima niciodata - textul ramane pe un singur rand */
+  white-space: nowrap;
 }
 
 #qr-canvas { border-radius: 8px; border: 1px solid var(--parchment-dark); }
@@ -540,5 +548,18 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
 @media (max-width: 900px) {
   #sessions-grid-wrap.two-col {
     grid-template-columns: 1fr; /* pe ecrane mai mici (inclusiv mobil), cele doua panouri cad intr-o singura coloana, cu scroll normal */
+  }
+}
+
+/* formularul de creare sesiune: coloana "cursanti" si coloana "carduri", una langa alta */
+.form-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .form-two-col {
+    grid-template-columns: 1fr;
   }
 }
