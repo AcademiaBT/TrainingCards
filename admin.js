@@ -1237,7 +1237,9 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
-    $("sessions-grid-wrap").classList.add("two-col");
+    // Standard = grila de carduri conteaza, ii dam toata latimea (o coloana).
+    // Colourblind/Selectie = trainerul nu vede/nu da click pe carduri aici, doua coloane compacte au sens.
+    $("sessions-grid-wrap").classList.toggle("two-col", isColourblindGame() || isSelectionGame());
     $("groups-list").style.display = "none";
     $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
     renderGroupsList();
