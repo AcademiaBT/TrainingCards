@@ -881,6 +881,13 @@ async function endSession() {
 $("end-session-btn-tabs").addEventListener("click", endSession);
 $("cancel-session-btn").addEventListener("click", endSession);
 
+$("layout-toggle-btn").addEventListener("click", () => {
+  const wantsTwoColNow = !$("sessions-grid-wrap").classList.contains("two-col");
+  localStorage.setItem("adminLayoutOverride", wantsTwoColNow ? "two" : "one");
+  $("sessions-grid-wrap").classList.toggle("two-col", wantsTwoColNow);
+  $("layout-toggle-btn").textContent = wantsTwoColNow ? "⇄ Vezi pe o coloană" : "⇄ Vezi pe două coloane";
+});
+
 function groupLink(code) {
   // functioneaza indiferent daca adresa curenta contine "admin.html" sau doar "admin" (URL curat, fara extensie)
   const path = location.pathname.replace(/admin(\.html)?$/, "index.html");
@@ -1243,11 +1250,17 @@ async function renderSessionPanel() {
     $("no-session-box").style.display = "none";
     $("active-session-box").style.display = "block";
     $("control-panel").style.display = "block";
-    // Standard = grila de carduri conteaza, ii dam toata latimea (o coloana).
-    // Colourblind/Selectie = trainerul nu vede/nu da click pe carduri aici, doua coloane compacte au sens.
-    $("sessions-grid-wrap").classList.toggle("two-col", isColourblindGame() || isSelectionGame());
+    // Format implicit, per mod: Standard = o coloana (grila de carduri conteaza, ii dam toata latimea).
+    // Colourblind/Selectie = doua coloane (nu se vede/nu se da click pe carduri aici).
+    // Trainerul poate suprascrie oricand cu butonul "⇄ Vezi pe...", alegerea ramane salvata local (browser).
+    const layoutOverride = localStorage.getItem("adminLayoutOverride"); // "one" | "two" | null
+    const defaultTwoCol = isColourblindGame() || isSelectionGame();
+    const wantTwoCol = layoutOverride ? layoutOverride === "two" : defaultTwoCol;
+    $("sessions-grid-wrap").classList.toggle("two-col", wantTwoCol);
+    $("layout-toggle-btn").style.display = "inline-block";
+    $("layout-toggle-btn").textContent = wantTwoCol ? "⇄ Vezi pe o coloană" : "⇄ Vezi pe două coloane";
     $("groups-list").style.display = "none";
-    $("toggle-groups-list-btn").textContent = `Arată linkurile și codurile QR ale grupelor (${groups.length}) ▾`;
+    $("toggle-groups-list-btn").textContent = `Linkuri & QR grupe (${groups.length}) ▾`;
     renderGroupsList();
     renderGroupTabs();
     syncGameModeUI();
@@ -1262,6 +1275,7 @@ async function renderSessionPanel() {
     $("active-session-box").style.display = "none";
     $("control-panel").style.display = "none";
     $("end-session-btn-tabs").style.display = "none";
+    $("layout-toggle-btn").style.display = "none";
     $("sessions-grid-wrap").classList.remove("two-col");
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -1274,7 +1288,7 @@ $("toggle-groups-list-btn").addEventListener("click", () => {
   const box = $("groups-list");
   const open = box.style.display !== "none";
   box.style.display = open ? "none" : "flex";
-  $("toggle-groups-list-btn").textContent = `${open ? "Arată" : "Ascunde"} linkurile și codurile QR ale grupelor (${groups.length}) ${open ? "▾" : "▴"}`;
+  $("toggle-groups-list-btn").textContent = `Linkuri & QR grupe (${groups.length}) ${open ? "▾" : "▴"}`;
 });
 
 let controlGroupCards = []; // cache local pentru grupa curent afisata in panoul de control (evita rebuild complet la fiecare click)
