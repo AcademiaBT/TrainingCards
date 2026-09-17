@@ -1179,6 +1179,7 @@ setInterval(() => {
   if (currentSession && isColourblindGame()) loadColourblindPanel();
 }, 5000);
 
+function isGenericGame() {
   const g = games.find((g) => g.id === activeGameId);
   return g && g.mode === "generic";
 }
