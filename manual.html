@@ -46,19 +46,21 @@
     <li><a href="#al-doilea-verso">Al doilea verso (cazuri excepționale)</a></li>
     <li><a href="#bulk-upload">Încărcare în bulk</a></li>
     <li><a href="#creare-standard">Creare sesiune — mod Standard</a></li>
-    <li><a href="#creare-colourblind">Creare sesiune — mod Colourblind</a></li>
+    <li><a href="#creare-generic">Creare sesiune — Joc generic</a></li>
     <li><a href="#creare-selectie">Creare sesiune — mod Selecție (Hardiness)</a></li>
     <li><a href="#linkuri-qr">Linkuri și coduri QR</a></li>
     <li><a href="#cronometru">Cronometrul sesiunii</a></li>
     <li><a href="#control-live">Control live: evidențiere și flip</a></li>
     <li><a href="#prezenta">Prezența cursanților (mod Standard)</a></li>
-    <li><a href="#live-colourblind">În timpul sesiunii — Colourblind</a></li>
+    <li><a href="#live-generic">În timpul sesiunii — Joc generic</a></li>
     <li><a href="#live-selectie">În timpul sesiunii — Selecție</a></li>
     <li><a href="#gestiune-manuala">Gestionarea manuală a cardurilor unei grupe</a></li>
     <li><a href="#zoom">Zoom pe imagini</a></li>
     <li><a href="#incheiere">Încheierea sesiunii</a></li>
     <li><a href="#pagina-cursant">Ce vede cursantul</a></li>
     <li><a href="#blocaje">Blocaje de siguranță</a></li>
+    <li><a href="#creare-colourblind-nou">Creare sesiune — mod Colourblind</a></li>
+    <li><a href="#live-colourblind-nou">În timpul sesiunii — Colourblind</a></li>
   </ol>
 </div>
 
@@ -75,8 +77,9 @@
 <p>La crearea sau editarea unui joc, alegi și <strong>tipul lui</strong> — aceasta e alegerea cea mai importantă, pentru că schimbă complet cum funcționează sesiunile pentru acel joc:</p>
 <ul>
   <li><strong>Standard</strong> — trainerul evidențiază carduri și activează răsturnarea, la nivel de grupă; toți membrii unei grupe văd același lucru</li>
-  <li><strong>Colourblind</strong> — fiecare participant dintr-o grupă primește propriul link, cu un set privat de carduri, invizibil colegilor lui</li>
+  <li><strong>Joc generic</strong> — fiecare participant dintr-o grupă primește propriul link, cu un set privat de carduri, invizibil colegilor lui</li>
   <li><strong>Selecție (Hardiness)</strong> — cursanții intră toți pe linkul comun al grupei și își aleg individual cardurile preferate dintr-un deck comun</li>
+  <li><strong>Colourblind</strong> — trainerul are 2 carduri secrete; toată echipa (o singură grupă, un singur link) discută verbal, fără să-și arate ecranele, și încearcă să le ghicească — vezi secțiunile 20-21</li>
 </ul>
 <div class="note">Opțiunile din liste sunt ordonate alfabetic. Dacă nu ai nicio alegere salvată dintr-o sesiune de lucru anterioară, listele pornesc pe „— Alege un joc —" / „— Alege un set —", fără să selecteze automat prima opțiune.</div>
 <p>Un joc nu poate fi șters cât timp mai conține seturi — șterge întâi seturile lui. Ștergerea unui set nu afectează cardurile din el: ele rămân în baza de date, doar fără set asignat.</p>
@@ -120,7 +123,7 @@
 </ul>
 <p>Apasă <strong>„Creează sesiune și generează grupe"</strong>.</p>
 
-<h2 id="creare-colourblind">7. Creare sesiune — mod Colourblind</h2>
+<h2 id="creare-generic">7. Creare sesiune — Joc generic</h2>
 <p>Formularul de creare arată identic cu cel de la Standard (număr de grupe, carduri per grupă, mod de extragere) — cardurile alocate aici formează „rezerva" grupei, din care vei împărți ulterior mâinile private ale participanților (secțiunea 13).</p>
 
 <h2 id="creare-selectie">8. Creare sesiune — mod Selecție (Hardiness)</h2>
@@ -135,7 +138,7 @@
 <div class="warn">Cronometrul sesiunii nu poate porni decât după ce <strong>toți</strong> cursanții, din <strong>toate</strong> grupele, și-au ales cardurile — vezi secțiunea 10.</div>
 
 <h2 id="linkuri-qr">9. Linkuri și coduri QR</h2>
-<p>Fiecare grupă primește <strong>propriul link</strong> și <strong>propriul cod QR</strong> (folosit la toate cele trei moduri — la Colourblind, participanții individuali primesc, în plus, linkuri separate ale lor, vezi secțiunea 13). Lista de grupe e restrânsă implicit — apasă <strong>„Linkuri & QR grupe"</strong> pentru a o deschide.</p>
+<p>Fiecare grupă primește <strong>propriul link</strong> și <strong>propriul cod QR</strong> (folosit la modurile Standard, Selecție și Joc generic — la Joc generic, participanții individuali primesc, în plus, linkuri separate ale lor, vezi secțiunea 13; Colourblind are un link unic, propriu, vezi secțiunea 20). Lista de grupe e restrânsă implicit — apasă <strong>„Linkuri & QR grupe"</strong> pentru a o deschide.</p>
 <p>Pentru fiecare grupă poți: <strong>copia</strong> linkul, <strong>afișa</strong> codul QR direct în pagină, sau <strong>descărca</strong> o versiune PNG/JPG la rezoluție mare (600×600px), potrivită pentru afișare pe un ecran separat sau pentru print.</p>
 
 <h2 id="cronometru">10. Cronometrul sesiunii</h2>
@@ -153,19 +156,19 @@
 
 <h2 id="control-live">11. Control live: evidențiere și flip</h2>
 <p>Panoul „Control carduri (sesiune live)" are câte un <strong>tab pentru fiecare grupă</strong>. Selectezi o grupă, iar acțiunile de mai jos se aplică <em>doar</em> ei, cu excepția celor marcate explicit „Toate grupele".</p>
-<p>Comutatoarele de flip apar la modurile <strong>Standard</strong> și <strong>Selecție</strong> (nu la Colourblind, unde nu există flip):</p>
+<p>Comutatoarele de flip apar la modurile <strong>Standard</strong> și <strong>Selecție</strong> (nu la Joc generic sau Colourblind, unde nu există flip):</p>
 <ul>
   <li><strong>Grupa curentă</strong> — un comutator (on/off) care activează sau dezactivează flip-ul pe tot deck-ul grupei selectate, plus butonul „Dezactivează și întoarce la față"</li>
   <li><strong>Toate grupele</strong> — același comutator, dar aplicat simultan tuturor grupelor din sesiune</li>
 </ul>
 <p>Cele două comutatoare rămân sincronizate cu realitatea: dacă activezi flip pe fiecare grupă în parte și ajungi să le activezi pe toate, comutatorul „Toate grupele" se aprinde singur; dacă dezactivezi flip pe măcar o grupă, comutatorul „Toate grupele" se stinge.</p>
 <p>La modul <strong>Standard</strong>, mai poți: da click pe un card pentru a-l evidenția live la grupa selectată (contur verde pulsatoriu, vizibil pe orice fundal).</p>
-<p>Lângă tab-urile de sus, cât timp ai o sesiune activă, apare și butonul <strong>„⇄ Vezi pe o coloană / pe două coloane"</strong> — schimbă pe loc așezarea ecranului (o singură coloană lată, sau două mai compacte). Implicit, Standard pornește pe o coloană (mai mult spațiu pentru grila de carduri), iar Colourblind/Selecție pornesc pe două — dar poți suprascrie oricând cu acest buton; alegerea ta rămâne salvată în acest browser, pentru orice sesiune viitoare.</p>
+<p>Lângă tab-urile de sus, cât timp ai o sesiune activă, apare și butonul <strong>„⇄ Vezi pe o coloană / pe două coloane"</strong> — schimbă pe loc așezarea ecranului (o singură coloană lată, sau două mai compacte). Implicit, Standard pornește pe o coloană (mai mult spațiu pentru grila de carduri), iar Joc generic/Selecție/Colourblind pornesc pe două — dar poți suprascrie oricând cu acest buton; alegerea ta rămâne salvată în acest browser, pentru orice sesiune viitoare.</p>
 
 <h2 id="prezenta">12. Prezența cursanților (mod Standard)</h2>
 <p>Dacă ai completat „Cursanți așteptați per grupă" la crearea sesiunii, în panoul de control apare un indicator live: <strong>„👤 Prezență: 3 / 4"</strong>. Fiecare cursant care deschide linkul grupei primește, invizibil, un id salvat local în browser-ul lui (o singură dată — refresh-ul nu mai creează unul nou), ceea ce permite acest număr live.</p>
 
-<h2 id="live-colourblind">13. În timpul sesiunii — Colourblind</h2>
+<h2 id="live-generic">13. În timpul sesiunii — Joc generic</h2>
 <p>Pentru grupa selectată, panoul arată:</p>
 <ul>
   <li><strong>Participanți</strong> — adaugi oameni, fiecare primește propriul link</li>
@@ -198,8 +201,9 @@
 
 <h2 id="pagina-cursant">18. Ce vede cursantul</h2>
 <p><strong>Mod Standard:</strong> numele grupei (afișat permanent), cardurile alocate grupei lui, cu forma reală a imaginii; la click pe un card cu flip activat, animație 3D de răsturnare; derulare automată la cardul evidențiat de trainer.</p>
-<p><strong>Mod Colourblind:</strong> participantul intră pe linkul lui personal și vede doar mâna lui privată de carduri — invizibile celorlalți din grupă. După dezvăluirea soluției, apare live secțiunea cu tiparul-țintă complet.</p>
+<p><strong>Joc generic:</strong> participantul intră pe linkul lui personal și vede doar mâna lui privată de carduri — invizibile celorlalți din grupă. După dezvăluirea soluției, apare live secțiunea cu tiparul-țintă complet.</p>
 <p><strong>Mod Selecție:</strong> cursantul intră pe linkul comun al grupei, vede tot deck-ul comun, bifează până la N carduri și apasă <strong>„Am ales"</strong> (buton fix pe ecran, mereu vizibil, indiferent cât derulează). După ce apasă, îi rămân vizibile doar cardurile alese de el; când toată grupa a terminat, i se arată live uniunea cardurilor alese de toată echipa.</p>
+<p><strong>Mod Colourblind:</strong> participantul își alege un alias (nu email) pe linkul unic al echipei și așteaptă — vede mesajul „sesiunea nu a început încă" — până când trainerul pornește sesiunea. Din acel moment, își vede propriile carduri, complet (formă și culoare), plus orice card al trainerului pe care acesta îl dezvăluie, live, pe rând. La finalul rundei, „marele reveal" îi arată dintr-o privire cine a avut ce, în toată echipa. Detalii complete la secțiunile 20-21.</p>
 <p>Cursanții nu au nevoie de cont — intră direct pe link. Sincronizarea funcționează și pe rețele care blochează WebSocket-uri, printr-un mecanism automat de verificare periodică.</p>
 
 <h2 id="blocaje">19. Blocaje de siguranță</h2>
@@ -207,6 +211,24 @@
   <li><strong>Deck blocat</strong> — editarea cardurilor dintr-o combinație (joc + set) se dezactivează cât timp există o sesiune activă care folosește exact acea combinație, indiferent care trainer a creat-o. Mesajul afișat arată exact cine are sesiunea deschisă.</li>
   <li><strong>Selector blocat</strong> — cât timp ai propria sesiune activă, nu poți schimba jocul sau setul ales, ca să nu ajungă accidental carduri din alt set în sesiunea live.</li>
 </ul>
+
+<h2 id="creare-colourblind-nou">20. Creare sesiune — mod Colourblind</h2>
+<p>Mecanica: tu (trainerul) ai <strong>2 carduri secrete</strong>, alese aleatoriu. Toată echipa — o singură grupă, un singur link, fără sub-grupe — discută <strong>doar verbal, fără să-și arate ecranele</strong>, descriind unii altora propriile carduri, și încearcă să ghicească cele 2 ale tale.</p>
+<p>Formularul de creare e minimal — nu alegi grupe, nici carduri per grupă:</p>
+<ul>
+  <li>Deck-ul folosește automat <strong>toate seturile</strong> jocului „Colourblind" (nu doar setul selectat sus în pagină) — ai nevoie de cel puțin 3 carduri, în total, pe toate seturile</li>
+  <li>2 carduri sunt alese aleatoriu pentru tine, chiar la creare</li>
+  <li>Apeși <strong>„Creează sesiunea Colourblind"</strong> — primești imediat linkul unic al echipei (secțiunea 9 descrie linkurile per-grupă; aici e un singur link, afișat similar, cu QR și descărcare)</li>
+</ul>
+<div class="note">Nu există câmp pentru „număr de grupe" sau „carduri per grupă" la acest mod — nu au sens, fiindcă nu există sub-grupe și deck-ul e fix, cel al jocului întreg.</div>
+
+<h2 id="live-colourblind-nou">21. În timpul sesiunii — Colourblind</h2>
+<p><strong>Înainte de „Pornește sesiunea":</strong> cursanții își aleg alias-ul (text liber, fără email) pe linkul echipei și apar, live, în lista de participanți — dar nimeni nu vede încă niciun card. Panoul tău arată câți s-au alăturat până acum.</p>
+<p><strong>Cardurile tale</strong> apar sus, cu un buton <strong>„Dezvăluie"</strong> pentru fiecare — poți arăta una, alta, sau ambele, în orice ordine, în orice moment al rundei; o dată dezvăluit, un card rămâne vizibil tuturor participanților (nu poți „ascunde" înapoi).</p>
+<p>Apeși <strong>„Pornește sesiunea"</strong> când vrei să înceapă — din acel moment, restul cardurilor din deck (minus cele 2 ale tale) se împart automat între cei alăturați până în acel moment: <strong>cât mai egal ca număr</strong>, dar <strong>ce anume</strong> primește fiecare e aleatoriu. Cei care se alătură <em>după</em> acest moment nu mai primesc carduri la runda curentă.</p>
+<p>Lista de participanți arată, live, alias-ul fiecăruia și thumbnail-urile cardurilor lui (click pentru zoom) — util ca să urmărești ce anume are fiecare, cât echipa discută verbal.</p>
+<p>La final, <strong>„🎉 Marele reveal"</strong> (ireversibil) arată tuturor cursanților, dintr-o privire, exact ce vezi și tu: cine a avut ce, plus cele 2 carduri ale tale, indiferent dacă le-ai dezvăluit deja pe toate sau nu.</p>
+<div class="note">O singură rundă per sesiune — cardurile se împart o dată; pentru o rundă nouă, încheie sesiunea și creează una nouă.</div>
 </main>
 </body>
 </html>
