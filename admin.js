@@ -248,20 +248,132 @@ async function showAdmin() {
   await loadActiveSession();
 }
 
-// ---------- TAB-URI: Sesiuni vs Deck ----------
+// ---------- TAB-URI: Sesiuni vs Deck vs Statistici ----------
 $("tab-sessions-btn").addEventListener("click", () => {
   $("view-sessions").style.display = "block";
   $("view-deck").style.display = "none";
+  $("view-stats").style.display = "none";
   $("tab-sessions-btn").className = "btn gold";
   $("tab-deck-btn").className = "btn outline";
+  $("tab-stats-btn").className = "btn outline";
 });
 $("tab-deck-btn").addEventListener("click", async () => {
   $("view-sessions").style.display = "none";
   $("view-deck").style.display = "block";
+  $("view-stats").style.display = "none";
   $("tab-deck-btn").className = "btn gold";
   $("tab-sessions-btn").className = "btn outline";
+  $("tab-stats-btn").className = "btn outline";
   await refreshDeckLockState(); // verificare proaspata la intrarea pe tab
 });
+$("tab-stats-btn").addEventListener("click", async () => {
+  $("view-sessions").style.display = "none";
+  $("view-deck").style.display = "none";
+  $("view-stats").style.display = "block";
+  $("tab-stats-btn").className = "btn gold";
+  $("tab-sessions-btn").className = "btn outline";
+  $("tab-deck-btn").className = "btn outline";
+  await loadSessionStats();
+});
+$("stats-refresh-btn").addEventListener("click", loadSessionStats);
+
+// ---------- STATISTICI: sesiuni create, pe trainer si joc ----------
+async function loadSessionStats() {
+  $("stats-loading").style.display = "block";
+  $("stats-empty").style.display = "none";
+  $("stats-table-wrap").innerHTML = "";
+
+  // games e deja incarcat global (lista tuturor jocurilor); il refolosim
+  // pentru numele coloanelor si ca sa includem si jocurile fara sesiuni inca.
+  const { data: rows, error } = await supabase
+    .from("training_sessions")
+    .select("admin_email, game_id");
+
+  $("stats-loading").style.display = "none";
+
+  if (error) {
+    $("stats-table-wrap").innerHTML = `<p style="color:var(--red); font-size:13px;">Eroare la încărcarea statisticilor: ${escapeHtml(error.message)}</p>`;
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    $("stats-empty").style.display = "block";
+    return;
+  }
+
+  const gameNameById = Object.fromEntries(games.map((g) => [g.id, g.name]));
+
+  // trainer -> game_id -> count
+  const byTrainer = new Map();
+  const gameIdsWithSessions = new Set();
+  for (const row of rows) {
+    const email = row.admin_email || "(email necunoscut)";
+    const gameId = row.game_id;
+    gameIdsWithSessions.add(gameId);
+    if (!byTrainer.has(email)) byTrainer.set(email, new Map());
+    const gameCounts = byTrainer.get(email);
+    gameCounts.set(gameId, (gameCounts.get(gameId) || 0) + 1);
+  }
+
+  // Coloane: jocurile curente (in ordinea din selector) + eventuale jocuri sterse ulterior,
+  // care mai apar totusi in sesiunile vechi.
+  const columnGameIds = [
+    ...games.map((g) => g.id),
+    ...[...gameIdsWithSessions].filter((id) => !gameNameById[id]),
+  ];
+
+  const trainers = [...byTrainer.keys()].sort((a, b) => a.localeCompare(b, "ro"));
+
+  const totalPerGame = Object.fromEntries(columnGameIds.map((id) => [id, 0]));
+  let grandTotal = 0;
+
+  const bodyRows = trainers.map((email) => {
+    const gameCounts = byTrainer.get(email);
+    let rowTotal = 0;
+    const cells = columnGameIds.map((gameId) => {
+      const count = gameCounts.get(gameId) || 0;
+      rowTotal += count;
+      totalPerGame[gameId] += count;
+      return `<td style="padding:8px 12px; text-align:center; border-bottom:1px solid var(--parchment-dark);">${count || "—"}</td>`;
+    });
+    grandTotal += rowTotal;
+    return `<tr>
+      <td style="padding:8px 12px; border-bottom:1px solid var(--parchment-dark); font-weight:600;">${escapeHtml(email)}</td>
+      ${cells.join("")}
+      <td style="padding:8px 12px; text-align:center; border-bottom:1px solid var(--parchment-dark); font-weight:700; color:var(--green);">${rowTotal}</td>
+    </tr>`;
+  });
+
+  const headerCells = columnGameIds
+    .map((id) => `<th style="padding:8px 12px; text-align:center; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">${escapeHtml(gameNameById[id] || "(joc șters)")}</th>`)
+    .join("");
+
+  const totalCells = columnGameIds
+    .map((id) => `<td style="padding:8px 12px; text-align:center; font-weight:700;">${totalPerGame[id]}</td>`)
+    .join("");
+
+  $("stats-table-wrap").innerHTML = `
+    <table style="border-collapse:collapse; width:100%; min-width:480px;">
+      <thead>
+        <tr>
+          <th style="padding:8px 12px; text-align:left; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">Trainer</th>
+          ${headerCells}
+          <th style="padding:8px 12px; text-align:center; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyRows.join("")}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td style="padding:8px 12px; font-weight:700;">Total</td>
+          ${totalCells}
+          <td style="padding:8px 12px; text-align:center; font-weight:700; color:var(--green);">${grandTotal}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
 
 // ---------- DECK ----------
 async function loadDeck() {

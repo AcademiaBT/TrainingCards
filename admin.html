@@ -60,6 +60,7 @@
     <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
       <button class="btn gold" id="tab-sessions-btn">Sesiuni & Control live</button>
       <button class="btn outline" id="tab-deck-btn">Administrare carduri</button>
+      <button class="btn outline" id="tab-stats-btn">Statistici</button>
       <button class="btn outline" id="layout-toggle-btn" style="display:none;">⇄ Vezi pe o coloană</button>
       <button class="btn danger" id="end-session-btn-tabs" style="display:none;">Încheie sesiunea</button>
     </div>
@@ -304,6 +305,19 @@
         <button class="btn danger" id="bulk-delete-btn" disabled>Șterge selectate (<span id="selected-count">0</span>)</button>
       </div>
       <div class="card-grid" id="deck-grid"></div>
+    </div>
+    </div>
+
+    <div id="view-stats" style="display:none;">
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0;">Sesiuni create, pe trainer și joc</h3>
+        <button class="btn outline" id="stats-refresh-btn">↻ Reîmprospătează</button>
+      </div>
+      <p style="font-size:13px; color:var(--grey); margin:0 0 16px;">Numărul de sesiuni create de fiecare trainer, defalcat pe fiecare joc de training (toate modurile de joc, inclusiv cele încheiate).</p>
+      <div id="stats-loading" style="font-size:13px; color:var(--grey);">Se încarcă...</div>
+      <div id="stats-empty" style="display:none; font-size:13px; color:var(--grey);">Nu există încă nicio sesiune creată.</div>
+      <div id="stats-table-wrap" style="overflow-x:auto;"></div>
     </div>
     </div>
   </main>
