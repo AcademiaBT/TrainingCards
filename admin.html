@@ -60,7 +60,6 @@
     <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
       <button class="btn gold" id="tab-sessions-btn">Sesiuni & Control live</button>
       <button class="btn outline" id="tab-deck-btn">Administrare carduri</button>
-      <button class="btn outline" id="tab-stats-btn">Statistici</button>
       <button class="btn outline" id="layout-toggle-btn" style="display:none;">⇄ Vezi pe o coloană</button>
       <button class="btn danger" id="end-session-btn-tabs" style="display:none;">Încheie sesiunea</button>
     </div>
@@ -138,7 +137,10 @@
           <p style="font-size:13px; color:var(--grey); margin:0 0 10px;">Participanții își aleg alias-ul pe link și așteaptă, fără să vadă vreun card, până apeși „Pornește sesiunea". După asta, cardurile se împart automat, cât mai egal, între cei care s-au alăturat până în acel moment.</p>
           <p id="cbn-participants-count-pre" style="font-size:13px; font-weight:600; margin:0 0 10px;"></p>
           <div class="error-msg" id="cbn-start-error"></div>
-          <button class="btn gold" id="cbn-start-btn">Pornește sesiunea</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn gold" id="cbn-start-btn">Pornește sesiunea</button>
+            <button class="btn outline" id="cbn-cancel-session-btn" style="border-color:var(--red); color:var(--red);">Anulează sesiunea</button>
+          </div>
         </div>
 
         <div id="cbn-started-box" style="display:none;">
@@ -223,6 +225,9 @@
           <p style="font-size:13px; color:var(--grey); margin-bottom:16px;">
             Se creează un singur link, comun pentru toată echipa. Deck-ul folosește automat cardurile din <strong>toate seturile</strong> jocului „Colourblind" (nu doar setul selectat sus) — ai nevoie de cel puțin 3 carduri în total (2 pentru tine, minimum 1 pentru participanți).
           </p>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Număr de cursanți (opțional)</label>
+          <input id="cbn-expected-participants" type="number" min="0" value="0" style="width:100px;" />
+          <p style="font-size:12px; color:var(--grey); margin:6px 0 16px;">Dacă pui un număr &gt; 0, vezi live câți s-au alăturat din câți sunt așteptați, ca la Selecție. Lasă pe 0 dacă vrei doar să împarți cardurile la toți cei intrați până apeși „Pornește sesiunea", indiferent câți sunt.</p>
           <div class="error-msg" id="cbn-create-error"></div>
           <button class="btn gold" id="cbn-create-session-btn">Creează sesiunea Colourblind</button>
         </div>
@@ -305,19 +310,6 @@
         <button class="btn danger" id="bulk-delete-btn" disabled>Șterge selectate (<span id="selected-count">0</span>)</button>
       </div>
       <div class="card-grid" id="deck-grid"></div>
-    </div>
-    </div>
-
-    <div id="view-stats" style="display:none;">
-    <div class="panel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
-        <h3 style="margin:0;">Sesiuni create, pe trainer și joc</h3>
-        <button class="btn outline" id="stats-refresh-btn">↻ Reîmprospătează</button>
-      </div>
-      <p style="font-size:13px; color:var(--grey); margin:0 0 16px;">Numărul de sesiuni create de fiecare trainer, defalcat pe fiecare joc de training (toate modurile de joc, inclusiv cele încheiate).</p>
-      <div id="stats-loading" style="font-size:13px; color:var(--grey);">Se încarcă...</div>
-      <div id="stats-empty" style="display:none; font-size:13px; color:var(--grey);">Nu există încă nicio sesiune creată.</div>
-      <div id="stats-table-wrap" style="overflow-x:auto;"></div>
     </div>
     </div>
   </main>

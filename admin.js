@@ -248,132 +248,20 @@ async function showAdmin() {
   await loadActiveSession();
 }
 
-// ---------- TAB-URI: Sesiuni vs Deck vs Statistici ----------
+// ---------- TAB-URI: Sesiuni vs Deck ----------
 $("tab-sessions-btn").addEventListener("click", () => {
   $("view-sessions").style.display = "block";
   $("view-deck").style.display = "none";
-  $("view-stats").style.display = "none";
   $("tab-sessions-btn").className = "btn gold";
   $("tab-deck-btn").className = "btn outline";
-  $("tab-stats-btn").className = "btn outline";
 });
 $("tab-deck-btn").addEventListener("click", async () => {
   $("view-sessions").style.display = "none";
   $("view-deck").style.display = "block";
-  $("view-stats").style.display = "none";
   $("tab-deck-btn").className = "btn gold";
   $("tab-sessions-btn").className = "btn outline";
-  $("tab-stats-btn").className = "btn outline";
   await refreshDeckLockState(); // verificare proaspata la intrarea pe tab
 });
-$("tab-stats-btn").addEventListener("click", async () => {
-  $("view-sessions").style.display = "none";
-  $("view-deck").style.display = "none";
-  $("view-stats").style.display = "block";
-  $("tab-stats-btn").className = "btn gold";
-  $("tab-sessions-btn").className = "btn outline";
-  $("tab-deck-btn").className = "btn outline";
-  await loadSessionStats();
-});
-$("stats-refresh-btn").addEventListener("click", loadSessionStats);
-
-// ---------- STATISTICI: sesiuni create, pe trainer si joc ----------
-async function loadSessionStats() {
-  $("stats-loading").style.display = "block";
-  $("stats-empty").style.display = "none";
-  $("stats-table-wrap").innerHTML = "";
-
-  // games e deja incarcat global (lista tuturor jocurilor); il refolosim
-  // pentru numele coloanelor si ca sa includem si jocurile fara sesiuni inca.
-  const { data: rows, error } = await supabase
-    .from("training_sessions")
-    .select("admin_email, game_id");
-
-  $("stats-loading").style.display = "none";
-
-  if (error) {
-    $("stats-table-wrap").innerHTML = `<p style="color:var(--red); font-size:13px;">Eroare la încărcarea statisticilor: ${escapeHtml(error.message)}</p>`;
-    return;
-  }
-
-  if (!rows || rows.length === 0) {
-    $("stats-empty").style.display = "block";
-    return;
-  }
-
-  const gameNameById = Object.fromEntries(games.map((g) => [g.id, g.name]));
-
-  // trainer -> game_id -> count
-  const byTrainer = new Map();
-  const gameIdsWithSessions = new Set();
-  for (const row of rows) {
-    const email = row.admin_email || "(email necunoscut)";
-    const gameId = row.game_id;
-    gameIdsWithSessions.add(gameId);
-    if (!byTrainer.has(email)) byTrainer.set(email, new Map());
-    const gameCounts = byTrainer.get(email);
-    gameCounts.set(gameId, (gameCounts.get(gameId) || 0) + 1);
-  }
-
-  // Coloane: jocurile curente (in ordinea din selector) + eventuale jocuri sterse ulterior,
-  // care mai apar totusi in sesiunile vechi.
-  const columnGameIds = [
-    ...games.map((g) => g.id),
-    ...[...gameIdsWithSessions].filter((id) => !gameNameById[id]),
-  ];
-
-  const trainers = [...byTrainer.keys()].sort((a, b) => a.localeCompare(b, "ro"));
-
-  const totalPerGame = Object.fromEntries(columnGameIds.map((id) => [id, 0]));
-  let grandTotal = 0;
-
-  const bodyRows = trainers.map((email) => {
-    const gameCounts = byTrainer.get(email);
-    let rowTotal = 0;
-    const cells = columnGameIds.map((gameId) => {
-      const count = gameCounts.get(gameId) || 0;
-      rowTotal += count;
-      totalPerGame[gameId] += count;
-      return `<td style="padding:8px 12px; text-align:center; border-bottom:1px solid var(--parchment-dark);">${count || "—"}</td>`;
-    });
-    grandTotal += rowTotal;
-    return `<tr>
-      <td style="padding:8px 12px; border-bottom:1px solid var(--parchment-dark); font-weight:600;">${escapeHtml(email)}</td>
-      ${cells.join("")}
-      <td style="padding:8px 12px; text-align:center; border-bottom:1px solid var(--parchment-dark); font-weight:700; color:var(--green);">${rowTotal}</td>
-    </tr>`;
-  });
-
-  const headerCells = columnGameIds
-    .map((id) => `<th style="padding:8px 12px; text-align:center; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">${escapeHtml(gameNameById[id] || "(joc șters)")}</th>`)
-    .join("");
-
-  const totalCells = columnGameIds
-    .map((id) => `<td style="padding:8px 12px; text-align:center; font-weight:700;">${totalPerGame[id]}</td>`)
-    .join("");
-
-  $("stats-table-wrap").innerHTML = `
-    <table style="border-collapse:collapse; width:100%; min-width:480px;">
-      <thead>
-        <tr>
-          <th style="padding:8px 12px; text-align:left; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">Trainer</th>
-          ${headerCells}
-          <th style="padding:8px 12px; text-align:center; font-size:12px; color:var(--grey); border-bottom:2px solid var(--parchment-dark);">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${bodyRows.join("")}
-      </tbody>
-      <tfoot>
-        <tr>
-          <td style="padding:8px 12px; font-weight:700;">Total</td>
-          ${totalCells}
-          <td style="padding:8px 12px; text-align:center; font-weight:700; color:var(--green);">${grandTotal}</td>
-        </tr>
-      </tfoot>
-    </table>
-  `;
-}
 
 // ---------- DECK ----------
 async function loadDeck() {
@@ -992,6 +880,7 @@ async function endSession() {
 }
 $("end-session-btn-tabs").addEventListener("click", endSession);
 $("cancel-session-btn").addEventListener("click", endSession);
+$("cbn-cancel-session-btn").addEventListener("click", endSession);
 
 $("layout-toggle-btn").addEventListener("click", () => {
   const wantsTwoColNow = !$("sessions-grid-wrap").classList.contains("two-col");
@@ -1134,11 +1023,19 @@ async function createColourblindSession() {
     const shuffled = shuffle(allCards);
     const trainerCards = shuffled.slice(0, 2);
 
+    const expectedParticipants = Math.max(0, parseInt($("cbn-expected-participants").value, 10) || 0);
     const { data: { user } } = await supabase.auth.getUser();
     const code = randomCode();
     const { data: sessionRow, error: sessErr } = await supabase
       .from("training_sessions")
-      .insert({ session_code: code, game_id: activeGameId, set_id: null, admin_email: user.email, status: "active" })
+      .insert({
+        session_code: code,
+        game_id: activeGameId,
+        set_id: null,
+        admin_email: user.email,
+        status: "active",
+        cb_expected_participants: expectedParticipants,
+      })
       .select()
       .single();
     if (sessErr) throw sessErr;
@@ -1182,17 +1079,36 @@ async function loadColourblindPanel() {
     .select("*")
     .in("participant_id", partIds.length > 0 ? partIds : ["00000000-0000-0000-0000-000000000000"]);
 
+  // aducem cardurile direct din baza de date, dupa id - "deckCards" (folosit in alte tab-uri) e populat
+  // doar din setul selectat sus, iar la Colourblind nu se alege niciun set (deck-ul acopera toate seturile),
+  // deci deckCards ar ramane gol si cardurile trainerului/participantilor n-ar mai fi gasite.
+  const cbAllCardIds = [
+    ...new Set([...(trainerCardRows || []).map((r) => r.card_id), ...(pcRows || []).map((r) => r.card_id)]),
+  ];
+  const cbCardsMap = {};
+  if (cbAllCardIds.length > 0) {
+    const { data: cbCardData } = await supabase.from("cards").select("*").in("id", cbAllCardIds);
+    (cbCardData || []).forEach((c) => (cbCardsMap[c.id] = c));
+  }
+
   const started = !!currentSession.cb_started_at;
   $("cbn-not-started-box").style.display = started ? "none" : "block";
   $("cbn-started-box").style.display = started ? "block" : "none";
-  $("cbn-participants-count-pre").textContent = `${parts.length} participant${parts.length === 1 ? "" : "i"} s-au alăturat până acum.`;
+  $("end-session-btn-tabs").style.display = started ? "inline-block" : "none";
+
+  const expected = currentSession.cb_expected_participants || 0;
+  const preText =
+    expected > 0
+      ? `${parts.length} / ${expected} cursanți s-au alăturat până acum.`
+      : `${parts.length} participant${parts.length === 1 ? "" : "i"} s-au alăturat până acum.`;
+  $("cbn-participants-count-pre").textContent = preText;
   $("cbn-participants-count").textContent = `${parts.length} participant${parts.length === 1 ? "" : "i"}`;
 
   // cardurile trainerului
   const tcBox = $("cbn-trainer-cards");
   tcBox.innerHTML = "";
   (trainerCardRows || []).forEach((tc) => {
-    const card = deckCards.find((c) => c.id === tc.card_id) || { title: "?", front_image_url: "" };
+    const card = cbCardsMap[tc.card_id] || { title: "?", front_image_url: "" };
     const revealed = !!tc.revealed_at;
     const wrap = document.createElement("div");
     wrap.style.cssText = "width:140px; text-align:center;";
@@ -1221,7 +1137,7 @@ async function loadColourblindPanel() {
     const myCardIds = (pcRows || []).filter((r) => r.participant_id === p.id).map((r) => r.card_id);
     const thumbsHtml = myCardIds
       .map((cid) => {
-        const c = deckCards.find((cc) => cc.id === cid);
+        const c = cbCardsMap[cid];
         return c ? `<img src="${c.front_image_url}" title="${escapeHtml(c.title)}" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid var(--parchment-dark); cursor:zoom-in;" data-zoom-card="${c.front_image_url}" />` : "";
       })
       .join("");
@@ -1602,8 +1518,6 @@ async function renderSessionPanel() {
     if (cbn) {
       renderCbnLink();
       await loadColourblindPanel();
-      $("end-session-btn-tabs").style.display = currentSession.cb_started_at ? "inline-block" : "none";
-      $("cancel-session-btn").style.display = currentSession.cb_started_at ? "none" : "inline-block";
     } else {
       $("groups-list").style.display = "none";
       $("toggle-groups-list-btn").textContent = `Linkuri & QR grupe (${groups.length}) ▾`;
