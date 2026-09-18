@@ -480,6 +480,27 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   }
 }
 
+/* Colourblind: panoul evidentiat cu cardurile dezvaluite de trainer - ascuns cat timp nu s-a dezvaluit nimic */
+.trainer-reveal-panel {
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+  border-radius: 16px;
+  padding: 18px 20px 22px;
+  margin: 0 auto 28px;
+  max-width: 480px;
+}
+/* 1-2 carduri, mereu centrate, indiferent de layout-ul grid folosit de restul grilelor Colourblind mai sus */
+#cb-main #cb-trainer-reveal-grid { display: flex; flex-wrap: wrap; justify-content: center; }
+#cb-main #cb-trainer-reveal-grid .flip-card-wrap { width: auto; }
+#cb-main #cb-trainer-reveal-grid .flip-card {
+  width: 190px;
+  max-width: 40vw;
+  height: auto;
+  aspect-ratio: var(--ar);
+  min-height: 0;
+  max-height: none;
+}
+
 /* --- Responsive / mobil --- */
 @media (max-width: 640px) {
   main { padding: 20px 14px 40px; }

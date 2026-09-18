@@ -190,12 +190,21 @@ async function render() {
 async function renderTrainerReveals() {
   const { data: tcRows } = await supabase.from("cb_trainer_cards").select("*").eq("session_id", session.id);
   const revealedIds = (tcRows || []).filter((r) => r.revealed_at).map((r) => r.card_id);
-  let revealedCards = [];
-  if (revealedIds.length > 0) {
-    const { data: cardData } = await supabase.from("cards").select("*").in("id", revealedIds);
-    revealedCards = cardData || [];
+  const panel = $("cb-trainer-reveals");
+
+  if (revealedIds.length === 0) {
+    // Trainerul n-a dezvaluit inca nimic - ascundem tot panoul, ca sa nu ocupe loc degeaba
+    // si sa fie mai usor de vazut cardurile learnerului.
+    panel.style.display = "none";
+    renderCardGrid("cb-trainer-reveal-grid", [], "");
+    return;
   }
-  renderCardGrid("cb-trainer-reveal-grid", revealedCards, "Trainerul nu a dezvăluit încă nicio carte.");
+
+  const { data: cardData } = await supabase.from("cards").select("*").in("id", revealedIds);
+  const revealedCards = cardData || [];
+  $("cb-trainer-reveal-title").textContent = revealedCards.length === 1 ? "Cardul trainerului" : "Cardurile trainerului";
+  panel.style.display = "block";
+  renderCardGrid("cb-trainer-reveal-grid", revealedCards, "");
 }
 
 async function renderFinalReveal() {
