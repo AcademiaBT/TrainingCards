@@ -463,6 +463,23 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
 }
 .learner-grid .empty-state { flex: 1 1 100%; }
 
+/* Colourblind (desktop): fara text pe carduri, deci le facem mai mici, 3-4 pe rand */
+@media (min-width: 641px) {
+  #cb-main .learner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    justify-items: center;
+  }
+  #cb-main .flip-card-wrap { width: 100%; }
+  #cb-main .flip-card {
+    width: 100%;
+    height: auto;
+    aspect-ratio: var(--ar);
+    min-height: 0;
+    max-height: none;
+  }
+}
+
 /* --- Responsive / mobil --- */
 @media (max-width: 640px) {
   main { padding: 20px 14px 40px; }
