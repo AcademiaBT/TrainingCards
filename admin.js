@@ -396,12 +396,16 @@ async function refreshDeckLockState() {
     syncDeckLockUI();
     return;
   }
-  const { data } = await supabase
+  const cbn = isColourblindGame();
+  // La Colourblind, o sesiune foloseste cardurile din TOATE seturile jocului (set_id e null pe sesiune),
+  // deci blocarea trebuie sa tina cont de orice sesiune activa a jocului, nu doar de setul selectat acum.
+  let query = supabase
     .from("training_sessions")
     .select("admin_email")
     .eq("status", "active")
-    .eq("game_id", activeGameId)
-    .eq("set_id", activeSetId);
+    .eq("game_id", activeGameId);
+  if (!cbn) query = query.eq("set_id", activeSetId);
+  const { data } = await query;
   deckLocked = !!(data && data.length > 0);
   if (deckLocked) {
     const gameName = games.find((g) => g.id === activeGameId)?.name || "acest joc";
@@ -411,7 +415,10 @@ async function refreshDeckLockState() {
     const noun = count > 1 ? "sesiuni" : "sesiune";
     const adj = count > 1 ? "active" : "activă";
     const deschisa = count > 1 ? "deschise" : "deschisă";
-    $("deck-locked-note").innerHTML = `🔒 Editarea setului „${escapeHtml(setName)}” din jocul „${escapeHtml(gameName)}” e dezactivată — există ${count} ${noun} ${adj}, ${deschisa} de: <strong>${escapeHtml(who)}</strong>. Alte jocuri și seturi rămân editabile. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
+    const scopeText = cbn
+      ? `Editarea cardurilor din jocul „${escapeHtml(gameName)}” (toate seturile)`
+      : `Editarea setului „${escapeHtml(setName)}” din jocul „${escapeHtml(gameName)}”`;
+    $("deck-locked-note").innerHTML = `🔒 ${scopeText} e dezactivată — există ${count} ${noun} ${adj}, ${deschisa} de: <strong>${escapeHtml(who)}</strong>. Alte jocuri și seturi rămân editabile. Dacă e sesiunea ta de test, poți încheia din tab-ul „Sesiuni & Control live”.`;
   }
   syncDeckLockUI();
 }
