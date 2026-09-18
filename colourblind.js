@@ -137,8 +137,8 @@ async function submitAlias() {
 async function refreshSession() {
   if (!session) return;
   const { data } = await supabase.from("training_sessions").select("*").eq("id", session.id).maybeSingle();
-  if (!data) {
-    $("cb-status-box").innerHTML = `<div class="empty-state">Sesiunea s-a încheiat.</div>`;
+  if (!data || data.status !== "active") {
+    $("cb-status-box").innerHTML = `<div class="empty-state">Sesiunea a fost încheiată de trainer.</div>`;
     $("cb-waiting-box").style.display = "none";
     $("cb-game-box").style.display = "none";
     $("cb-final-reveal-box").style.display = "none";
@@ -256,6 +256,15 @@ function subscribeRealtime() {
       "postgres_changes",
       { event: "*", schema: "public", table: "training_sessions", filter: `id=eq.${session.id}` },
       async (payload) => {
+        if (payload.new.status !== "active") {
+          $("cb-status-box").innerHTML = `<div class="empty-state">Sesiunea a fost încheiată de trainer.</div>`;
+          $("cb-waiting-box").style.display = "none";
+          $("cb-game-box").style.display = "none";
+          $("cb-final-reveal-box").style.display = "none";
+          clearInterval(pollTimer);
+          session = { ...session, ...payload.new };
+          return;
+        }
         const phaseChanged =
           payload.new.cb_started_at !== session.cb_started_at || payload.new.cb_revealed_all_at !== session.cb_revealed_all_at;
         session = { ...session, ...payload.new };

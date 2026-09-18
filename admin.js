@@ -1101,7 +1101,11 @@ async function loadColourblindPanel() {
     expected > 0
       ? `${parts.length} / ${expected} cursanți s-au alăturat până acum.`
       : `${parts.length} participant${parts.length === 1 ? "" : "i"} s-au alăturat până acum.`;
-  $("cbn-participants-count-pre").textContent = preText;
+  const preEl = $("cbn-participants-count-pre");
+  preEl.textContent = preText;
+  const allJoined = expected > 0 && parts.length >= expected;
+  preEl.style.background = allJoined ? "#88d45f" : "transparent";
+  preEl.style.color = allJoined ? "var(--green-deep)" : "var(--ink)";
   $("cbn-participants-count").textContent = `${parts.length} participant${parts.length === 1 ? "" : "i"}`;
 
   // cardurile trainerului
