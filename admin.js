@@ -391,14 +391,19 @@ function syncDeckLockUI() {
 let deckLocked = false; // adevarat daca EXISTA orice sesiune activa, a oricarui trainer (nu doar a mea)
 
 async function refreshDeckLockState() {
-  if (!activeGameId || !activeSetId) {
+  if (!activeGameId) {
     deckLocked = false;
     syncDeckLockUI();
     return;
   }
   const cbn = isColourblindGame();
   // La Colourblind, o sesiune foloseste cardurile din TOATE seturile jocului (set_id e null pe sesiune),
-  // deci blocarea trebuie sa tina cont de orice sesiune activa a jocului, nu doar de setul selectat acum.
+  // deci verificarea trebuie facuta dupa game_id chiar daca nu ai ales inca un set anume mai sus.
+  if (!cbn && !activeSetId) {
+    deckLocked = false;
+    syncDeckLockUI();
+    return;
+  }
   let query = supabase
     .from("training_sessions")
     .select("admin_email")
