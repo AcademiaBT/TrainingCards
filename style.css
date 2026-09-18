@@ -494,6 +494,21 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
 .btn.group-complete { background: #88d45f; color: var(--green-deep); border-color: #6bbf3f; }
 .btn.group-complete.group-complete-selected { box-shadow: 0 0 0 3px var(--gold); }
 
+/* chip de prezenta (dreptunghi rotunjit) - aceleasi culori ca la grupa completa/incompleta din Selectie/Hardiness */
+.status-chip {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  margin: 0 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--parchment-dark);
+  background: var(--parchment-dark);
+  color: var(--ink);
+}
+.status-chip.incomplete { background: transparent; border-color: var(--green); color: var(--green); }
+.status-chip.complete { background: #88d45f; border-color: #6bbf3f; color: var(--green-deep); }
+
 /* butonul "Am ales" - floating, mereu la vedere, indiferent de scroll (mobil si desktop) */
 #selection-submit-bar {
   position: fixed;

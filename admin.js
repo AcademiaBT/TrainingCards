@@ -1104,8 +1104,8 @@ async function loadColourblindPanel() {
   const preEl = $("cbn-participants-count-pre");
   preEl.textContent = preText;
   const allJoined = expected > 0 && parts.length >= expected;
-  preEl.style.background = allJoined ? "#88d45f" : "transparent";
-  preEl.style.color = allJoined ? "var(--green-deep)" : "var(--ink)";
+  preEl.classList.toggle("complete", allJoined);
+  preEl.classList.toggle("incomplete", expected > 0 && !allJoined);
   $("cbn-participants-count").textContent = `${parts.length} participant${parts.length === 1 ? "" : "i"}`;
 
   // cardurile trainerului
