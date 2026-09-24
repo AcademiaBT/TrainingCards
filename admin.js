@@ -241,6 +241,85 @@ $("logout-btn").addEventListener("click", async () => {
   location.reload();
 });
 
+// ---------- STATISTICI TRAINERI (sesiuni livrate = cel putin un cursant inregistrat, pe joc) ----------
+$("stats-btn").addEventListener("click", async () => {
+  $("stats-modal").style.display = "flex";
+  await loadTrainerStats();
+});
+$("stats-close-btn").addEventListener("click", () => {
+  $("stats-modal").style.display = "none";
+});
+$("stats-modal").addEventListener("click", (e) => {
+  if (e.target.id === "stats-modal") $("stats-modal").style.display = "none";
+});
+
+async function loadTrainerStats() {
+  const box = $("stats-content");
+  box.innerHTML = `<p style="color:var(--grey); margin:0;">Se încarcă…</p>`;
+
+  const [{ data: sessions }, { data: selPartRows }, { data: cbPartRows }, { data: allGames }] = await Promise.all([
+    supabase.from("training_sessions").select("id, game_id, admin_email"),
+    supabase.from("session_participants").select("session_id"),
+    supabase.from("cb_participants").select("session_id"),
+    supabase.from("games").select("id, name"),
+  ]);
+
+  // sesiune "livrata" = are macar un cursant inregistrat, indiferent de mod
+  // (session_participants acopera Standard + Selectie, cb_participants acopera Colourblind)
+  const deliveredIds = new Set([
+    ...(selPartRows || []).map((r) => r.session_id),
+    ...(cbPartRows || []).map((r) => r.session_id),
+  ]);
+  const delivered = (sessions || []).filter((s) => deliveredIds.has(s.id));
+
+  if (delivered.length === 0) {
+    box.innerHTML = `<p style="color:var(--grey); margin:0;">Nicio sesiune livrată încă (cu cel puțin un cursant înregistrat).</p>`;
+    return;
+  }
+
+  const gameNameById = {};
+  (allGames || []).forEach((g) => (gameNameById[g.id] = g.name));
+  const usedGameIds = [...new Set(delivered.map((s) => s.game_id))];
+  const gameCols = usedGameIds
+    .map((id) => ({ id, name: gameNameById[id] || "(joc șters)" }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ro"));
+
+  // matrice: email trainer -> { [gameId]: nr. sesiuni, total: nr. sesiuni }
+  const matrix = {};
+  delivered.forEach((s) => {
+    if (!matrix[s.admin_email]) matrix[s.admin_email] = { total: 0 };
+    matrix[s.admin_email][s.game_id] = (matrix[s.admin_email][s.game_id] || 0) + 1;
+    matrix[s.admin_email].total += 1;
+  });
+  const trainers = Object.keys(matrix).sort((a, b) => matrix[b].total - matrix[a].total);
+
+  const colTotals = {};
+  gameCols.forEach((g) => (colTotals[g.id] = 0));
+  let grandTotal = 0;
+  trainers.forEach((email) => {
+    gameCols.forEach((g) => (colTotals[g.id] += matrix[email][g.id] || 0));
+    grandTotal += matrix[email].total;
+  });
+
+  const headerCells = gameCols.map((g) => `<th>${escapeHtml(g.name)}</th>`).join("");
+  const bodyRows = trainers
+    .map((email) => {
+      const cells = gameCols.map((g) => `<td>${matrix[email][g.id] || 0}</td>`).join("");
+      return `<tr><td>${escapeHtml(email)}</td>${cells}<td><strong>${matrix[email].total}</strong></td></tr>`;
+    })
+    .join("");
+  const footCells = gameCols.map((g) => `<td>${colTotals[g.id]}</td>`).join("");
+
+  box.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table class="stats-table">
+        <thead><tr><th>Trainer</th>${headerCells}<th>Total</th></tr></thead>
+        <tbody>${bodyRows}</tbody>
+        <tfoot><tr><td>Total</td>${footCells}<td>${grandTotal}</td></tr></tfoot>
+      </table>
+    </div>`;
+}
+
 async function showAdmin() {
   $("login-view").style.display = "none";
   $("admin-view").style.display = "block";

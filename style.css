@@ -397,6 +397,33 @@ code { background: var(--parchment-dark); padding: 1px 5px; border-radius: 4px; 
   cursor: zoom-out;
 }
 
+/* Modal generic (folosit pt. Statistici traineri) */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(43,42,40,0.6);
+  z-index: 70;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow: auto;
+}
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 22px 24px 26px;
+  max-width: 720px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+.stats-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stats-table th, .stats-table td { padding: 8px 10px; border-bottom: 1px solid var(--parchment-dark); text-align: center; white-space: nowrap; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; white-space: normal; }
+.stats-table thead th { font-family: 'Fraunces', serif; font-weight: 600; }
+.stats-table tfoot td { font-weight: 700; border-top: 2px solid var(--parchment-dark); border-bottom: none; }
+.stats-table tbody tr:hover { background: var(--parchment); }
+
 .picker-row {
   display: flex;
   align-items: center;
