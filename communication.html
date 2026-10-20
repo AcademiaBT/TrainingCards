@@ -1,9 +1,60 @@
-<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nodul comunicării</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="communication.css"></head><body>
-<header class="app-header"><div><div class="eyebrow">Activitate online</div><h1 id="title">Nodul comunicării</h1></div></header><main>
-<section id="error" class="panel" hidden></section>
-<section id="join" class="panel" hidden><h2>Intră în activitate</h2><p>Alege un alias. Nu este necesară adresa de email.</p><input id="alias" maxlength="40" placeholder="Alias"><button class="btn" id="join-btn">Intră</button><div class="error-msg" id="join-error"></div></section>
-<section id="waiting" class="panel" hidden><h2>Ești înregistrat ca <span id="my-alias"></span></h2><p>Așteaptă ca trainerul să pornească activitatea.</p></section>
-<section id="activity" hidden><div class="panel"><span class="badge" id="round-badge"></span><h2 id="round-title"></h2><p class="rule" id="rule"></p><div id="content"></div><button class="btn gold submit-fixed" id="submit">Trimite răspunsul</button><p id="submitted" hidden>✓ Răspuns trimis. Poți să îl actualizezi până la schimbarea etapei.</p></div></section>
-<section id="reveal" class="panel" hidden><h2>Compară și observă</h2><div id="reveal-content"></div><p>Așteaptă următoarea etapă indicată de trainer.</p></section>
-<section id="debrief" class="panel" hidden><h2>Debrief</h2><ol id="debrief-list"></ol><div class="transfer">Un client poate părea agresiv sau irațional când, de fapt, nu se simte înțeles. Clarificarea poate preveni escaladarea.</div></section>
-</main><script type="module" src="communication.js"></script></body></html>
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nodul comunicării</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="communication.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">Activitate online</div>
+      <h1 id="title">Nodul comunicării</h1>
+    </div>
+  </header>
+
+  <main>
+    <section id="error" class="panel" hidden></section>
+
+    <section id="join" class="panel" hidden>
+      <h2>Intră în activitate</h2>
+      <p>Alege un alias. Nu este necesară adresa de email.</p>
+      <input id="alias" maxlength="40" placeholder="Alias">
+      <button class="btn" id="join-btn">Intră</button>
+      <div class="error-msg" id="join-error"></div>
+    </section>
+
+    <section id="waiting" class="panel" hidden>
+      <h2>Ești înregistrat ca <span id="my-alias"></span></h2>
+      <p>Așteaptă ca trainerul să pornească activitatea.</p>
+    </section>
+
+    <section id="activity" hidden>
+      <div class="panel">
+        <span class="badge" id="round-badge"></span>
+        <h2 id="round-title"></h2>
+        <p class="rule" id="rule"></p>
+        <div id="content"></div>
+        <button class="btn gold submit-fixed" id="submit">Trimite răspunsul</button>
+        <p id="submitted" hidden>✓ Răspuns trimis. Poți să îl actualizezi până la schimbarea etapei.</p>
+      </div>
+    </section>
+
+    <section id="reveal" class="panel" hidden>
+      <h2>Compară și observă</h2>
+      <div id="reveal-content"></div>
+      <p>Așteaptă următoarea etapă indicată de trainer.</p>
+    </section>
+
+    <section id="debrief" class="panel" hidden>
+      <h2>Debrief</h2>
+      <ol id="debrief-list"></ol>
+      <div class="transfer">Un client poate părea agresiv sau irațional când, de fapt, nu se simte înțeles. Clarificarea poate preveni escaladarea.</div>
+    </section>
+  </main>
+
+  <script type="module" src="communication.js"></script>
+</body>
+</html>

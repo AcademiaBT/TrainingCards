@@ -257,20 +257,44 @@ async function loadTrainerStats() {
   const box = $("stats-content");
   box.innerHTML = `<p style="color:var(--grey); margin:0;">Se încarcă…</p>`;
 
-  const [{ data: sessions }, { data: selPartRows }, { data: cbPartRows }, { data: allGames }] = await Promise.all([
+  const [
+    { data: sessions },
+    { data: selPartRows },
+    { data: cbPartRows },
+    { data: allGames },
+    { data: commSessions },
+    { data: commPartRows },
+  ] = await Promise.all([
     supabase.from("training_sessions").select("id, game_id, admin_email"),
     supabase.from("session_participants").select("session_id"),
     supabase.from("cb_participants").select("session_id"),
     supabase.from("games").select("id, name"),
+    // Nodul comunicarii: daca migrarea SQL nu a fost rulata inca, interogarea intoarce eroare -> tratam ca "nimic"
+    supabase.from("communication_sessions").select("id, mode, admin_email"),
+    supabase.from("communication_participants").select("session_id"),
   ]);
 
   // sesiune "livrata" = are macar un cursant inregistrat, indiferent de mod
-  // (session_participants acopera Standard + Selectie, cb_participants acopera Colourblind)
+  // (session_participants acopera Standard + Selectie, cb_participants acopera Colourblind,
+  //  communication_participants acopera Nodul comunicarii)
   const deliveredIds = new Set([
     ...(selPartRows || []).map((r) => r.session_id),
     ...(cbPartRows || []).map((r) => r.session_id),
+    ...(commPartRows || []).map((r) => r.session_id),
   ]);
-  const delivered = (sessions || []).filter((s) => deliveredIds.has(s.id));
+
+  // Activitatile din Nodul comunicarii nu sunt in tabelul "games": le tratam ca "jocuri" virtuale
+  // (cheie "comm:<mod>"), ca sa apara in aceeasi defalcare pe coloane.
+  const COMM_NAMES = {
+    draw: "Nodul comunicării · Desenează după instrucțiuni",
+    model: "Nodul comunicării · Reconstruiește modelul",
+    client: "Nodul comunicării · Ce ai înțeles?",
+  };
+  const allSessions = [
+    ...(sessions || []),
+    ...(commSessions || []).map((c) => ({ id: c.id, game_id: `comm:${c.mode}`, admin_email: c.admin_email })),
+  ];
+  const delivered = allSessions.filter((s) => deliveredIds.has(s.id));
 
   if (delivered.length === 0) {
     box.innerHTML = `<p style="color:var(--grey); margin:0;">Nicio sesiune livrată încă (cu cel puțin un cursant înregistrat).</p>`;
@@ -279,6 +303,7 @@ async function loadTrainerStats() {
 
   const gameNameById = {};
   (allGames || []).forEach((g) => (gameNameById[g.id] = g.name));
+  Object.entries(COMM_NAMES).forEach(([mode, name]) => (gameNameById[`comm:${mode}`] = name));
   const usedGameIds = [...new Set(delivered.map((s) => s.game_id))];
   const gameCols = usedGameIds
     .map((id) => ({ id, name: gameNameById[id] || "(joc șters)" }))

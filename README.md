@@ -43,6 +43,3 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 - Trainerul intră din `communication-admin.html` sau din butonul **Nodul comunicării** din admin.
 - Participanții intră fără cont, prin linkul generat, în `communication.html`.
 - Pentru upgrade rulează `supabase/add-communication-modes.sql`. Pentru instalare nouă, schema este inclusă integral în `supabase/install-complete.sql`.
-
-### v37 — acces securizat pentru Nodul comunicării
-`communication.html` folosește RPC-uri pentru participanți și Storage privat pentru desene. Nu schimba bucket-ul `communication-drawings` în public și nu adăuga politici publice de SELECT pe tabelele `communication_*`.
