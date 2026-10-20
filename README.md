@@ -34,3 +34,15 @@ Instrucțiuni complete, pas cu pas, sunt disponibile în `manual.html` (buton �
 ## Notă despre securitate
 
 Cheia `anon` din `config.js` este publică prin design — accesul e controlat de politicile RLS din Supabase (scrierea e permisă doar userilor autentificați, adică ție ca trainer).
+
+
+### Nodul comunicării — 3 activități online (v36)
+- **Desenează după instrucțiuni** — canvas individual, două runde, fără clarificări / cu clarificări și reveal.
+- **Reconstruiește modelul** — piese geometrice pe o grilă 4×4, model-țintă vizibil trainerului și comparare.
+- **Ce ai înțeles?** — mesaje ambigue de la client, presupunere, întrebare de clarificare, informație lipsă și răspuns.
+- Trainerul intră din `communication-admin.html` sau din butonul **Nodul comunicării** din admin.
+- Participanții intră fără cont, prin linkul generat, în `communication.html`.
+- Pentru upgrade rulează `supabase/add-communication-modes.sql`. Pentru instalare nouă, schema este inclusă integral în `supabase/install-complete.sql`.
+
+### v37 — acces securizat pentru Nodul comunicării
+`communication.html` folosește RPC-uri pentru participanți și Storage privat pentru desene. Nu schimba bucket-ul `communication-drawings` în public și nu adăuga politici publice de SELECT pe tabelele `communication_*`.
