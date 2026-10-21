@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel } from "./communication-data.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -19,6 +19,7 @@ const labels = {
 let session = null;
 let user = null;
 let poll = null;
+let lastPromptHtml = "";
 
 function code() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -78,7 +79,7 @@ document.querySelectorAll("[data-mode]").forEach((b) => {
 async function createSession(mode) {
   const { data, error } = await supabase
     .from("communication_sessions")
-    .insert({ session_code: code(), admin_email: user.email, mode })
+    .insert({ session_code: code(), admin_email: user.email, mode, prompt_index: randomVariant(mode) })
     .select()
     .single();
   if (error) {
@@ -152,11 +153,26 @@ async function downloadQr(filename, format, triggerBtn) {
 $("qr-dl-png-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.png`, "png", e.target);
 $("qr-dl-jpg-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.jpg`, "jpg", e.target);
 
+// ---------- schimbare varianta (doar in lobby, inainte sa porneasca activitatea) ----------
+async function reroll() {
+  if (!session || session.status !== "lobby") return;
+  const { data, error } = await supabase
+    .from("communication_sessions")
+    .update({ prompt_index: randomVariant(session.mode, session.prompt_index) })
+    .eq("id", session.id)
+    .select()
+    .single();
+  if (error) return alert(error.message);
+  session = data;
+  render();
+}
+
 // ---------- navigare intre etape ----------
 $("next").onclick = () => move(1);
 $("back").onclick = () => move(-1);
 
 $("end").onclick = async () => {
+  if (!confirm("Sigur închei sesiunea? Participanții nu vor mai putea continua și nu se poate relua.")) return;
   await supabase.from("communication_sessions").update({ status: "ended" }).eq("id", session.id);
   session.status = "ended";
   render();
@@ -193,8 +209,11 @@ async function render() {
   $("activity-title").textContent = a.name;
   $("join-link").textContent = joinUrl();
   $("status-line").textContent = `Etapa curentă: ${labels[session.status]}`;
-  $("back").disabled = session.status === "lobby";
+  $("back").disabled = session.status === "lobby" || ended;
   $("next").disabled = ended;
+  $("end").disabled = ended;
+  $("link-area").hidden = ended;
+  $("ended-note").hidden = !ended;
 
   // dupa incheiere oprim verificarea periodica si permitem crearea unei sesiuni noi
   if (ended) {
@@ -203,17 +222,22 @@ async function render() {
   }
 
   const r = session.status.includes("2") ? 1 : 0;
-  const p = a.rounds[r];
+  const p = getRounds(session.mode, session.prompt_index)[r];
   let html = "";
 
   if (session.status === "lobby") {
-    html = "<p>Distribuie linkul. Pornește când participanții au intrat.</p>";
+    html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
+      <p><b>Variantă:</b> ${escapeHtml(variantLabel(session.mode, session.prompt_index))}</p>
+      <button class="btn outline" id="reroll">🎲 Altă variantă</button>`;
   } else if (session.status === "debrief") {
     html = `<ol>${DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
   } else if (!ended) {
     html = `<p><b>${escapeHtml(p.title)}</b></p><p>${escapeHtml(p.rule)}</p>`;
     if (session.mode === "draw") {
       html += `<div class="rule"><b>Modelul verbal al ghidului:</b><br>${escapeHtml(p.guide)}</div>`;
+    }
+    if (session.mode === "model") {
+      html += `<div class="rule"><b>Descriere pentru ghid:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>`;
     }
     if (session.mode === "client") {
       html += `<div class="rule"><b>Mesaj:</b> ${escapeHtml(p.message)}</div>`;
@@ -222,7 +246,11 @@ async function render() {
       }
     }
   }
-  $("trainer-prompt").innerHTML = html;
+  if (html !== lastPromptHtml) {
+    $("trainer-prompt").innerHTML = html;
+    lastPromptHtml = html;
+    if ($("reroll")) $("reroll").onclick = reroll;
+  }
 
   $("target").innerHTML =
     session.mode === "model" && session.status !== "lobby"
@@ -241,13 +269,17 @@ async function loadData() {
   $("participants").innerHTML =
     (parts || []).map((p) => `<div>✓ ${escapeHtml(p.alias)}</div>`).join("") || "Niciun participant încă.";
 
+  const ended = session.status === "ended";
   const round = session.status.includes("2") ? 2 : 1;
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
-      .filter((s) => s.round === round)
-      .map((s) => resultCard(aliasById[s.participant_id] || "Participant", s.payload))
-      .join("") || "Niciun răspuns pentru această rundă.";
+      .filter((s) => (ended ? true : s.round === round))
+      .sort((x, y) => x.round - y.round)
+      .map((s) =>
+        resultCard((aliasById[s.participant_id] || "Participant") + (ended ? ` · runda ${s.round}` : ""), s.payload)
+      )
+      .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
 }
 
 function resultCard(alias, p) {

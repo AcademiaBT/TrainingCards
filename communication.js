@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds } from "./communication-data.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -187,7 +187,7 @@ function render() {
 }
 
 function buildActivity() {
-  const p = ACTIVITIES[session.mode].rounds[round - 1];
+  const p = getRounds(session.mode, session.prompt_index)[round - 1];
   $("round-badge").textContent = `Runda ${round}`;
   $("round-title").textContent = p.title;
   $("rule").textContent = p.rule;
@@ -342,7 +342,7 @@ async function submit() {
 // ---------- reveal ----------
 async function showReveal() {
   $("reveal").hidden = false;
-  const p = ACTIVITIES[session.mode].rounds[round - 1];
+  const p = getRounds(session.mode, session.prompt_index)[round - 1];
 
   let intro = "";
   if (session.mode === "draw") {
