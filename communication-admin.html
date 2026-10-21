@@ -57,6 +57,12 @@
           <span id="join-link"></span>
           <button class="btn outline" id="copy">Copiază</button>
         </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn outline" id="qr-btn" style="font-size:12px; padding:5px 10px;">Arată codul QR</button>
+          <button class="btn outline" id="qr-dl-png-btn" style="font-size:12px; padding:5px 10px;">⬇ Descarcă PNG</button>
+          <button class="btn outline" id="qr-dl-jpg-btn" style="font-size:12px; padding:5px 10px;">⬇ Descarcă JPG</button>
+        </div>
+        <img id="qr-img" alt="Cod QR" style="display:none; margin-top:8px; width:160px; height:160px; border-radius:8px; border:1px solid var(--parchment-dark); background:#fff;">
         <p id="status-line"></p>
         <div class="comm-toolbar">
           <button class="btn" id="back">← Etapa anterioară</button>

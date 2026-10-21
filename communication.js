@@ -35,11 +35,15 @@ function fail(msg) {
 // ---------- initializare + intrare ----------
 async function init() {
   if (!code) return fail("Link invalid.");
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("communication_sessions")
     .select("*")
     .eq("session_code", code)
     .maybeSingle();
+  if (error) {
+    console.error(error);
+    return fail("Nu pot citi sesiunea: " + error.message);
+  }
   if (!data) return fail("Sesiunea nu există.");
   session = data;
   $("title").textContent = ACTIVITIES[session.mode].name;
@@ -57,22 +61,86 @@ $("join-btn").onclick = join;
 $("alias").addEventListener("keydown", (e) => {
   if (e.key === "Enter") join();
 });
+// daca participantul modifica textul, intrebarea despre alias nu mai e valabila
+$("alias").addEventListener("input", hideAliasSuggestion);
+
+let suggestedAlias = null;
+let baseAlias = null;
+
+function hideAliasSuggestion() {
+  $("alias-suggest").hidden = true;
+  suggestedAlias = null;
+}
 
 async function join() {
   const alias = $("alias").value.trim();
-  if (!alias) return ($("join-error").textContent = "Introdu un alias.");
+  hideAliasSuggestion();
+  $("join-error").textContent = "";
+  if (!alias) {
+    $("join-error").textContent = "Introdu un alias.";
+    return;
+  }
+  await register(alias, alias);
+}
+
+// Inregistreaza participantul. Daca aliasul e deja luat in aceasta sesiune, il intreaba daca vrea varianta cu sufix.
+const norm = (s) => s.trim().toLowerCase();
+
+// Aliasurile deja folosite in sesiune (fara diferenta de majuscule). null daca citirea esueaza.
+async function takenAliases() {
+  const { data, error } = await supabase.from("communication_participants").select("alias").eq("session_id", session.id);
+  if (error) return null;
+  return new Set((data || []).map((p) => norm(p.alias)));
+}
+
+async function register(alias, base) {
+  // verificare prealabila: functioneaza chiar daca regula unique din baza de date lipseste sau difera
+  const taken = await takenAliases();
+  if (taken && taken.has(norm(alias))) return offerSuffixedAlias(base);
+
   const { data, error } = await supabase
     .from("communication_participants")
     .insert({ session_id: session.id, alias })
     .select()
     .single();
   if (error) {
-    return ($("join-error").textContent = error.code === "23505" ? "Alias deja folosit." : error.message);
+    if (error.code === "23505" || /duplicate key|unique constraint/i.test(error.message)) return offerSuffixedAlias(base);
+    $("join-error").textContent = error.message;
+    return;
   }
   me = data;
   localStorage.setItem(`comm_${session.id}`, me.id);
+  hideAliasSuggestion();
   render();
 }
+
+// "Pustiu" -> primul "Pustiu (n)" liber, n >= 2 ("Pustiu (2)" devine tot "Pustiu (3)", nu "Pustiu (2) (2)")
+async function nextFreeAlias(base) {
+  const clean = base.replace(/\s*\(\d+\)$/, "") || base;
+  const taken = (await takenAliases()) || new Set();
+  let n = 2;
+  while (taken.has(norm(`${clean} (${n})`))) n++;
+  return `${clean} (${n})`;
+}
+
+async function offerSuffixedAlias(base) {
+  baseAlias = base;
+  suggestedAlias = await nextFreeAlias(base);
+  $("alias-suggest-text").textContent = `Aliasul „${base}” e deja folosit. Vrei să apari ca „${suggestedAlias}”?`;
+  $("alias-yes").textContent = `Da, apar ca „${suggestedAlias}”`;
+  $("alias-suggest").hidden = false;
+}
+
+$("alias-yes").onclick = () => {
+  if (suggestedAlias) register(suggestedAlias, baseAlias);
+};
+
+$("alias-no").onclick = () => {
+  hideAliasSuggestion();
+  $("alias").value = "";
+  $("alias").focus();
+  $("join-error").textContent = "Alege un alias diferit.";
+};
 
 async function refresh() {
   const { data } = await supabase.from("communication_sessions").select("*").eq("id", session.id).maybeSingle();

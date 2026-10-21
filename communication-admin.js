@@ -93,6 +93,7 @@ function openSession(s) {
   $("creator").hidden = true;
   $("live").hidden = false;
   $("copy").textContent = "Copiază";
+  resetQr();
   startWatch();
   render();
 }
@@ -105,6 +106,51 @@ $("copy").onclick = async () => {
   await navigator.clipboard.writeText(joinUrl());
   $("copy").textContent = "Copiat ✓";
 };
+
+// ---------- cod QR (acelasi serviciu si aceleasi butoane ca la celelalte activitati) ----------
+function resetQr() {
+  $("qr-img").style.display = "none";
+  $("qr-btn").textContent = "Arată codul QR";
+}
+
+$("qr-btn").onclick = () => {
+  const img = $("qr-img");
+  if (img.style.display === "none") {
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl())}`;
+    img.style.display = "block";
+    $("qr-btn").textContent = "Ascunde codul QR";
+  } else {
+    resetQr();
+  }
+};
+
+async function downloadQr(filename, format, triggerBtn) {
+  const original = triggerBtn.textContent;
+  triggerBtn.textContent = "Se descarcă...";
+  triggerBtn.disabled = true;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=${format}&data=${encodeURIComponent(joinUrl())}`;
+  try {
+    const res = await fetch(qrUrl);
+    if (!res.ok) throw new Error("Serviciul de QR nu a răspuns");
+    const objUrl = URL.createObjectURL(await res.blob());
+    const link = document.createElement("a");
+    link.href = objUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objUrl);
+  } catch (err) {
+    // fallback: deschide imaginea intr-un tab nou, ca sa poata fi salvata manual
+    window.open(qrUrl, "_blank");
+  } finally {
+    triggerBtn.textContent = original;
+    triggerBtn.disabled = false;
+  }
+}
+
+$("qr-dl-png-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.png`, "png", e.target);
+$("qr-dl-jpg-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.jpg`, "jpg", e.target);
 
 // ---------- navigare intre etape ----------
 $("next").onclick = () => move(1);
