@@ -27,6 +27,7 @@ function escapeHtml(s) {
 }
 
 function fail(msg) {
+  window.__commReady = true;
   hideAll();
   $("error").hidden = false;
   $("error").textContent = msg;
@@ -54,6 +55,7 @@ async function init() {
     me = p;
   }
   render();
+  window.__commReady = true;
   poll = setInterval(refresh, 2500);
 }
 
