@@ -57,9 +57,16 @@
   border-radius:8px;
 }
 
+/* Canvas 4:3, responsive: latimea e limitata de container si de inaltimea ferestrei
+   (sa incapa pe verticala), dar nu sub 480px pe ecrane late. Pe telefon in portret ia toata latimea.
+   A doua linie (dvh) o inlocuieste pe prima in browserele care o cunosc. */
 .draw-canvas {
-  width:100%;
-  height:430px;
+  display:block;
+  width:min(100%, max(480px, calc((100vh - 400px) * 4 / 3)));
+  width:min(100%, max(480px, calc((100dvh - 400px) * 4 / 3)));
+  aspect-ratio:4 / 3;
+  height:auto;
+  margin:0 auto;
   background:white;
   border:2px dashed var(--green);
   border-radius:10px;
@@ -170,11 +177,41 @@
   .comm-grid.two,.comm-grid.three {
     grid-template-columns:1fr;
   }
-  .draw-canvas {
-    height:360px;
-  }
   .model-grid {
     grid-template-columns:repeat(4,60px);
     grid-template-rows:repeat(4,60px);
+  }
+}
+
+/* Telefon in landscape (ecran scund): instructiunile in stanga, canvasul cat mai mare in dreapta */
+@media (orientation: landscape) and (max-height: 520px) {
+  body.participant-page:has(#activity:not([hidden]) .draw-canvas) header.app-header {
+    display:none;
+  }
+  body.participant-page:has(#activity:not([hidden]) .draw-canvas) main {
+    max-width:none;
+    padding:8px 12px;
+  }
+  #activity .panel:has(.draw-canvas) {
+    display:grid;
+    grid-template-columns:minmax(150px, 230px) 1fr;
+    grid-template-rows:repeat(6, auto) 1fr;
+    column-gap:16px;
+    align-items:start;
+    padding:10px;
+    margin-bottom:0;
+  }
+  #activity .panel:has(.draw-canvas) > *,
+  #activity .panel:has(.draw-canvas) #content > .canvas-tools {
+    grid-column:1;
+  }
+  #activity .panel:has(.draw-canvas) #content {
+    display:contents;
+  }
+  #activity .panel:has(.draw-canvas) .draw-canvas {
+    grid-column:2;
+    grid-row:1 / 8;
+    width:min(100%, calc((100vh - 56px) * 4 / 3));
+    width:min(100%, calc((100dvh - 56px) * 4 / 3));
   }
 }

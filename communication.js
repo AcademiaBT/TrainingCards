@@ -199,34 +199,48 @@ function buildActivity() {
 }
 
 // ---------- modul 1: desen ----------
+// Rezolutie interna fixa: desenul ramane corect la rotirea telefonului / redimensionarea ferestrei,
+// iar imaginea trimisa are mereu aceeasi dimensiune (usoara).
+const CANVAS_W = 800;
+const CANVAS_H = 600;
+
 function buildCanvas() {
   $("content").innerHTML = `
     <div class="canvas-tools">
       <button class="btn outline" id="clear-canvas">Șterge tot</button>
       <input id="pen-color" type="color" value="#213a2e">
     </div>
-    <canvas class="draw-canvas" id="canvas"></canvas>`;
+    <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>`;
 
   canvas = $("canvas");
-  const rect = canvas.getBoundingClientRect();
-  const ratio = devicePixelRatio || 1;
-  canvas.width = rect.width * ratio;
-  canvas.height = rect.height * ratio;
   ctx = canvas.getContext("2d");
-  ctx.scale(ratio, ratio);
-  ctx.lineWidth = 3;
+  const paintBackground = () => {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  };
+  paintBackground();
+  ctx.lineWidth = 5;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
 
+  // coordonate in pixelii interni ai canvasului, indiferent cat de mare e afisat
   const pos = (e) => {
     const r = canvas.getBoundingClientRect();
-    const t = e.touches?.[0] || e;
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
+    return {
+      x: ((e.clientX - r.left) * CANVAS_W) / r.width,
+      y: ((e.clientY - r.top) * CANVAS_H) / r.height,
+    };
   };
   const start = (e) => {
     drawing = true;
+    canvas.setPointerCapture?.(e.pointerId);
     const p = pos(e);
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
+    // un punct la simpla atingere
+    ctx.strokeStyle = $("pen-color").value;
+    ctx.lineTo(p.x + 0.01, p.y);
+    ctx.stroke();
     e.preventDefault();
   };
   const move = (e) => {
@@ -242,8 +256,8 @@ function buildCanvas() {
   canvas.addEventListener("pointerdown", start);
   canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerup", stop);
-  canvas.addEventListener("pointerleave", stop);
-  $("clear-canvas").onclick = () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.addEventListener("pointercancel", stop);
+  $("clear-canvas").onclick = paintBackground;
 }
 
 // ---------- modul 2: model pe grila 4x4 ----------
