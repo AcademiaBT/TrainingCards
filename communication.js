@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, DEBRIEF, getRounds } from "./communication-data.js";
+import { compareModel, gridHtml, scoreText } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -151,10 +152,14 @@ async function refresh() {
     return fail("Sesiunea s-a încheiat.");
   }
   if (data.status !== session.status) {
+    // la model, ce e pe grila se trimite automat cand se iese din pasul de pozitionare
+    if (session.mode === "model" && session.status === "round1" && modelPositions.length) await saveModel();
     session = data;
     modelPositions = [];
     selectedPiece = null;
     render();
+  } else if (session.mode === "model" && session.status === "round2_reveal") {
+    showAllModelResults(); // rezultatele colegilor pot mai sosi
   }
 }
 
@@ -176,19 +181,31 @@ function render() {
     $("debrief-list").innerHTML = DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
     return;
   }
-  if (session.status.includes("reveal")) {
+  if (session.mode === "model") {
+    // 4 pasi: 1 pozitionare (round1) → 2 reveal individual (round1_reveal) → 3 toate rezultatele (round2_reveal) → 4 debrief
+    round = 1;
+    if (session.status === "round2_reveal") {
+      showAllModelResults();
+      return;
+    }
+    if (session.status === "round1_reveal") {
+      showReveal();
+      return;
+    }
+  } else if (session.status.includes("reveal")) {
     round = session.status.includes("2") ? 2 : 1;
     showReveal();
     return;
+  } else {
+    round = session.status === "round2" ? 2 : 1;
   }
-  round = session.status === "round2" ? 2 : 1;
   $("activity").hidden = false;
   buildActivity();
 }
 
 function buildActivity() {
   const p = getRounds(session.mode, session.prompt_index)[round - 1];
-  $("round-badge").textContent = `Runda ${round}`;
+  $("round-badge").textContent = session.mode === "model" ? "Pasul 1" : `Runda ${round}`;
   $("round-title").textContent = p.title;
   $("rule").textContent = p.rule;
   $("submitted").hidden = true;
@@ -385,6 +402,15 @@ function buildClient(p) {
 // ---------- trimitere raspuns ----------
 $("submit").onclick = submit;
 
+async function saveModel() {
+  return supabase
+    .from("communication_submissions")
+    .upsert(
+      { session_id: session.id, participant_id: me.id, round: 1, payload: { type: "model", positions: modelPositions } },
+      { onConflict: "session_id,participant_id,round" }
+    );
+}
+
 async function submit() {
   let payload;
   if (session.mode === "draw") payload = { type: "draw", image: canvas.toDataURL("image/png") };
@@ -407,6 +433,33 @@ async function submit() {
   $("submitted").hidden = false;
 }
 
+// ---------- pasul 3 (model): rezultatele tuturor ----------
+async function showAllModelResults() {
+  $("reveal").hidden = false;
+  $("reveal-title").textContent = "Rezultatele tuturor";
+  const p = getRounds(session.mode, session.prompt_index)[0];
+  const [{ data: parts }, { data: subs }] = await Promise.all([
+    supabase.from("communication_participants").select("id,alias,joined_at").eq("session_id", session.id).order("joined_at"),
+    supabase.from("communication_submissions").select("participant_id,payload").eq("session_id", session.id).eq("round", 1),
+  ]);
+  const byPart = Object.fromEntries((subs || []).map((s) => [s.participant_id, s.payload]));
+  const cards = (parts || [])
+    .map((q) => {
+      const x = byPart[q.id];
+      const mine = me && q.id === me.id;
+      if (x?.type !== "model") {
+        return `<article class="result-card${mine ? " mine" : ""}"><b>${escapeHtml(q.alias)}${mine ? " (tu)" : ""}</b><p class="hint">Fără răspuns trimis.</p></article>`;
+      }
+      const cmp = compareModel(p.target, x.positions || []);
+      return `<article class="result-card${mine ? " mine" : ""}"><b>${escapeHtml(q.alias)}${mine ? " (tu)" : ""}</b>${gridHtml(x.positions || [], cmp.marks)}<p class="hint">${cmp.correct}/${cmp.total} la locul lor</p></article>`;
+    })
+    .join("");
+  $("reveal-content").innerHTML = `
+    <div class="compare-row"><figure><figcaption>Modelul</figcaption>${gridHtml(p.target)}</figure></div>
+    <h3>Rezultatele colegilor</h3>
+    <div class="results-grid">${cards || "<p>Niciun participant.</p>"}</div>`;
+}
+
 // ---------- reveal ----------
 async function showReveal() {
   $("reveal").hidden = false;
@@ -417,7 +470,7 @@ async function showReveal() {
     intro = `<div class="rule"><b>Instrucțiunea originală:</b> ${escapeHtml(p.guide)}</div>`;
   }
   if (session.mode === "model") {
-    intro = `<p>Compară rezultatul tău cu modelul descris de trainer.</p>`;
+    intro = `<p>Compară modelul descris de facilitator cu ce ai realizat tu. <b>Verde</b> = piesă la locul ei, <b>roșu</b> = piesă greșită sau în plus.</p>`;
   }
   if (session.mode === "client") {
     intro = `<div class="rule"><b>Informația care lipsea:</b> ${escapeHtml(p.detail)}</div>`;
@@ -454,6 +507,19 @@ async function showReveal() {
   if (x?.type === "client") {
     own = `<p><b>Răspunsul tău:</b> ${escapeHtml(x.answer)}</p>`;
   }
+  if (session.mode === "model") {
+    if (x?.type === "model") {
+      const cmp = compareModel(p.target, x.positions || []);
+      own = `<div class="compare-row">
+          <figure><figcaption>Modelul</figcaption>${gridHtml(p.target)}</figure>
+          <figure><figcaption>Ce ai realizat tu</figcaption>${gridHtml(x.positions || [], cmp.marks)}</figure>
+        </div>
+        <p class="score-badge">${scoreText(cmp)}</p>`;
+    } else {
+      own = `<p>Nu ai trimis un răspuns. Iată modelul:</p><div class="compare-row"><figure>${gridHtml(p.target)}</figure></div>`;
+    }
+  }
+  $("reveal-title").textContent = "Compară și observă";
 
   $("reveal-content").innerHTML = intro + own;
 

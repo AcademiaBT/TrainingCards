@@ -1,20 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel } from "./communication-data.js";
+import { compareModel, gridHtml, scoreText } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
-
-const stages = ["lobby", "round1", "round1_reveal", "round2", "round2_reveal", "debrief", "ended"];
-const labels = {
-  lobby: "Lobby",
-  round1: "Runda 1 · fără clarificări",
-  round1_reveal: "Reveal runda 1",
-  round2: "Runda 2 · cu clarificări",
-  round2_reveal: "Reveal runda 2",
-  debrief: "Debrief",
-  ended: "Încheiată",
-};
 
 let session = null;
 let user = null;
@@ -187,7 +177,8 @@ $("end").onclick = async () => {
 };
 
 async function move(delta) {
-  const i = stages.indexOf(session.status);
+  const stages = stagesFor(session.mode);
+  const i = Math.max(0, stages.indexOf(session.status)); // o sesiune veche cu etapa necunoscuta porneste de la inceput
   const next = stages[Math.max(0, Math.min(stages.length - 1, i + delta))];
   const { data, error } = await supabase
     .from("communication_sessions")
@@ -202,21 +193,17 @@ async function move(delta) {
 }
 
 // ---------- afisare ----------
-function targetHtml(items) {
-  const cells = Array.from({ length: 16 }, () => "");
-  items.forEach((p) => (cells[p.y * 4 + p.x] = p.s));
-  return `<div class="mini-model">${cells.map((v) => `<span>${v}</span>`).join("")}</div>`;
-}
+const targetHtml = gridHtml;
 
 async function render() {
   if (!session) return;
   const a = ACTIVITIES[session.mode];
   const ended = session.status === "ended";
 
-  $("mode-badge").textContent = labels[session.status];
+  $("mode-badge").textContent = stageLabel(session.mode, session.status);
   $("activity-title").textContent = a.name;
   $("join-link").textContent = joinUrl();
-  $("status-line").textContent = `Etapa curentă: ${labels[session.status]}`;
+  $("status-line").textContent = `Etapa curentă: ${stageLabel(session.mode, session.status)}`;
   $("back").disabled = session.status === "lobby" || ended;
   $("next").disabled = ended;
   $("end").disabled = ended;
@@ -229,7 +216,8 @@ async function render() {
     $("creator").hidden = false;
   }
 
-  const r = session.status.includes("2") ? 1 : 0;
+  const isModel = session.mode === "model";
+  const r = isModel ? 0 : session.status.includes("2") ? 1 : 0;
   const p = getRounds(session.mode, session.prompt_index)[r];
   let html = "";
   if (session.status !== lastStatus) {
@@ -243,6 +231,18 @@ async function render() {
       <button class="btn outline" id="reroll">🎲 Altă variantă</button>`;
   } else if (session.status === "debrief") {
     html = `<ol>${DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
+  } else if (isModel && !ended) {
+    if (session.status === "round1") {
+      html = `<p><b>Pasul 1 · Poziționare</b></p>
+        <p>Explică verbal poziționarea pieselor, fără să arăți grila. Participanții așază piesele; când treci la pasul următor, ce au pe grilă se trimite automat.</p>
+        <div class="rule"><b>Descriere pentru ghid:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>`;
+    } else if (session.status === "round1_reveal") {
+      html = `<p><b>Pasul 2 · Reveal individual</b></p>
+        <p>Fiecare participant vede, pe ecranul lui, modelul și ce a realizat (verde = piesă la locul ei, roșu = greșită sau în plus). Lasă-le timp, apoi treci la pasul următor.</p>`;
+    } else {
+      html = `<p><b>Pasul 3 · Rezultatele tuturor</b></p>
+        <p>Participanții văd acum rezultatele tuturor colegilor, alături de model. Discutați diferențele înainte de debrief.</p>`;
+    }
   } else if (!ended) {
     html = `<p><b>${escapeHtml(p.title)}</b></p><p>${escapeHtml(p.rule)}</p>`;
     if (session.mode === "draw") {
@@ -280,8 +280,8 @@ async function render() {
   $("overlay-control").hidden = !(session.mode === "draw" && p.svg && session.status !== "lobby");
 
   $("target").innerHTML =
-    session.mode === "model" && session.status !== "lobby"
-      ? `<h4>Model-țintă, runda ${r + 1}</h4>${targetHtml(p.target)}`
+    isModel && ["round1", "round1_reveal", "round2_reveal"].includes(session.status)
+      ? `<h4>Model-țintă</h4>${targetHtml(p.target)}`
       : "";
 
   await loadData();
@@ -297,18 +297,20 @@ async function loadData() {
     (parts || []).map((p) => `<div>✓ ${escapeHtml(p.alias)}</div>`).join("") || "Niciun participant încă.";
 
   const ended = session.status === "ended";
-  const round = session.status.includes("2") ? 2 : 1;
+  const isModel = session.mode === "model";
+  const round = isModel ? 1 : session.status.includes("2") ? 2 : 1;
   const rounds = getRounds(session.mode, session.prompt_index);
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
-      .filter((s) => (ended ? true : s.round === round))
+      .filter((s) => (isModel ? s.round === 1 : ended ? true : s.round === round))
       .sort((x, y) => x.round - y.round)
       .map((s) =>
         resultCard(
-          (aliasById[s.participant_id] || "Participant") + (ended ? ` · runda ${s.round}` : ""),
+          (aliasById[s.participant_id] || "Participant") + (ended && !isModel ? ` · runda ${s.round}` : ""),
           s.payload,
-          rounds[s.round - 1]?.svg
+          rounds[s.round - 1]?.svg,
+          rounds[0]?.target
         )
       )
       .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
@@ -316,12 +318,15 @@ async function loadData() {
   $("results").classList.toggle("show-overlay", overlayOn);
 }
 
-function resultCard(alias, p, svg) {
+function resultCard(alias, p, svg, target) {
   let body = "";
   if (p.type === "draw") {
     body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen">${svg ? `<div class="model-overlay">${svg}</div>` : ""}</div>`;
   }
-  if (p.type === "model") body = targetHtml(p.positions || []);
+  if (p.type === "model") {
+    const cmp = target ? compareModel(target, p.positions || []) : null;
+    body = targetHtml(p.positions || [], cmp?.marks) + (cmp ? `<p class="hint">${scoreText(cmp)}</p>` : "");
+  }
   if (p.type === "client") {
     body =
       (p.assumption ? `<p><b>Interpretare:</b> ${escapeHtml(p.assumption)}</p>` : "") +

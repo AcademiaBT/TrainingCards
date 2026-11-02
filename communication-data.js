@@ -93,6 +93,35 @@ export const ACTIVITIES = {
   },
 };
 
+// ---------------------------------------------------------------------
+//  Etapele sesiunii. Desenul și mesajele ambigue au 2 runde; „Reconstruiește modelul” are 4 pași:
+//   1 poziționare (facilitatorul explică) → 2 reveal individual (model + ce a făcut fiecare)
+//   → 3 rezultatele tuturor → 4 debrief.
+//  Valorile salvate în baza de date sunt cele permise de constrângerea existentă (nu cere SQL nou):
+//  la model, pasul 3 se salvează ca „round2_reveal”.
+// ---------------------------------------------------------------------
+const STAGES_DEFAULT = ["lobby", "round1", "round1_reveal", "round2", "round2_reveal", "debrief", "ended"];
+const STAGES_MODEL = ["lobby", "round1", "round1_reveal", "round2_reveal", "debrief", "ended"];
+const LABELS_DEFAULT = {
+  lobby: "Lobby",
+  round1: "Runda 1 · fără clarificări",
+  round1_reveal: "Reveal runda 1",
+  round2: "Runda 2 · cu clarificări",
+  round2_reveal: "Reveal runda 2",
+  debrief: "Debrief",
+  ended: "Încheiată",
+};
+const LABELS_MODEL = {
+  lobby: "Lobby",
+  round1: "Pasul 1 · Poziționare",
+  round1_reveal: "Pasul 2 · Reveal individual",
+  round2_reveal: "Pasul 3 · Rezultatele tuturor",
+  debrief: "Pasul 4 · Debrief",
+  ended: "Încheiată",
+};
+export const stagesFor = (mode) => (mode === "model" ? STAGES_MODEL : STAGES_DEFAULT);
+export const stageLabel = (mode, status) => (mode === "model" ? LABELS_MODEL : LABELS_DEFAULT)[status] || status;
+
 export const DEBRIEF = [
   "Ce presupuneri ai făcut fără să îți dai seama?",
   "Ce s-a schimbat când ai putut clarifica și verifica înțelegerea?",
@@ -200,28 +229,17 @@ function describeTarget(items) {
   return lines.join("\n");
 }
 
-const sameTarget = (a, b) =>
-  a.length === b.length && a.every((p) => b.some((q) => q.s === p.s && q.x === p.x && q.y === p.y));
-
 function modelRounds(seed) {
-  if (!seed) {
-    return CLASSIC_MODEL_TARGETS.map((target, i) => ({
-      title: `Model ${i + 1}`,
-      rule: i === 0 ? "Fără întrebări. Așază piesele numai după descrierea ghidului." : "Poți clarifica și reformula înainte să fixezi piesele.",
+  // un singur model pe sesiune (pasul 1 = pozitionare); restul pasilor folosesc acelasi model
+  const target = seed ? generateTarget(rng(seed)) : CLASSIC_MODEL_TARGETS[0];
+  return [
+    {
+      title: "Reconstruiește modelul",
+      rule: "Ascultă descrierea facilitatorului și așază piesele pe grilă. Ce ai pe grilă se trimite automat când se trece la pasul următor.",
       target,
       guide: describeTarget(target),
-    }));
-  }
-  const rand = rng(seed);
-  const first = generateTarget(rand);
-  let second = generateTarget(rand);
-  for (let i = 0; i < 20 && sameTarget(first, second); i++) second = generateTarget(rand);
-  return [first, second].map((target, i) => ({
-    title: `Model ${i + 1}`,
-    rule: i === 0 ? "Fără întrebări. Așază piesele numai după descrierea ghidului." : "Poți clarifica și reformula înainte să fixezi piesele.",
-    target,
-    guide: describeTarget(target),
-  }));
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------

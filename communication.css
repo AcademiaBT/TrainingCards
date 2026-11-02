@@ -437,3 +437,45 @@
   font-size:14px;
   color:var(--ink-soft, #5a5a4a);
 }
+
+/* Reconstruieste modelul: comparatie model / rezultat */
+.mini-model span.ok {
+  background:#dcefd8;
+  border-color:#2e7d32;
+}
+.mini-model span.bad {
+  background:#f8dfd9;
+  border-color:#c0392b;
+}
+.compare-row {
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px 32px;
+  align-items:flex-start;
+  margin:10px 0;
+}
+.compare-row figure {
+  margin:0;
+}
+.compare-row figcaption {
+  font-weight:600;
+  margin-bottom:6px;
+}
+.compare-row .mini-model {
+  grid-template-columns:repeat(4, 46px);
+  grid-template-rows:repeat(4, 46px);
+}
+.compare-row .mini-model span {
+  font-size:26px;
+}
+.score-badge {
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:8px;
+  background:#f1ead6;
+  font-weight:600;
+}
+.result-card.mine {
+  border-color:var(--green);
+  box-shadow:0 0 0 2px var(--green);
+}
