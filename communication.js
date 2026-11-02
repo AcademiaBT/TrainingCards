@@ -204,11 +204,47 @@ function buildActivity() {
 const CANVAS_W = 800;
 const CANVAS_H = 600;
 
+const PEN_COLORS = [
+  { c: "#1a1a1a", n: "Negru" },
+  { c: "#d32f2f", n: "Roșu" },
+  { c: "#1565c0", n: "Albastru" },
+  { c: "#2e7d32", n: "Verde" },
+  { c: "#ef6c00", n: "Portocaliu" },
+  { c: "#6a1b9a", n: "Mov" },
+  { c: "#6d4c41", n: "Maro" },
+];
+const PEN_WIDTH = 5;
+const ERASER_WIDTH = 32;
+
 function buildCanvas() {
+  // pe telefon (ecran ingust sau scund) instructiunile sunt initial inchise, ca sa ramana loc pentru desen
+  const compact = window.matchMedia("(max-width: 600px), (orientation: landscape) and (max-height: 520px)").matches;
   $("content").innerHTML = `
+    <details class="how-to" ${compact ? "" : "open"}>
+      <summary>ℹ️ Cum desenezi</summary>
+      <ul>
+        <li>Desenezi ținând degetul (sau mouse-ul) apăsat pe zona albă.</li>
+        <li><b>Culoare:</b> atinge una dintre bulinele colorate sau bulina multicoloră pentru orice altă culoare.</li>
+        <li><b>Radieră:</b> apasă „Radieră”, apoi treci peste ce vrei să ștergi. Revii la desen cu „Creion” sau alegând o culoare.</li>
+        <li><b>Șterge tot</b> golește toată pagina.</li>
+        <li>Când ești gata, apasă <b>Trimite răspunsul</b>. Dacă mai schimbi ceva, trimite din nou: se păstrează ultima versiune.</li>
+      </ul>
+    </details>
     <div class="canvas-tools">
-      <button class="btn outline" id="clear-canvas">Șterge tot</button>
-      <input id="pen-color" type="color" value="#213a2e">
+      <div class="tool-group" role="group" aria-label="Instrument">
+        <button class="tool-btn active" id="tool-pen" aria-pressed="true">✏️ Creion</button>
+        <button class="tool-btn" id="tool-eraser" aria-pressed="false">🧽 Radieră</button>
+        <button class="tool-btn clear" id="clear-canvas">Șterge tot</button>
+      </div>
+      <div class="tool-group" role="group" aria-label="Culoare">
+        ${PEN_COLORS.map(
+          (x, i) =>
+            `<button class="swatch${i === 0 ? " active" : ""}" data-color="${x.c}" style="--c:${x.c}" title="${x.n}" aria-label="${x.n}"></button>`
+        ).join("")}
+        <label class="swatch custom" id="custom-swatch" title="Altă culoare" style="--c:#1a1a1a">
+          <input type="color" id="custom-color" value="#1a1a1a" aria-label="Alege o altă culoare">
+        </label>
+      </div>
     </div>
     <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>`;
 
@@ -219,9 +255,42 @@ function buildCanvas() {
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   };
   paintBackground();
-  ctx.lineWidth = 5;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  let tool = "pen";
+  let penColor = PEN_COLORS[0].c;
+  const applyTool = () => {
+    ctx.strokeStyle = tool === "eraser" ? "#ffffff" : penColor;
+    ctx.lineWidth = tool === "eraser" ? ERASER_WIDTH : PEN_WIDTH;
+  };
+  const setTool = (t) => {
+    tool = t;
+    $("tool-pen").classList.toggle("active", t === "pen");
+    $("tool-eraser").classList.toggle("active", t === "eraser");
+    $("tool-pen").setAttribute("aria-pressed", String(t === "pen"));
+    $("tool-eraser").setAttribute("aria-pressed", String(t === "eraser"));
+    canvas.classList.toggle("erasing", t === "eraser");
+    applyTool();
+  };
+  $("tool-pen").onclick = () => setTool("pen");
+  $("tool-eraser").onclick = () => setTool("eraser");
+  const markActive = (el) => document.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("active", x === el));
+  document.querySelectorAll(".swatch[data-color]").forEach((b) => {
+    b.onclick = () => {
+      penColor = b.dataset.color;
+      markActive(b);
+      setTool("pen"); // alegerea unei culori te readuce la creion
+    };
+  });
+  // culoare la alegere (selectorul nativ al dispozitivului)
+  $("custom-color").oninput = (e) => {
+    penColor = e.target.value;
+    $("custom-swatch").style.setProperty("--c", penColor);
+    markActive($("custom-swatch"));
+    setTool("pen");
+  };
+  applyTool();
 
   // coordonate in pixelii interni ai canvasului, indiferent cat de mare e afisat
   const pos = (e) => {
@@ -235,10 +304,10 @@ function buildCanvas() {
     drawing = true;
     canvas.setPointerCapture?.(e.pointerId);
     const p = pos(e);
+    applyTool();
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
     // un punct la simpla atingere
-    ctx.strokeStyle = $("pen-color").value;
     ctx.lineTo(p.x + 0.01, p.y);
     ctx.stroke();
     e.preventDefault();
@@ -246,7 +315,6 @@ function buildCanvas() {
   const move = (e) => {
     if (!drawing) return;
     const p = pos(e);
-    ctx.strokeStyle = $("pen-color").value;
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     e.preventDefault();

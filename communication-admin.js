@@ -20,6 +20,9 @@ let session = null;
 let user = null;
 let poll = null;
 let lastPromptHtml = "";
+let showModel = false; // desenul de referinta: ascuns in timpul rundei, vizibil la reveal
+let overlayOn = false; // suprapunere model peste desenele participantilor
+let lastStatus = null;
 
 function code() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -153,6 +156,11 @@ async function downloadQr(filename, format, triggerBtn) {
 $("qr-dl-png-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.png`, "png", e.target);
 $("qr-dl-jpg-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.jpg`, "jpg", e.target);
 
+$("overlay-toggle").onchange = (e) => {
+  overlayOn = e.target.checked;
+  $("results").classList.toggle("show-overlay", overlayOn);
+};
+
 // ---------- schimbare varianta (doar in lobby, inainte sa porneasca activitatea) ----------
 async function reroll() {
   if (!session || session.status !== "lobby") return;
@@ -224,6 +232,10 @@ async function render() {
   const r = session.status.includes("2") ? 1 : 0;
   const p = getRounds(session.mode, session.prompt_index)[r];
   let html = "";
+  if (session.status !== lastStatus) {
+    lastStatus = session.status;
+    showModel = session.status.includes("reveal");
+  }
 
   if (session.status === "lobby") {
     html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
@@ -235,6 +247,12 @@ async function render() {
     html = `<p><b>${escapeHtml(p.title)}</b></p><p>${escapeHtml(p.rule)}</p>`;
     if (session.mode === "draw") {
       html += `<div class="rule"><b>Modelul verbal al ghidului:</b><br>${escapeHtml(p.guide)}</div>`;
+    }
+    if (session.mode === "draw" && p.svg) {
+      html += `<div class="model-fig-block">
+        <button class="btn outline" id="toggle-model">${showModel ? "Ascunde modelul" : "Arată modelul"}</button>
+        ${showModel ? `<div class="model-fig">${p.svg}</div>` : ""}
+      </div>`;
     }
     if (session.mode === "model") {
       html += `<div class="rule"><b>Descriere pentru ghid:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>`;
@@ -250,7 +268,16 @@ async function render() {
     $("trainer-prompt").innerHTML = html;
     lastPromptHtml = html;
     if ($("reroll")) $("reroll").onclick = reroll;
+    if ($("toggle-model")) {
+      $("toggle-model").onclick = () => {
+        showModel = !showModel;
+        render();
+      };
+    }
   }
+
+  // comutatorul de suprapunere apare doar la desen, dupa lobby
+  $("overlay-control").hidden = !(session.mode === "draw" && p.svg && session.status !== "lobby");
 
   $("target").innerHTML =
     session.mode === "model" && session.status !== "lobby"
@@ -271,20 +298,29 @@ async function loadData() {
 
   const ended = session.status === "ended";
   const round = session.status.includes("2") ? 2 : 1;
+  const rounds = getRounds(session.mode, session.prompt_index);
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
       .filter((s) => (ended ? true : s.round === round))
       .sort((x, y) => x.round - y.round)
       .map((s) =>
-        resultCard((aliasById[s.participant_id] || "Participant") + (ended ? ` · runda ${s.round}` : ""), s.payload)
+        resultCard(
+          (aliasById[s.participant_id] || "Participant") + (ended ? ` · runda ${s.round}` : ""),
+          s.payload,
+          rounds[s.round - 1]?.svg
+        )
       )
       .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
+  $("results").classList.toggle("is-draw", session.mode === "draw");
+  $("results").classList.toggle("show-overlay", overlayOn);
 }
 
-function resultCard(alias, p) {
+function resultCard(alias, p, svg) {
   let body = "";
-  if (p.type === "draw") body = `<img src="${p.image}" alt="Desen">`;
+  if (p.type === "draw") {
+    body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen">${svg ? `<div class="model-overlay">${svg}</div>` : ""}</div>`;
+  }
   if (p.type === "model") body = targetHtml(p.positions || []);
   if (p.type === "client") {
     body =

@@ -36,10 +36,14 @@ Instrucțiuni complete, pas cu pas, sunt disponibile în `manual.html` (buton �
 Cheia `anon` din `config.js` este publică prin design — accesul e controlat de politicile RLS din Supabase (scrierea e permisă doar userilor autentificați, adică ție ca trainer).
 
 
-### Nodul comunicării — 3 activități online (v36)
-- **Desenează după instrucțiuni** — canvas individual, două runde, fără clarificări / cu clarificări și reveal.
-- **Reconstruiește modelul** — piese geometrice pe o grilă 4×4, model-țintă vizibil trainerului și comparare.
+### Nodul comunicării — 3 activități online (v36–v39)
+- **Desenează după instrucțiuni** — canvas individual 4:3 (responsive, funcționează la rotirea telefonului) cu creion, paletă de culori (plus culoare la alegere), radieră și „Șterge tot”, plus instrucțiuni pe ecran; două runde, fără clarificări / cu clarificări și reveal.
+  - **Desen de referință pentru trainer** (SVG, câte unul pe rundă): buton „Arată modelul” (ascuns în timpul rundei, vizibil la Reveal) și comutator „Suprapune modelul” peste desenele participanților. Pentru scenarii noi, desenul se scrie în `communication-data.js` cu `svg: fig("Titlu", "<forme SVG>")`.
+- **Reconstruiește modelul** — piese geometrice pe o grilă 4×4; modelele se generează (practic nelimitat), iar trainerul primește și o descriere text pas cu pas.
 - **Ce ai înțeles?** — mesaje ambigue de la client, presupunere, întrebare de clarificare, informație lipsă și răspuns.
-- Trainerul intră din `communication-admin.html` sau din butonul **Nodul comunicării** din admin.
-- Participanții intră fără cont, prin linkul generat, în `communication.html`.
-- Pentru upgrade rulează `supabase/add-communication-modes.sql`. Pentru instalare nouă, schema este inclusă integral în `supabase/install-complete.sql`.
+- **Variante:** desen (4 scenarii) și mesaje ambigue (4 scenarii); varianta se alege aleatoriu la crearea sesiunii, iar în lobby trainerul poate apăsa „🎲 Altă variantă”. Se salvează în `communication_sessions.prompt_index`. Scenarii noi se adaugă în `github/communication-data.js` (lista `variants`, instrucțiuni în comentariul de la începutul fișierului).
+- Trainerul intră din `communication-admin.html` sau din butonul **Nodul comunicării** din admin. Link participanți + cod QR (cu descărcare PNG/JPG).
+- Participanții intră fără cont, prin linkul generat, în `communication.html`. Alias deja folosit în sesiune: participantul este întrebat dacă vrea sufixul „(2)”, „(3)” etc. sau alege altul.
+- „Încheie” cere confirmare; după încheiere rămân vizibile rezultatele ambelor runde.
+- Instalare nouă: schema (inclusiv drepturile și indexul pentru alias) este inclusă în `supabase/install-complete.sql`.
+- Upgrade pe un proiect existent: rulează `supabase/add-communication-modes.sql` (idempotent). Dacă în proiect existau deja tabele `communication_*` dintr-o versiune veche (coloane `trainer_id`, `participant_token_hash`) sau apar erori 401 la deschiderea linkului participantului, rulează `supabase/fix-communication-prod.sql`.

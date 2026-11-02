@@ -75,8 +75,102 @@
 
 .canvas-tools {
   display:flex;
-  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 14px;
   margin:10px 0;
+}
+
+.tool-group {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+}
+
+.tool-btn {
+  font-family:inherit;
+  font-weight:600;
+  font-size:14px;
+  padding:8px 12px;
+  border-radius:8px;
+  border:1px solid var(--green);
+  background:transparent;
+  color:var(--green);
+  cursor:pointer;
+}
+.tool-btn.active {
+  background:var(--green);
+  color:var(--card-bg);
+}
+.tool-btn.clear {
+  border-color:var(--red);
+  color:var(--red);
+}
+
+.swatch {
+  width:32px;
+  height:32px;
+  padding:0;
+  border-radius:50%;
+  background:var(--c);
+  border:2px solid #fff;
+  box-shadow:0 0 0 1px #b9b09a;
+  cursor:pointer;
+}
+.swatch.active {
+  box-shadow:0 0 0 3px var(--green);
+}
+
+/* buline multicolora = culoare la alegere; inelul interior arata culoarea aleasa */
+.swatch.custom {
+  position:relative;
+  display:inline-block;
+  box-sizing:border-box;
+  background:conic-gradient(#e53935, #fdd835, #43a047, #00acc1, #3949ab, #d81b60, #e53935);
+}
+.swatch.custom::after {
+  content:"";
+  position:absolute;
+  inset:9px;
+  border-radius:50%;
+  background:var(--c);
+  border:2px solid #fff;
+  pointer-events:none;
+}
+.swatch.custom input {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+  border:0;
+  padding:0;
+}
+
+.draw-canvas.erasing {
+  cursor:cell;
+}
+
+.how-to {
+  margin:12px 0 4px;
+  padding:8px 14px;
+  border:1px solid var(--parchment-dark);
+  border-radius:8px;
+  background:#fffdf6;
+  font-size:14px;
+}
+.how-to summary {
+  cursor:pointer;
+  font-weight:600;
+}
+.how-to ul {
+  margin:8px 0 2px;
+  padding-left:20px;
+}
+.how-to li {
+  margin:3px 0;
 }
 
 .model-grid {
@@ -194,7 +288,7 @@
   }
   #activity .panel:has(.draw-canvas) {
     display:grid;
-    grid-template-columns:minmax(150px, 230px) 1fr;
+    grid-template-columns:minmax(170px, 272px) 1fr;
     grid-template-rows:repeat(6, auto) 1fr;
     column-gap:16px;
     align-items:start;
@@ -202,8 +296,40 @@
     margin-bottom:0;
   }
   #activity .panel:has(.draw-canvas) > *,
-  #activity .panel:has(.draw-canvas) #content > .canvas-tools {
+  #activity .panel:has(.draw-canvas) #content > .canvas-tools,
+  #activity .panel:has(.draw-canvas) #content > .how-to {
     grid-column:1;
+  }
+  #activity .panel:has(.draw-canvas) .how-to {
+    margin:0 0 4px;
+    font-size:12px;
+  }
+  #activity .panel:has(.draw-canvas) .canvas-tools {
+    margin:6px 0;
+    gap:6px;
+  }
+  #activity .panel:has(.draw-canvas) .tool-btn {
+    padding:6px 8px;
+    font-size:12px;
+  }
+  #activity .panel:has(.draw-canvas) .swatch {
+    width:26px;
+    height:26px;
+  }
+  #activity .panel:has(.draw-canvas) .tool-group {
+    gap:5px;
+  }
+  #activity .panel:has(.draw-canvas) #round-title {
+    margin:2px 0 6px;
+    font-size:22px;
+  }
+  #activity .panel:has(.draw-canvas) #rule {
+    margin:6px 0;
+    padding:8px 10px;
+    font-size:13px;
+  }
+  #activity .panel:has(.draw-canvas) #submit {
+    margin-top:4px;
   }
   #activity .panel:has(.draw-canvas) #content {
     display:contents;
@@ -214,4 +340,70 @@
     width:min(100%, calc((100vh - 56px) * 4 / 3));
     width:min(100%, calc((100dvh - 56px) * 4 / 3));
   }
+}
+
+/* desen de referinta + suprapunere (panoul trainerului) */
+.model-fig-block {
+  margin:10px 0;
+}
+.model-fig {
+  margin-top:10px;
+  max-width:460px;
+  border:1px solid var(--parchment-dark);
+  border-radius:8px;
+  background:#fff;
+  color:#1a1a1a;
+}
+.model-fig svg {
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+.overlay-control {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:0 0 10px;
+  font-size:14px;
+  cursor:pointer;
+}
+
+.overlay-control[hidden] {
+  display:none;
+}
+
+.results-grid.is-draw {
+  grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+}
+.draw-wrap {
+  position:relative;
+  aspect-ratio:4 / 3;
+  background:#fff;
+  border:1px solid var(--parchment-dark);
+  border-radius:6px;
+  overflow:hidden;
+}
+.result-card .draw-wrap img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#fff;
+}
+.model-overlay {
+  display:none;
+  position:absolute;
+  inset:0;
+  color:#d32f2f;
+  opacity:.65;
+  pointer-events:none;
+}
+.model-overlay svg {
+  display:block;
+  width:100%;
+  height:100%;
+}
+.results-grid.show-overlay .model-overlay {
+  display:block;
 }

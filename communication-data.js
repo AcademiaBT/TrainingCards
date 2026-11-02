@@ -7,10 +7,19 @@
 //   • Ce ai înțeles?: copiază un bloc din `ACTIVITIES.client.variants`
 //     (mesaj = ce spune clientul, detail = informația ascunsă).
 //   • Reconstruiește modelul: nu se adaugă manual, modelele se generează.
+//  Desenul de referință (opțional) al unei runde de desen: `svg: fig("Titlu", "<forme SVG>")`.
+//   Coordonatele sunt pe un cadru de 800×600 (ca zona de desen); formele se desenează doar cu contur
+//   (stroke-ul, grosimea și culoarea vin din `fig`), ex.: <circle cx="400" cy="300" r="80"/>,
+//   <rect x="100" y="100" width="200" height="120"/>, <path d="M100 100 L200 100"/>.
+//   Dacă o rundă nu are `svg`, trainerul nu vede butonul „Arată modelul”.
 //  Fiecare variantă are exact două runde: runda 1 fără întrebări, runda 2 cu clarificări.
 //  Ordinea din listă nu contează; variantele noi se adaugă la final.
 //  Varianta 0 (prima) păstrează conținutul inițial, pentru sesiunile mai vechi.
 // =====================================================================
+
+// desen de referinta: cadru 800x600, doar contur; culoarea vine din CSS (currentColor)
+const fig = (title, shapes) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="${title}">${shapes}</svg>`;
 
 const R1_NO_QUESTIONS = "Fără întrebări. Ascultă și desenează doar din instrucțiuni.";
 const R2_QUESTIONS = "Poți pune întrebări de clarificare și poți verifica ce ai înțeles.";
@@ -23,26 +32,26 @@ export const ACTIVITIES = {
     variants: [
       {
         rounds: [
-          { title: "Casa", guide: "O casă cu acoperiș triunghiular, două ferestre, o ușă, un copac în stânga și un soare în dreapta sus.", rule: R1_NO_QUESTIONS },
-          { title: "Peisaj geometric", guide: "Un pătrat mare în centru. În interior: un cerc mic sus-stânga și un triunghi jos-dreapta. O săgeată pornește din pătrat spre o stea aflată în dreapta.", rule: R2_QUESTIONS },
+          { title: "Casa", guide: "O casă cu acoperiș triunghiular, două ferestre, o ușă, un copac în stânga și un soare în dreapta sus.", svg: fig("Casa", '<path d="M300 300 H520 V480 H300 Z"/><path d="M280 300 L410 190 L540 300 Z"/><path d="M385 480 V395 H435 V480"/><rect x="320" y="330" width="45" height="45"/><rect x="455" y="330" width="45" height="45"/><path d="M60 480 H740"/><circle cx="170" cy="325" r="68"/><path d="M155 480 V391 M185 480 V391"/><circle cx="660" cy="110" r="45"/><path d="M719 110 L741 110 M701.7 151.7 L717.3 167.3 M660 169 L660 191 M618.3 151.7 L602.7 167.3 M601 110 L579 110 M618.3 68.3 L602.7 52.7 M660 51 L660 29 M701.7 68.3 L717.3 52.7"/>'), rule: R1_NO_QUESTIONS },
+          { title: "Peisaj geometric", guide: "Un pătrat mare în centru. În interior: un cerc mic sus-stânga și un triunghi jos-dreapta. O săgeată pornește din pătrat spre o stea aflată în dreapta.", svg: fig("Peisaj geometric", '<rect x="180" y="170" width="260" height="260"/><circle cx="245" cy="235" r="30"/><path d="M330 405 L420 405 L375 332 Z"/><path d="M440 300 L592 300 M569.2 312.5 L592 300 L569.2 287.5"/><polygon points="675,242 689.3,280.3 730.2,282.1 698.2,307.5 709.1,346.9 675,324.4 640.9,346.9 651.8,307.5 619.8,282.1 660.7,280.3"/>'), rule: R2_QUESTIONS },
         ],
       },
       {
         rounds: [
-          { title: "Barca pe lac", guide: "O linie ondulată orizontală la mijlocul paginii (apa). Pe ea, o barcă mică: un trapez jos și o pânză triunghiulară deasupra. Un soare sus-dreapta și doi nori mici sus-stânga.", rule: R1_NO_QUESTIONS },
-          { title: "Formele legate", guide: "Un cerc mare în stânga. În interior, un pătrat mic. Lipit de cerc, în dreapta lui, un dreptunghi culcat cu o linie verticală prin mijloc. De sus din dreptunghi pornește o săgeată spre un triunghi aflat deasupra.", rule: R2_QUESTIONS },
+          { title: "Barca pe lac", guide: "O linie ondulată orizontală la mijlocul paginii (apa). Pe ea, o barcă mică: un trapez jos și o pânză triunghiulară deasupra. Un soare sus-dreapta și doi nori mici sus-stânga.", svg: fig("Barca pe lac", '<path d="M40 360 Q60.0 336 80 360 T120 360 T160 360 T200 360 T240 360 T280 360 T320 360 T360 360 T400 360 T440 360 T480 360 T520 360 T560 360 T600 360 T640 360 T680 360 T720 360 T760 360"/><path d="M300 305 H500 L465 345 H335 Z"/><path d="M400 305 V160 M400 170 V292 H485 Z"/><circle cx="670" cy="110" r="42"/><path d="M726 110 L748 110 M709.6 149.6 L725.2 165.2 M670 166 L670 188 M630.4 149.6 L614.8 165.2 M614 110 L592 110 M630.4 70.4 L614.8 54.8 M670 54 L670 32 M709.6 70.4 L725.2 54.8"/><path d="M60 130 H150 A21.6 21.6 0 0 0 150 86.8 A30.6 30.6 0 0 0 94.2 83.2 A27 27 0 0 0 60 130 Z"/><path d="M220 190 H290 A16.8 16.8 0 0 0 290 156.4 A23.8 23.8 0 0 0 246.6 153.6 A21 21 0 0 0 220 190 Z"/>'), rule: R1_NO_QUESTIONS },
+          { title: "Formele legate", guide: "Un cerc mare în stânga. În interior, un pătrat mic. Lipit de cerc, în dreapta lui, un dreptunghi culcat cu o linie verticală prin mijloc. De sus din dreptunghi pornește o săgeată spre un triunghi aflat deasupra.", svg: fig("Formele legate", '<circle cx="230" cy="330" r="150"/><rect x="200" y="300" width="60" height="60"/><rect x="380" y="290" width="260" height="80"/><path d="M510 290 V370"/><path d="M510 290 L510 158 M523.4 182.6 L510 158 L496.6 182.6"/><path d="M450 140 L510 50 L570 140 Z"/>'), rule: R2_QUESTIONS },
         ],
       },
       {
         rounds: [
-          { title: "Orașul", guide: "Trei clădiri dreptunghiulare una lângă alta; cea din mijloc e cea mai înaltă. Fiecare are trei ferestre pătrate, una sub alta. Un drum orizontal sub clădiri și o lună în colțul din stânga sus.", rule: R1_NO_QUESTIONS },
-          { title: "Stea și săgeată", guide: "O stea sus, în centru. Dedesubt, două cercuri de aceeași mărime, unul lângă altul. Sub ele, un dreptunghi lat. Din colțul din dreapta al dreptunghiului pornește o săgeată spre un romb aflat în dreapta-jos.", rule: R2_QUESTIONS },
+          { title: "Orașul", guide: "Trei clădiri dreptunghiulare una lângă alta; cea din mijloc e cea mai înaltă. Fiecare are trei ferestre pătrate, una sub alta. Un drum orizontal sub clădiri și o lună în colțul din stânga sus.", svg: fig("Orașul", '<path d="M170 480 V300 H330 V480 M330 170 H490 V480 M490 300 H650 V480"/><path d="M330 300 V170"/><rect x="232" y="318" width="36" height="36"/><rect x="552" y="318" width="36" height="36"/><rect x="232" y="368" width="36" height="36"/><rect x="552" y="368" width="36" height="36"/><rect x="232" y="418" width="36" height="36"/><rect x="552" y="418" width="36" height="36"/><rect x="392" y="200" width="36" height="36"/><rect x="392" y="270" width="36" height="36"/><rect x="392" y="340" width="36" height="36"/><path d="M60 480 H740 M60 535 H740"/><path d="M130 66 A45 45 0 1 0 130 154 A36 36 0 1 1 130 66 Z"/>'), rule: R1_NO_QUESTIONS },
+          { title: "Stea și săgeată", guide: "O stea sus, în centru. Dedesubt, două cercuri de aceeași mărime, unul lângă altul. Sub ele, un dreptunghi lat. Din colțul din dreapta al dreptunghiului pornește o săgeată spre un romb aflat în dreapta-jos.", svg: fig("Stea și săgeată", '<polygon points="400,38 415.3,78.9 459,80.8 424.8,108 436.4,150.2 400,126 363.6,150.2 375.2,108 341,80.8 384.7,78.9"/><circle cx="343" cy="250" r="55"/><circle cx="457" cy="250" r="55"/><rect x="250" y="345" width="300" height="80"/><path d="M550 425 L636 476 M610 475.1 L636 476 L622.7 453.6"/><path d="M670 450 L725 505 L670 560 L615 505 Z"/>'), rule: R2_QUESTIONS },
         ],
       },
       {
         rounds: [
-          { title: "Grădina", guide: "Jos, un gard făcut din cinci linii verticale, pe toată lățimea. În spatele gardului, două flori: una mare în stânga, una mică în dreapta, fiecare cu tulpină și patru petale. Deasupra florii mici, un fluture (două triunghiuri unite într-un punct).", rule: R1_NO_QUESTIONS },
-          { title: "Legături", guide: "Un triunghi mare sus, cu un pătrat mic în interior. Sub triunghi, două cercuri mici, unul în stânga și unul în dreapta. Între cercuri, o săgeată cu vârf la ambele capete.", rule: R2_QUESTIONS },
+          { title: "Grădina", guide: "Jos, un gard făcut din cinci linii verticale, pe toată lățimea. În spatele gardului, două flori: una mare în stânga, una mică în dreapta, fiecare cu tulpină și patru petale. Deasupra florii mici, un fluture (două triunghiuri unite într-un punct).", svg: fig("Grădina", '<path d="M80 420 V560"/><path d="M240 420 V560"/><path d="M400 420 V560"/><path d="M560 420 V560"/><path d="M720 420 V560"/><circle cx="170" cy="230" r="26"/><circle cx="170" cy="168" r="36"/><circle cx="170" cy="292" r="36"/><circle cx="108" cy="230" r="36"/><circle cx="232" cy="230" r="36"/><path d="M170 328 V420"/><circle cx="630" cy="330" r="14"/><circle cx="630" cy="296" r="20"/><circle cx="630" cy="364" r="20"/><circle cx="596" cy="330" r="20"/><circle cx="664" cy="330" r="20"/><path d="M630 384 V420"/><path d="M630 200 L580 170 V230 Z M630 200 L680 170 V230 Z"/>'), rule: R1_NO_QUESTIONS },
+          { title: "Legături", guide: "Un triunghi mare sus, cu un pătrat mic în interior. Sub triunghi, două cercuri mici, unul în stânga și unul în dreapta. Între cercuri, o săgeată cu vârf la ambele capete.", svg: fig("Legături", '<path d="M220 300 L400 50 L580 300 Z"/><rect x="370" y="200" width="60" height="60"/><circle cx="250" cy="450" r="45"/><circle cx="550" cy="450" r="45"/><path d="M305 450 H495 M332 428 L305 450 L332 472 M468 428 L495 450 L468 472"/>'), rule: R2_QUESTIONS },
         ],
       },
     ],
