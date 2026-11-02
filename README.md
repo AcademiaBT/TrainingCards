@@ -38,7 +38,7 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 
 ### Nodul comunicării — 3 activități online (v36–v39)
 - **Desenează după instrucțiuni** — canvas individual 4:3 (responsive, funcționează la rotirea telefonului) cu creion, paletă de culori (plus culoare la alegere), radieră și „Șterge tot”, plus instrucțiuni pe ecran; două runde, fără clarificări / cu clarificări și reveal.
-  - **Desen de referință pentru trainer** (SVG, câte unul pe rundă): buton „Arată modelul” (ascuns în timpul rundei, vizibil la Reveal) și comutator „Suprapune modelul” peste desenele participanților. Pentru scenarii noi, desenul se scrie în `communication-data.js` cu `svg: fig("Titlu", "<forme SVG>")`.
+  - **Desen de referință pentru trainer** (SVG, câte unul pe rundă): buton „Arată modelul” (ascuns în timpul rundei, vizibil la Reveal) și comutator „Suprapune modelul” peste desenele participanților. La Reveal, fiecare participant poate comuta pe pagina lui între „Desenul meu”, „Modelul” și „Suprapus”. Pentru scenarii noi, desenul se scrie în `communication-data.js` cu `svg: fig("Titlu", "<forme SVG>")`.
 - **Reconstruiește modelul** — piese geometrice pe o grilă 4×4; modelele se generează (practic nelimitat), iar trainerul primește și o descriere text pas cu pas.
 - **Ce ai înțeles?** — mesaje ambigue de la client, presupunere, întrebare de clarificare, informație lipsă și răspuns.
 - **Variante:** desen (4 scenarii) și mesaje ambigue (4 scenarii); varianta se alege aleatoriu la crearea sesiunii, iar în lobby trainerul poate apăsa „🎲 Altă variantă”. Se salvează în `communication_sessions.prompt_index`. Scenarii noi se adaugă în `github/communication-data.js` (lista `variants`, instrucțiuni în comentariul de la începutul fișierului).

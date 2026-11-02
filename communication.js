@@ -434,13 +434,36 @@ async function showReveal() {
   let own = "";
   const x = data?.payload;
   if (x?.type === "draw") {
-    own = `<h3>Desenul tău</h3><img src="${x.image}" style="max-width:100%;background:white">`;
+    // desenul participantului + desenul de referinta (daca runda are unul): vizualizare simpla, model sau suprapus
+    own = p.svg
+      ? `<h3>Desenul tău</h3>
+         <div class="tool-group view-switch" role="group" aria-label="Vizualizare">
+           <button class="tool-btn active" data-view="own">Desenul meu</button>
+           <button class="tool-btn" data-view="model">Modelul</button>
+           <button class="tool-btn" data-view="both">Suprapus</button>
+         </div>
+         <div class="draw-wrap reveal-draw" id="reveal-draw" data-view="own">
+           <img src="${x.image}" alt="Desenul tău">
+           <div class="model-overlay">${p.svg}</div>
+         </div>
+         <p class="hint" id="reveal-hint" hidden>Modelul apare în roșu peste desenul tău.</p>`
+      : `<h3>Desenul tău</h3><img src="${x.image}" style="max-width:100%;background:white">`;
+  } else if (session.mode === "draw" && p.svg) {
+    own = `<p>Nu ai trimis un desen în această rundă. Iată modelul:</p><div class="model-fig">${p.svg}</div>`;
   }
   if (x?.type === "client") {
     own = `<p><b>Răspunsul tău:</b> ${escapeHtml(x.answer)}</p>`;
   }
 
   $("reveal-content").innerHTML = intro + own;
+
+  document.querySelectorAll(".view-switch [data-view]").forEach((b) => {
+    b.onclick = () => {
+      $("reveal-draw").dataset.view = b.dataset.view;
+      $("reveal-hint").hidden = b.dataset.view !== "both";
+      document.querySelectorAll(".view-switch [data-view]").forEach((o) => o.classList.toggle("active", o === b));
+    };
+  });
 }
 
 init();

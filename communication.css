@@ -407,3 +407,33 @@
 .results-grid.show-overlay .model-overlay {
   display:block;
 }
+
+/* pasul „Compara si observa” (participant): desenul meu / modelul / suprapus */
+.draw-wrap img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  background:#fff;
+}
+.view-switch {
+  margin:8px 0 10px;
+}
+.reveal-draw {
+  max-width:640px;
+}
+.reveal-draw[data-view="both"] .model-overlay,
+.reveal-draw[data-view="model"] .model-overlay {
+  display:block;
+}
+.reveal-draw[data-view="model"] .model-overlay {
+  color:#1a1a1a;
+  opacity:1;
+}
+.reveal-draw[data-view="model"] img {
+  visibility:hidden;
+}
+.hint {
+  font-size:14px;
+  color:var(--ink-soft, #5a5a4a);
+}
