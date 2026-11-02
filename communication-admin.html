@@ -30,7 +30,7 @@
       <div class="comm-grid three">
         <button class="mode-card" data-mode="draw">
           <b>1. Desenează după instrucțiuni</b>
-          <span>Canvas individual, două runde și comparare.</span>
+          <span>Canvas individual, scenarii proprii, comparare cu imaginea de referință.</span>
         </button>
         <button class="mode-card" data-mode="model">
           <b>2. Reconstruiește modelul</b>
@@ -40,6 +40,30 @@
           <b>3. Ce ai înțeles?</b>
           <span>Mesaj ambiguu, clarificare și răspuns.</span>
         </button>
+      </div>
+    </section>
+
+    <section id="scenarios" class="panel" hidden>
+      <h2>Scenariile mele · Desenează după instrucțiuni</h2>
+      <p class="hint">Scenariile sunt private: le vezi doar tu. La crearea unei sesiuni, scenariul ales se copiază în sesiune, deci modificările ulterioare nu schimbă sesiunile deja pornite.</p>
+      <p class="rule" id="scenario-hint" hidden></p>
+      <div id="scenario-list"></div>
+      <button class="btn outline" id="scenario-new">＋ Scenariu nou</button>
+
+      <div id="scenario-form" class="scenario-form" hidden>
+        <h3 id="scenario-form-title">Scenariu nou</h3>
+        <label for="sc-title">Numele scenariului</label>
+        <input id="sc-title" type="text" maxlength="80" placeholder="ex. Casa cu copac">
+        <div id="sc-rounds"></div>
+        <div class="sc-actions">
+          <button class="btn outline" id="sc-add-round">＋ Adaugă runda 2 (cu clarificări)</button>
+          <button class="btn outline" id="sc-remove-round" hidden>Elimină runda 2</button>
+        </div>
+        <div class="error-msg" id="sc-error"></div>
+        <div class="sc-actions">
+          <button class="btn" id="sc-save">Salvează scenariul</button>
+          <button class="btn outline" id="sc-cancel">Renunță</button>
+        </div>
       </div>
     </section>
 

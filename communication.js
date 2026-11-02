@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, DEBRIEF, getRounds } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -204,7 +204,7 @@ function render() {
 }
 
 function buildActivity() {
-  const p = getRounds(session.mode, session.prompt_index)[round - 1];
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
   $("round-badge").textContent = session.mode === "model" ? "Pasul 1" : `Runda ${round}`;
   $("round-title").textContent = p.title;
   $("rule").textContent = p.rule;
@@ -438,7 +438,7 @@ async function submit() {
 async function showAllModelResults() {
   $("reveal").hidden = false;
   $("reveal-title").textContent = "Rezultatele tuturor";
-  const p = getRounds(session.mode, session.prompt_index)[0];
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[0];
   const { data: subs } = await supabase
     .from("communication_submissions")
     .select("participant_id,payload")
@@ -468,11 +468,11 @@ async function showAllModelResults() {
 // ---------- reveal ----------
 async function showReveal() {
   $("reveal").hidden = false;
-  const p = getRounds(session.mode, session.prompt_index)[round - 1];
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
 
   let intro = "";
   if (session.mode === "draw") {
-    intro = `<div class="rule"><b>Instrucțiunea originală:</b> ${escapeHtml(p.guide)}</div>`;
+    intro = `<div class="rule"><b>Instrucțiunile originale:</b>${stepsHtml(p.steps)}</div>`;
   }
   if (session.mode === "model") {
     intro = `<p>Compară modelul descris de facilitator cu ce ai realizat tu. <b>Verde</b> = piesă la locul ei, <b>roșu</b> = piesă greșită sau în plus.</p>`;
@@ -492,8 +492,8 @@ async function showReveal() {
   let own = "";
   const x = data?.payload;
   if (x?.type === "draw") {
-    // desenul participantului + desenul de referinta (daca runda are unul): vizualizare simpla, model sau suprapus
-    own = p.svg
+    // desenul participantului + imaginea de referinta (daca runda are una): vizualizare simpla, model sau suprapus
+    own = p.image
       ? `<h3>Desenul tău</h3>
          <div class="tool-group view-switch" role="group" aria-label="Vizualizare">
            <button class="tool-btn active" data-view="own">Desenul meu</button>
@@ -502,12 +502,13 @@ async function showReveal() {
          </div>
          <div class="draw-wrap reveal-draw" id="reveal-draw" data-view="own">
            <img src="${x.image}" alt="Desenul tău">
-           <div class="model-overlay">${p.svg}</div>
+           <img class="model-orig" src="${escapeHtml(p.image)}" alt="Modelul">
+           <div class="model-overlay" data-src="${escapeHtml(p.image)}"></div>
          </div>
          <p class="hint" id="reveal-hint" hidden>Modelul apare în roșu peste desenul tău.</p>`
       : `<h3>Desenul tău</h3><img src="${x.image}" style="max-width:100%;background:white">`;
-  } else if (session.mode === "draw" && p.svg) {
-    own = `<p>Nu ai trimis un desen în această rundă. Iată modelul:</p><div class="model-fig">${p.svg}</div>`;
+  } else if (session.mode === "draw" && p.image) {
+    own = `<p>Nu ai trimis un desen în această rundă. Iată modelul:</p><div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>`;
   }
   if (x?.type === "client") {
     own = `<p><b>Răspunsul tău:</b> ${escapeHtml(x.answer)}</p>`;
@@ -527,6 +528,7 @@ async function showReveal() {
   $("reveal-title").textContent = "Compară și observă";
 
   $("reveal-content").innerHTML = intro + own;
+  hydrateOverlays($("reveal-content"));
 
   document.querySelectorAll(".view-switch [data-view]").forEach((b) => {
     b.onclick = () => {

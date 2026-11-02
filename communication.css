@@ -483,3 +483,118 @@
   grid-template-columns:minmax(200px, 300px);
   margin-bottom:6px;
 }
+
+/* imaginea de referinta (scenarii proprii) */
+.model-fig img {
+  display:block;
+  width:100%;
+  height:auto;
+}
+.model-overlay img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:fill;
+}
+.model-overlay img.blend {
+  mix-blend-mode:multiply;
+}
+.draw-wrap img.model-orig {
+  display:none;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  background:#fff;
+}
+.reveal-draw[data-view="model"] img.model-orig {
+  display:block;
+}
+/* suprapunerea: imaginea roșie trebuie să rămână transparentă (regula generală pentru imagini din chenarul de desen setează fundal alb) */
+.draw-wrap .model-overlay img,
+.result-card .draw-wrap .model-overlay img {
+  background:transparent;
+  object-fit:fill;
+}
+.reveal-draw[data-view="model"] .model-overlay {
+  display:none;
+}
+ol.steps {
+  margin:6px 0 2px;
+  padding-left:22px;
+}
+ol.steps li {
+  margin:4px 0;
+}
+
+/* managerul „Scenariile mele” */
+.sc-item {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 12px;
+  padding:8px 0;
+  border-bottom:1px solid var(--parchment-dark);
+}
+.sc-item b {
+  flex:1 1 200px;
+}
+.sc-item .btn {
+  font-size:13px;
+  padding:5px 10px;
+}
+.scenario-form {
+  margin-top:14px;
+  padding-top:10px;
+  border-top:2px solid var(--parchment-dark);
+}
+.scenario-form label {
+  display:block;
+  margin:10px 0 4px;
+  font-weight:600;
+}
+.scenario-form input[type="text"],
+.scenario-form textarea {
+  width:100%;
+  box-sizing:border-box;
+  font:inherit;
+  padding:8px 10px;
+  border:1px solid var(--parchment-dark);
+  border-radius:8px;
+}
+.scenario-form label.check {
+  font-weight:400;
+}
+.sc-round {
+  margin:12px 0;
+  padding:8px 14px 14px;
+  border:1px solid var(--parchment-dark);
+  border-radius:10px;
+}
+.sc-round legend {
+  font-weight:700;
+  padding:0 6px;
+}
+.sc-preview {
+  margin-top:6px;
+  font-size:14px;
+  background:#fffdf6;
+  border:1px dashed var(--parchment-dark);
+  border-radius:8px;
+  padding:6px 12px;
+}
+.sc-img-preview img {
+  display:block;
+  max-width:320px;
+  width:100%;
+  margin:8px 0;
+  border:1px solid var(--parchment-dark);
+  border-radius:8px;
+  background:#fff;
+}
+.sc-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
