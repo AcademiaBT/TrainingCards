@@ -434,30 +434,35 @@ async function submit() {
 }
 
 // ---------- pasul 3 (model): rezultatele tuturor ----------
+// Anonim: aliasurile celorlalti nu se afiseaza (si nici nu se mai citesc); rezultatul propriu apare primul, dupa model.
 async function showAllModelResults() {
   $("reveal").hidden = false;
   $("reveal-title").textContent = "Rezultatele tuturor";
   const p = getRounds(session.mode, session.prompt_index)[0];
-  const [{ data: parts }, { data: subs }] = await Promise.all([
-    supabase.from("communication_participants").select("id,alias,joined_at").eq("session_id", session.id).order("joined_at"),
-    supabase.from("communication_submissions").select("participant_id,payload").eq("session_id", session.id).eq("round", 1),
-  ]);
-  const byPart = Object.fromEntries((subs || []).map((s) => [s.participant_id, s.payload]));
-  const cards = (parts || [])
-    .map((q) => {
-      const x = byPart[q.id];
-      const mine = me && q.id === me.id;
-      if (x?.type !== "model") {
-        return `<article class="result-card${mine ? " mine" : ""}"><b>${escapeHtml(q.alias)}${mine ? " (tu)" : ""}</b><p class="hint">Fără răspuns trimis.</p></article>`;
-      }
-      const cmp = compareModel(p.target, x.positions || []);
-      return `<article class="result-card${mine ? " mine" : ""}"><b>${escapeHtml(q.alias)}${mine ? " (tu)" : ""}</b>${gridHtml(x.positions || [], cmp.marks)}<p class="hint">${cmp.correct}/${cmp.total} la locul lor</p></article>`;
-    })
-    .join("");
+  const { data: subs } = await supabase
+    .from("communication_submissions")
+    .select("participant_id,payload")
+    .eq("session_id", session.id)
+    .eq("round", 1);
+
+  const models = (subs || []).filter((s) => s.payload?.type === "model");
+  const mine = models.find((s) => s.participant_id === me.id);
+  // ordine stabila, dar fara legatura cu ordinea intrarii in sesiune (ca sa nu poata fi ghicit cine e cine)
+  const others = models.filter((s) => s.participant_id !== me.id).sort((a, b) => (a.participant_id > b.participant_id ? 1 : -1));
+
+  const card = (positions, title, isMine) => {
+    const cmp = compareModel(p.target, positions || []);
+    return `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}${gridHtml(positions || [], cmp.marks)}<p class="hint">${cmp.correct}/${cmp.total} la locul lor</p></article>`;
+  };
+  const own = mine
+    ? card(mine.payload.positions, "Rezultatul tău", true)
+    : `<article class="result-card mine"><b>Rezultatul tău</b><p class="hint">Nu ai trimis un răspuns.</p></article>`;
+
   $("reveal-content").innerHTML = `
     <div class="compare-row"><figure><figcaption>Modelul</figcaption>${gridHtml(p.target)}</figure></div>
-    <h3>Rezultatele colegilor</h3>
-    <div class="results-grid">${cards || "<p>Niciun participant.</p>"}</div>`;
+    <div class="results-grid own-result">${own}</div>
+    <h3>Rezultatele celorlalți participanți</h3>
+    <div class="results-grid">${others.map((s) => card(s.payload.positions, "", false)).join("") || "<p>Niciun alt rezultat deocamdată.</p>"}</div>`;
 }
 
 // ---------- reveal ----------

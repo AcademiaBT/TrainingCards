@@ -479,3 +479,7 @@
   border-color:var(--green);
   box-shadow:0 0 0 2px var(--green);
 }
+.results-grid.own-result {
+  grid-template-columns:minmax(200px, 300px);
+  margin-bottom:6px;
+}
