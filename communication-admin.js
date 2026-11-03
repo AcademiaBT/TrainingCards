@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, MAX_ROUNDS } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -247,7 +247,7 @@ $("end").onclick = async () => {
 };
 
 async function move(delta) {
-  if (delta > 0 && session.status === "lobby" && session.mode === "draw") {
+  if (delta > 0 && session.status === "lobby" && (session.mode === "draw" || session.mode === "model")) {
     const n = getRounds(session.mode, session.prompt_index, session.scenario).length;
     if (roundsBlocked(n)) return alert(ROUNDS_WARNING);
   }
@@ -314,7 +314,8 @@ async function render() {
   }
 
   const isModel = session.mode === "model";
-  const r = isModel ? 0 : roundOf(session.status) - 1;
+  const rounds_n = getRounds(session.mode, session.prompt_index, session.scenario).length;
+  const r = roundOf(session.status) - 1;
   const p = getRounds(session.mode, session.prompt_index, session.scenario)[r];
   let html = "";
   if (session.status !== lastStatus) {
@@ -349,23 +350,29 @@ async function render() {
         </select></p>
         <p class="hint">${nRounds} ${nRounds === 1 ? "rundă" : "runde"}. Scenariile tale se gestionează mai jos, la „Scenariile mele” → „Ce ai înțeles?”.</p>`;
     } else {
+      const nRounds = getRounds(session.mode, session.prompt_index, session.scenario).length;
       html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
         <p><b>Variantă:</b> ${escapeHtml(variantLabel(session.mode, session.prompt_index, session.scenario))}</p>
+        <p class="hint">${nRounds} runde: descriere interpretabilă → descriere stufoasă → descriere exactă, cu sistem de referință. Fiecare rundă are alt model.</p>
+        ${roundsBlocked(nRounds) ? `<p class="error-msg">${ROUNDS_WARNING}</p>` : ""}
         <button class="btn outline" id="reroll">🎲 Altă variantă</button>`;
+      probeRounds(nRounds);
     }
   } else if (session.status === "debrief") {
     html = `<ol>${DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
   } else if (isModel && !ended) {
-    if (session.status === "round1") {
-      html = `<p><b>Pasul 1 · Poziționare</b></p>
-        <p>Explică verbal poziționarea pieselor, fără să arăți grila. Participanții așază piesele; când treci la pasul următor, ce au pe grilă se trimite automat.</p>
-        <div class="rule"><b>Descriere pentru ghid:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>`;
-    } else if (session.status === "round1_reveal") {
-      html = `<p><b>Pasul 2 · Reveal individual</b></p>
+    const { kind, n } = parseStatus(session.status);
+    const head = `<p><b>Runda ${n} din ${rounds_n} · ${escapeHtml(p.styleLabel)}</b></p>`;
+    if (kind === "round") {
+      html = `${head}<p>${escapeHtml(p.tip)}</p>
+        <div class="rule"><b>Descriere de citit:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>
+        <p class="hint">Nu arăta grila și nu răspunde la întrebări. Participanții așază piesele; când treci la pasul următor, ce au pe grilă se trimite automat.</p>`;
+    } else if (kind === "reveal") {
+      html = `${head}<p><b>Reveal individual</b></p>
         <p>Fiecare participant vede, pe ecranul lui, modelul și ce a realizat (verde = piesă la locul ei, roșu = greșită sau în plus). Lasă-le timp, apoi treci la pasul următor.</p>`;
     } else {
-      html = `<p><b>Pasul 3 · Rezultatele tuturor</b></p>
-        <p>Participanții văd acum rezultatele tuturor colegilor, alături de model. Discutați diferențele înainte de debrief.</p>`;
+      html = `${head}<p><b>Rezultatele tuturor</b></p>
+        <p>Participanții văd acum rezultatele tuturor colegilor (anonim), alături de model. Discutați de ce descrierea a dus la aceste așezări${n < rounds_n ? ", apoi treceți la runda următoare" : ", apoi la debrief"}.</p>`;
     }
   } else if (!ended) {
     html = `<p><b>${escapeHtml(p.title)}</b></p><p>${escapeHtml(p.rule)}</p>`;
@@ -411,8 +418,8 @@ async function render() {
   $("overlay-control").hidden = !(session.mode === "draw" && p.image && session.status !== "lobby");
 
   $("target").innerHTML =
-    isModel && ["round1", "round1_reveal", "round2_reveal"].includes(session.status)
-      ? `<h4>Model-țintă</h4>${targetHtml(p.target)}`
+    isModel && parseStatus(session.status).n > 0
+      ? `<h4>Model-țintă · runda ${r + 1}</h4>${targetHtml(p.target, {}, { axes: p.axes })}`
       : "";
 
   await loadData();
@@ -430,18 +437,19 @@ async function loadData() {
   const ended = session.status === "ended";
   const isModel = session.mode === "model";
   const rounds = getRounds(session.mode, session.prompt_index, session.scenario);
-  const round = isModel ? 1 : session.status === "debrief" ? rounds.length : roundOf(session.status); // la debrief: ultima runda
+  const round = session.status === "debrief" ? rounds.length : roundOf(session.status); // la debrief: ultima runda
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
-      .filter((s) => (isModel ? s.round === 1 : ended ? true : s.round === round))
+      .filter((s) => (ended ? true : s.round === round))
       .sort((x, y) => x.round - y.round)
       .map((s) =>
         resultCard(
-          (aliasById[s.participant_id] || "Participant") + (ended && !isModel ? ` · runda ${s.round}` : ""),
+          (aliasById[s.participant_id] || "Participant") + (ended ? ` · runda ${s.round}` : ""),
           s.payload,
           rounds[s.round - 1]?.image,
-          rounds[0]?.target
+          rounds[s.round - 1]?.target,
+          rounds[s.round - 1]?.axes
         )
       )
       .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
@@ -450,14 +458,14 @@ async function loadData() {
   $("results").classList.toggle("show-overlay", overlayOn);
 }
 
-function resultCard(alias, p, refImage, target) {
+function resultCard(alias, p, refImage, target, axes) {
   let body = "";
   if (p.type === "draw") {
     body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen">${refImage ? `<div class="model-overlay" data-src="${escapeHtml(refImage)}"></div>` : ""}</div>`;
   }
   if (p.type === "model") {
     const cmp = target ? compareModel(target, p.positions || []) : null;
-    body = targetHtml(p.positions || [], cmp?.marks) + (cmp ? `<p class="hint">${scoreText(cmp)}</p>` : "");
+    body = targetHtml(p.positions || [], cmp?.marks, { axes }) + (cmp ? `<p class="hint">${scoreText(cmp)}</p>` : "");
   }
   if (p.type === "client") {
     body =

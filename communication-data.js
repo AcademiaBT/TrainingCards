@@ -83,7 +83,6 @@ function stagesWithRounds(n) {
 }
 
 const STAGES_DEFAULT = ["lobby", "round1", "round1_reveal", "round2", "round2_reveal", "debrief", "ended"];
-const STAGES_MODEL = ["lobby", "round1", "round1_reveal", "round2_reveal", "debrief", "ended"];
 const LABELS_DEFAULT = {
   lobby: "Lobby",
   round1: "Runda 1 · fără clarificări",
@@ -91,14 +90,6 @@ const LABELS_DEFAULT = {
   round2: "Runda 2 · cu clarificări",
   round2_reveal: "Reveal runda 2",
   debrief: "Debrief",
-  ended: "Încheiată",
-};
-const LABELS_MODEL = {
-  lobby: "Lobby",
-  round1: "Pasul 1 · Poziționare",
-  round1_reveal: "Pasul 2 · Reveal individual",
-  round2_reveal: "Pasul 3 · Rezultatele tuturor",
-  debrief: "Pasul 4 · Debrief",
   ended: "Încheiată",
 };
 // „Ce ai înțeles?”: după fiecare reveal urmează un pas în care participanții văd răspunsurile tuturor (anonim)
@@ -127,7 +118,7 @@ export function scenarioRounds(scenario) {
 }
 
 export function stagesFor(mode, session) {
-  if (mode === "model") return STAGES_MODEL;
+  if (mode === "model") return stagesWithRounds(3); // exact 3 runde: interpretabila, stufoasa, exacta
   if (mode === "client") return stagesWithRounds(session?.scenario?.rounds?.length === 1 ? 1 : 2); // scenariu propriu cu o singura runda: fara runda 2
   // desen: fiecare runda are runda -> reveal -> „Desenele tuturor”; numarul de runde vine din scenariu
   if (mode === "draw") return stagesWithRounds(scenarioRounds(session?.scenario).length);
@@ -135,8 +126,12 @@ export function stagesFor(mode, session) {
 }
 
 export function stageLabel(mode, status, session) {
-  if (mode === "model") return LABELS_MODEL[status] || status;
   const { kind, n } = parseStatus(status);
+  if (mode === "model" && n) {
+    if (kind === "reveal") return `Reveal individual · runda ${n}`;
+    if (kind === "results") return `Rezultatele tuturor · runda ${n}`;
+    return `Runda ${n} · Poziționare`;
+  }
   if ((mode === "draw" || mode === "client") && n) {
     if (kind === "reveal") return `Reveal runda ${n}`;
     if (kind === "results") return mode === "draw" ? `Desenele tuturor · runda ${n}` : `Răspunsurile tuturor · runda ${n}`;
@@ -159,6 +154,7 @@ export const DEBRIEF = [
 const CLASSIC_MODEL_TARGETS = [
   [{ s: "●", x: 2, y: 0 }, { s: "▲", x: 1, y: 1 }, { s: "■", x: 2, y: 1 }, { s: "▬", x: 2, y: 2 }, { s: "➜", x: 3, y: 2 }],
   [{ s: "★", x: 0, y: 0 }, { s: "●", x: 1, y: 1 }, { s: "■", x: 2, y: 1 }, { s: "▲", x: 3, y: 2 }, { s: "➜", x: 2, y: 3 }],
+  [{ s: "■", x: 0, y: 0 }, { s: "▲", x: 1, y: 1 }, { s: "★", x: 2, y: 2 }, { s: "●", x: 3, y: 1 }, { s: "➜", x: 1, y: 3 }],
 ];
 
 // n = fără articol (după „sub”, „față de”), d = cu articol (început de propoziție), g = genitiv (după „deasupra”, „la dreapta”)
@@ -234,37 +230,174 @@ const RELATIONS = {
   "-1,-1": (r) => `în diagonală, stânga-sus față de ${r.n}`,
 };
 
-// Descriere pentru trainer, piesă cu piesă, în ordinea în care se pot așeza
-function describeTarget(items) {
-  const lines = ["Grila are 4 rânduri și 4 coloane (rândul 1 sus, coloana 1 în stânga)."];
-  items.forEach((p, i) => {
-    const sh = SHAPE_BY_SYMBOL[p.s];
-    const pos = `rând ${p.y + 1}, coloană ${p.x + 1}`;
-    if (i === 0) {
-      lines.push(`${cap(sh.d)} ${p.s} — ${pos} (punctul de pornire).`);
-      return;
-    }
-    const earlier = items.slice(0, i);
-    const orth = earlier.find((q) => Math.abs(q.x - p.x) + Math.abs(q.y - p.y) === 1);
-    const ref = orth || earlier.find((q) => Math.abs(q.x - p.x) <= 1 && Math.abs(q.y - p.y) <= 1);
-    const rel = RELATIONS[`${p.x - ref.x},${p.y - ref.y}`](SHAPE_BY_SYMBOL[ref.s]);
-    lines.push(`${cap(sh.d)} ${p.s} — ${rel} (${pos}).`);
-  });
-  lines.push("Săgeata ➜, dacă apare, este orientată spre dreapta.");
+const pick = (rand, list) => list[Math.floor(rand() * list.length)];
+const ROW_ORD = ["primul", "al doilea", "al treilea", "al patrulea"];
+const COL_ORD = ["prima", "a doua", "a treia", "a patra"];
+
+// piesa de referinta pentru piesa `i`: o piesa anterioara vecina (ortogonal de preferat, apoi diagonal)
+function refFor(items, i) {
+  const p = items[i];
+  const earlier = items.slice(0, i);
+  const orth = earlier.findIndex((q) => Math.abs(q.x - p.x) + Math.abs(q.y - p.y) === 1);
+  return orth >= 0 ? orth : earlier.findIndex((q) => Math.abs(q.x - p.x) <= 1 && Math.abs(q.y - p.y) <= 1);
+}
+
+// ---- Runda 3: descriere EXACTA, cu sistem de referinta ----
+function describeExact(items) {
+  const order = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines = [
+    "Sistem de referință (spune-l înainte să începi):",
+    "• Grila are 4 rânduri și 4 coloane, deci 16 pătrate. Fiecare piesă ocupă exact un pătrat, iar două piese nu pot sta în același pătrat.",
+    "• Rândurile se numără de sus în jos: rândul 1 este cel de sus, rândul 4 cel de jos.",
+    "• Coloanele se numără de la stânga la dreapta: coloana 1 este cea din stânga, coloana 4 cea din dreapta.",
+    "• Pe ecranul participanților rândurile și coloanele sunt numerotate la fel.",
+  ];
+  if (items.some((p) => p.s === "➜")) lines.push("• Săgeata ➜ are vârful spre dreapta și așa rămâne.");
+  lines.push("Piesele (rând, coloană):");
+  order.forEach((p, i) => lines.push(`${i + 1}. ${cap(SHAPE_BY_SYMBOL[p.s].d)} ${p.s} — rândul ${p.y + 1}, coloana ${p.x + 1}.`));
+  lines.push("Celelalte pătrate rămân goale.");
   return lines.join("\n");
 }
 
+// ---- Runda 1: descriere INTERPRETABILA (indicii vagi; aceeasi descriere se potriveste mai multor asezari) ----
+// Intoarce si constrangerile (pentru verificare in teste): fiecare piesa e descrisa doar printr-o regiune sau o relatie vaga
+function describeAmbiguous(items, rand) {
+  const lines = ["Vă descriu pe rând cele 5 piese."];
+  const constraints = [];
+  const p0 = items[0];
+  const sh0 = SHAPE_BY_SYMBOL[p0.s];
+  const rows = p0.y < 2 ? [0, 1] : [2, 3];
+  const cols = p0.x < 2 ? [0, 1] : [2, 3];
+  constraints.push({ i: 0, kind: "region", rows, cols });
+  lines.push(`Începem cu ${sh0.d} ${p0.s}: se află ${p0.y < 2 ? "în jumătatea de sus" : "în jumătatea de jos"} a grilei, ${p0.x < 2 ? "mai spre stânga" : "mai spre dreapta"}.`);
+  const openers = ["Apoi", "După aceea", "Mai departe", "Urmează", "Încă o piesă:", "Pe urmă"];
+  for (let i = 1; i < items.length; i++) {
+    const p = items[i];
+    const j = refFor(items, i);
+    const ref = items[j];
+    const sh = SHAPE_BY_SYMBOL[p.s];
+    const rf = SHAPE_BY_SYMBOL[ref.s];
+    const dx = p.x - ref.x;
+    const dy = p.y - ref.y;
+    const orthogonal = Math.abs(dx) + Math.abs(dy) === 1;
+    const near = !orthogonal || rand() < 0.5; // diagonala: doar „lângă”; ortogonal: uneori vag-directional, uneori „lângă”
+    let phrase;
+    if (near) {
+      constraints.push({ i, kind: "near", ref: j });
+      phrase = pick(rand, [`lângă ${rf.n}`, `în apropierea ${rf.g}`, `undeva în jurul ${rf.g}`]);
+    } else if (dy === 1) {
+      constraints.push({ i, kind: "below", ref: j });
+      phrase = pick(rand, [`undeva sub ${rf.n}`, `mai jos de ${rf.n}`]);
+    } else if (dy === -1) {
+      constraints.push({ i, kind: "above", ref: j });
+      phrase = pick(rand, [`undeva deasupra ${rf.g}`, `mai sus de ${rf.n}`]);
+    } else if (dx === 1) {
+      constraints.push({ i, kind: "right", ref: j });
+      phrase = pick(rand, [`undeva la dreapta ${rf.g}`, `mai spre dreapta față de ${rf.n}`]);
+    } else {
+      constraints.push({ i, kind: "left", ref: j });
+      phrase = pick(rand, [`undeva la stânga ${rf.g}`, `mai spre stânga față de ${rf.n}`]);
+    }
+    lines.push(`${pick(rand, openers)} ${sh.d} ${p.s}: ${phrase}.`);
+  }
+  lines.push("Restul pătratelor rămân goale.");
+  return { guide: lines.join("\n"), constraints };
+}
+
+// ---- Runda 2: descriere STUFOASA (informatia corecta e acolo, dar ingropata in cuvinte) ----
+function describeVerbose(items, rand) {
+  const intro =
+    "Înainte să începem, câteva precizări care s-ar putea să vă fie sau să nu vă fie de folos, depinde cum le luați: grila pe care o aveți în față are patru rânduri, care merg pe orizontală, și patru coloane, care merg pe verticală, deci în total șaisprezece pătrățele, pe care le puteți privi fie ca pe un tablou de șah în miniatură, fie ca pe o foaie de caiet cu pătrățele, cum vă este mai comod. Rândurile le numărăm de sus în jos, deși, recunosc, le-am putea număra și invers, dar pentru ordine le vom număra de sus, iar coloanele de la stânga la dreapta, bineînțeles, ca la citit, deși nimeni nu v-a întrebat dacă vă place sau nu această convenție, pe care o păstrăm de la început până la sfârșit.";
+  const paragraphs = [];
+  items.forEach((p, i) => {
+    const sh = SHAPE_BY_SYMBOL[p.s];
+    const row = p.y + 1;
+    const col = p.x + 1;
+    const rowOrd = ROW_ORD[p.y];
+    const colOrd = COL_ORD[p.x];
+    // „nu in rândul X / coloana Y”: adevarat, dar fara folos
+    const otherRow = pick(rand, [1, 2, 3, 4].filter((n) => n !== row));
+    const otherCol = pick(rand, [1, 2, 3, 4].filter((n) => n !== col));
+    if (i === 0) {
+      paragraphs.push(
+        `Începem, fără prea multe ocolișuri, deși ocolișurile ar fi fost la îndemână, cu ${sh.d} ${p.s}, prima piesă, așa că nu avem încă nicio altă piesă după care să ne orientăm și ne luăm doar după grilă: o așezați în ${rowOrd} rând numărând de sus, adică în rândul ${row}, și în ${colOrd} coloană numărând din stânga, adică în coloana ${col}, nu în rândul ${otherRow} și nu în coloana ${otherCol}, cum ar putea să creadă cei grăbiți.`
+      );
+      return;
+    }
+    const j = refFor(items, i);
+    const ref = items[j];
+    const rf = SHAPE_BY_SYMBOL[ref.s];
+    const rel = RELATIONS[`${p.x - ref.x},${p.y - ref.y}`](rf);
+    const relVerb = `se află ${rel}`;
+    const templates = [
+      `Acum să trecem, fără grabă dar și fără să pierdem vremea, la ${sh.d} ${p.s} — vă rog să rețineți că vorbesc despre ${sh.d} și nu despre altă piesă din cele pe care le aveți în față — pe care o veți așeza în ${rowOrd} rând numărând de sus, adică în rândul ${row}, iar pe orizontală în ${colOrd} coloană numărând din stânga, adică în coloana ${col}, ceea ce, pentru cei care preferă să se orienteze după piesele dinainte, înseamnă că ${relVerb}, deci, ca să nu rămână dubii, nu în rândul ${otherRow} și nu în coloana ${otherCol}.`,
+      `Mai departe — și aici vă rog să fiți atenți, deși nu v-aș spune că e neapărat cel mai greu moment — avem ${sh.d} ${p.s}, care, după cum probabil v-ați dat seama singuri, nu are cum să stea în același pătrat cu alta, așa că o așezăm în ${rowOrd} rând de sus, rândul ${row} după numărătoarea noastră, și în ${colOrd} coloană de la stânga, coloana ${col}, ceea ce, dacă o raportați la ce am așezat deja, înseamnă că ${relVerb}; spun asta de două ori, o dată cu cifre și o dată cu cuvinte, tocmai ca să nu o așezați în rândul ${otherRow}.`,
+      `Pentru ${sh.d} ${p.s} lucrurile stau așa, și îmi cer scuze dacă par să mă repet: pătratul ei este cel din rândul ${row}, adică ${rowOrd} de sus, și din coloana ${col}, adică ${colOrd} de la stânga, sau, spus altfel, ${relVerb}; și, între noi fie vorba, ${sh.d} ${p.s} este o piesă care se vede bine pe grilă, dar asta nu schimbă cu nimic locul ei, care rămâne rândul ${row}, coloana ${col}, nu coloana ${otherCol}.`,
+      `Și acum, ca să nu spuneți că vă las pe dinafară, urmează ${sh.d} ${p.s}, despre care aș putea să vă spun multe, dar mă limitez la esențial, adică la faptul că ea ocupă rândul ${row} — cel numărat ${rowOrd}, de sus în jos — și coloana ${col} — cea numărată ${colOrd}, de la stânga la dreapta — iar ${relVerb}, ceea ce înseamnă, în alți termeni, că rândul ei nu este ${otherRow}, iar coloana ei nu este ${otherCol}.`,
+    ];
+    paragraphs.push(pick(rand, templates));
+  });
+  const closing =
+    "Asta ar fi tot, deși, dacă vă gândiți bine, rămâne senzația că poate am omis ceva, dar nu am omis nimic: toate cele cinci piese au fost spuse, iar pătrățelele rămase libere rămân libere, adică goale, fără nicio piesă pe ele, indiferent cât de tentant ar fi să le umpleți.";
+  return [intro, ...paragraphs, closing].join("\n\n");
+}
+
+const MODEL_STYLES = [
+  {
+    key: "ambiguous",
+    label: "Descriere interpretabilă",
+    tip: "Citește descrierea așa cum e: unele indicii sunt vagi, deci aceeași descriere se potrivește mai multor așezări. Nu da detalii suplimentare și nu răspunde la întrebări.",
+  },
+  {
+    key: "verbose",
+    label: "Descriere stufoasă",
+    tip: "Citește tot, rar, fără să sari peste digresiuni: informația corectă e acolo, dar îngropată în cuvinte. Nu o rezuma și nu răspunde la întrebări.",
+  },
+  {
+    key: "exact",
+    label: "Descriere exactă, cu sistem de referință",
+    tip: "Spune întâi sistemul de referință, apoi piesele, pe rând. Pe ecranul participanților rândurile și coloanele sunt numerotate; dacă toată lumea folosește aceeași grilă, nimeni nu are cum să greșească.",
+  },
+];
+
+const sameTarget = (a, b) => a.length === b.length && a.every((p) => b.some((q) => q.s === p.s && q.x === p.x && q.y === p.y));
+
+// Trei modele diferite, câte unul pe rundă. Același număr (seed) → aceleași modele și aceleași texte, pe orice ecran.
 function modelRounds(seed) {
-  // un singur model pe sesiune (pasul 1 = pozitionare); restul pasilor folosesc acelasi model
-  const target = seed ? generateTarget(rng(seed)) : CLASSIC_MODEL_TARGETS[0];
-  return [
-    {
-      title: "Reconstruiește modelul",
-      rule: "Ascultă descrierea facilitatorului și așază piesele pe grilă. Ce ai pe grilă se trimite automat când se trece la pasul următor.",
+  const targets = [];
+  if (!seed) {
+    targets.push(...CLASSIC_MODEL_TARGETS);
+  } else {
+    const rand = rng(seed);
+    while (targets.length < 3) {
+      let t = generateTarget(rand);
+      for (let k = 0; k < 20 && targets.some((x) => sameTarget(x, t)); k++) t = generateTarget(rand);
+      targets.push(t);
+    }
+  }
+  const textRand = rng((seed || 1) * 7919 + 13);
+  return targets.map((target, i) => {
+    const style = MODEL_STYLES[i];
+    let guide;
+    let constraints = null;
+    if (i === 0) ({ guide, constraints } = describeAmbiguous(target, textRand));
+    else if (i === 1) guide = describeVerbose(target, textRand);
+    else guide = describeExact(target);
+    return {
+      title: `Runda ${i + 1}`,
+      rule:
+        "Ascultă descrierea facilitatorului și așază piesele pe grilă." +
+        (style.key === "exact" ? " Rândurile și coloanele sunt numerotate: folosește-le." : "") +
+        " Ce ai pe grilă se trimite automat când se trece la pasul următor.",
+      style: style.key,
+      styleLabel: style.label,
+      tip: style.tip,
+      axes: style.key === "exact", // doar runda 3 afiseaza numerele rândurilor si coloanelor
       target,
-      guide: describeTarget(target),
-    },
-  ];
+      guide,
+      constraints,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------

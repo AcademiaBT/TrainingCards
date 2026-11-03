@@ -15,12 +15,19 @@ export function compareModel(target, own = []) {
 }
 
 // Grila 4×4; `marks` (opțional) colorează pătratele: „ok” = verde, „bad” = roșu
-export function gridHtml(items = [], marks = {}) {
+export function gridHtml(items = [], marks = {}, opts = {}) {
   const cells = Array.from({ length: 16 }, () => ({ s: "", cls: "" }));
   items.forEach((p) => {
     cells[p.y * 4 + p.x] = { s: p.s, cls: marks[key(p)] || "" };
   });
-  return `<div class="mini-model">${cells.map((c) => `<span class="${c.cls}">${c.s}</span>`).join("")}</div>`;
+  const cell = (c) => `<span class="${c.cls}">${c.s}</span>`;
+  if (opts.axes) {
+    // rândurile (1–4, de sus în jos) și coloanele (1–4, de la stânga la dreapta) sunt numerotate: sistem de referință comun
+    const head = `<span class="axis"></span>${[1, 2, 3, 4].map((n) => `<span class="axis">${n}</span>`).join("")}`;
+    const rows = [0, 1, 2, 3].map((r) => `<span class="axis">${r + 1}</span>${cells.slice(r * 4, r * 4 + 4).map(cell).join("")}`).join("");
+    return `<div class="mini-model axes">${head}${rows}</div>`;
+  }
+  return `<div class="mini-model">${cells.map(cell).join("")}</div>`;
 }
 
 export function scoreText(cmp) {

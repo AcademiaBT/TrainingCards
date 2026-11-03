@@ -154,7 +154,7 @@ async function refresh() {
   }
   if (data.status !== session.status) {
     // la model, ce e pe grila se trimite automat cand se iese din pasul de pozitionare
-    if (session.mode === "model" && session.status === "round1" && modelPositions.length) await saveModel();
+    if (session.mode === "model" && isRoundStatus(session.status) && modelPositions.length) await saveModel();
     // la „Ce ai înțeles?”, ce a scris participantul se trimite automat când se iese din rundă
     if (session.mode === "client" && isRoundStatus(session.status)) await saveClient();
     // la desen, desenul de pe canvas (daca are ceva desenat) se trimite automat cand se iese din runda
@@ -163,7 +163,7 @@ async function refresh() {
     modelPositions = [];
     selectedPiece = null;
     render();
-  } else if (session.mode === "model" && session.status === "round2_reveal") {
+  } else if (session.mode === "model" && session.status.endsWith("_results")) {
     showAllModelResults(); // rezultatele colegilor pot mai sosi
   } else if (session.mode === "client" && session.status.endsWith("_results")) {
     showAllClientAnswers();
@@ -196,42 +196,32 @@ function render() {
     $("debrief-list").innerHTML = DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
     return;
   }
-  if (session.mode === "model") {
-    // 4 pasi: 1 pozitionare (round1) → 2 reveal individual (round1_reveal) → 3 toate rezultatele (round2_reveal) → 4 debrief
-    round = 1;
-    if (session.status === "round2_reveal") {
-      showAllModelResults();
-      return;
-    }
-    if (session.status === "round1_reveal") {
-      showReveal();
-      return;
-    }
-  } else if ((session.mode === "client" || session.mode === "draw") && session.status.endsWith("_results")) {
+  if ((session.mode === "client" || session.mode === "draw" || session.mode === "model") && session.status.endsWith("_results")) {
     round = roundOf(session.status);
     if (session.mode === "draw") showAllDrawings();
+    else if (session.mode === "model") showAllModelResults();
     else showAllClientAnswers();
     return;
-  } else if (session.status.includes("reveal")) {
+  }
+  if (session.status.includes("reveal")) {
     round = roundOf(session.status);
     showReveal();
     return;
-  } else {
-    round = roundOf(session.status);
   }
+  round = roundOf(session.status);
   $("activity").hidden = false;
   buildActivity();
 }
 
 function buildActivity() {
   const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
-  $("round-badge").textContent = session.mode === "model" ? "Pasul 1" : `Runda ${round}`;
+  $("round-badge").textContent = `Runda ${round}`;
   $("round-title").textContent = p.title;
   $("rule").textContent = p.rule;
   $("submitted").hidden = true;
 
   if (session.mode === "draw") buildCanvas();
-  if (session.mode === "model") buildModel();
+  if (session.mode === "model") buildModel(p);
   if (session.mode === "client") buildClient(p);
 }
 
@@ -628,16 +618,20 @@ function buildCanvas() {
 }
 
 // ---------- modul 2: model pe grila 4x4 ----------
-function buildModel() {
+function buildModel(p) {
   const pieces = ["●", "▲", "■", "▬", "➜", "★"];
+  const axes = !!p?.axes; // runda cu sistem de referinta: rândurile si coloanele sunt numerotate
+  const cell = (i) => `<button class="model-cell" data-cell="${i}"></button>`;
+  const gridInner = axes
+    ? `<span class="axis-corner"></span>${[1, 2, 3, 4].map((n) => `<span class="axis-label">${n}</span>`).join("")}` +
+      [0, 1, 2, 3].map((r) => `<span class="axis-label">${r + 1}</span>${[0, 1, 2, 3].map((cc) => cell(r * 4 + cc)).join("")}`).join("")
+    : Array.from({ length: 16 }, (_, i) => cell(i)).join("");
   $("content").innerHTML = `
-    <p>Alege o piesă, apoi un pătrat din grilă. Click pe o piesă plasată o elimină.</p>
+    <p>Alege o piesă, apoi un pătrat din grilă. Click pe o piesă plasată o elimină.${axes ? " Rândurile (1–4, de sus în jos) și coloanele (1–4, de la stânga la dreapta) sunt numerotate." : ""}</p>
     <div class="piece-tray">
       ${pieces.map((s) => `<button class="piece" data-piece="${s}">${s}</button>`).join("")}
     </div>
-    <div class="model-grid">
-      ${Array.from({ length: 16 }, (_, i) => `<button class="model-cell" data-cell="${i}"></button>`).join("")}
-    </div>`;
+    <div class="model-grid${axes ? " axes" : ""}">${gridInner}</div>`;
 
   document.querySelectorAll("[data-piece]").forEach((b) => {
     b.onclick = () => {
@@ -688,7 +682,7 @@ async function saveModel() {
   return supabase
     .from("communication_submissions")
     .upsert(
-      { session_id: session.id, participant_id: me.id, round: 1, payload: { type: "model", positions: modelPositions } },
+      { session_id: session.id, participant_id: me.id, round, payload: { type: "model", positions: modelPositions } },
       { onConflict: "session_id,participant_id,round" }
     );
 }
@@ -844,12 +838,13 @@ async function showAllClientAnswers() {
 async function showAllModelResults() {
   $("reveal").hidden = false;
   $("reveal-title").textContent = "Rezultatele tuturor";
-  const p = getRounds(session.mode, session.prompt_index, session.scenario)[0];
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
+  const axes = { axes: p.axes };
   const { data: subs } = await supabase
     .from("communication_submissions")
     .select("participant_id,payload")
     .eq("session_id", session.id)
-    .eq("round", 1);
+    .eq("round", round);
 
   const models = (subs || []).filter((s) => s.payload?.type === "model");
   const mine = models.find((s) => s.participant_id === me.id);
@@ -858,14 +853,14 @@ async function showAllModelResults() {
 
   const card = (positions, title, isMine) => {
     const cmp = compareModel(p.target, positions || []);
-    return `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}${gridHtml(positions || [], cmp.marks)}<p class="hint">${cmp.correct}/${cmp.total} la locul lor</p></article>`;
+    return `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}${gridHtml(positions || [], cmp.marks, axes)}<p class="hint">${cmp.correct}/${cmp.total} la locul lor</p></article>`;
   };
   const own = mine
     ? card(mine.payload.positions, "Rezultatul tău", true)
     : `<article class="result-card mine"><b>Rezultatul tău</b><p class="hint">Nu ai trimis un răspuns.</p></article>`;
 
   $("reveal-content").innerHTML = `
-    <div class="compare-row"><figure><figcaption>Modelul</figcaption>${gridHtml(p.target)}</figure></div>
+    <div class="compare-row"><figure><figcaption>Modelul</figcaption>${gridHtml(p.target, {}, axes)}</figure></div>
     <div class="results-grid own-result">${own}</div>
     <h3>Rezultatele celorlalți participanți</h3>
     <div class="results-grid">${others.map((s) => card(s.payload.positions, "", false)).join("") || "<p>Niciun alt rezultat deocamdată.</p>"}</div>`;
@@ -923,12 +918,12 @@ async function showReveal() {
     if (x?.type === "model") {
       const cmp = compareModel(p.target, x.positions || []);
       own = `<div class="compare-row">
-          <figure><figcaption>Modelul</figcaption>${gridHtml(p.target)}</figure>
-          <figure><figcaption>Ce ai realizat tu</figcaption>${gridHtml(x.positions || [], cmp.marks)}</figure>
+          <figure><figcaption>Modelul</figcaption>${gridHtml(p.target, {}, { axes: p.axes })}</figure>
+          <figure><figcaption>Ce ai realizat tu</figcaption>${gridHtml(x.positions || [], cmp.marks, { axes: p.axes })}</figure>
         </div>
         <p class="score-badge">${scoreText(cmp)}</p>`;
     } else {
-      own = `<p>Nu ai trimis un răspuns. Iată modelul:</p><div class="compare-row"><figure>${gridHtml(p.target)}</figure></div>`;
+      own = `<p>Nu ai trimis un răspuns. Iată modelul:</p><div class="compare-row"><figure>${gridHtml(p.target, {}, { axes: p.axes })}</figure></div>`;
     }
   }
   $("reveal-title").textContent = "Compară și observă";
