@@ -747,7 +747,14 @@ async function submit() {
       { session_id: session.id, participant_id: me.id, round, payload },
       { onConflict: "session_id,participant_id,round" }
     );
-  if (error) return alert(error.message);
+  if (error) {
+    const stale = error.code === "23514" || /round_check|check constraint/i.test(error.message || "");
+    return alert(
+      stale
+        ? "Nu se poate trimite răspunsul pentru această rundă: baza de date nu a fost actualizată pentru mai mult de 2 runde. Anunță trainerul (are de rulat o singură dată scriptul add-communication-more-rounds.sql)."
+        : error.message
+    );
+  }
   $("submitted").hidden = false;
 }
 

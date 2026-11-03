@@ -173,6 +173,30 @@ $("overlay-toggle").onchange = (e) => {
 };
 
 // ---------- schimbare varianta (doar in lobby, inainte sa porneasca activitatea) ----------
+// Verifica daca baza de date accepta raspunsuri pentru runda `n` (constrangerea veche permitea doar rundele 1 si 2).
+// Se incearca o inserare cu identificatori inexistenti: daca esueaza din cauza constrangerii pe runda (23514), baza nu e actualizata;
+// altfel esueaza oricum din alt motiv (cheie externa) si nu ramane nimic salvat.
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+const roundsProbe = new Map(); // n -> { state: "ok" | "blocked" | "pending", at }
+function probeRounds(n) {
+  if (n <= 2) return;
+  const cur = roundsProbe.get(n);
+  if (cur && (cur.state === "ok" || cur.state === "pending" || Date.now() - cur.at < 15000)) return;
+  roundsProbe.set(n, { state: "pending", at: Date.now() });
+  supabase
+    .from("communication_submissions")
+    .insert({ session_id: ZERO_UUID, participant_id: ZERO_UUID, round: n, payload: {} })
+    .then(async ({ error }) => {
+      const blocked = error?.code === "23514";
+      if (!error) await supabase.from("communication_submissions").delete().eq("session_id", ZERO_UUID); // (nu ar trebui sa se intample)
+      roundsProbe.set(n, { state: blocked ? "blocked" : "ok", at: Date.now() });
+      if (session && session.status === "lobby") render();
+    });
+}
+const roundsBlocked = (n) => roundsProbe.get(n)?.state === "blocked";
+const ROUNDS_WARNING =
+  "Baza de date nu acceptă încă răspunsuri pentru mai mult de 2 runde: rulează o singură dată în Supabase scriptul add-communication-more-rounds.sql, apoi reîncarcă această pagină.";
+
 async function changeScenario(value) {
   if (!session || session.status !== "lobby") return;
   let patch;
@@ -223,6 +247,10 @@ $("end").onclick = async () => {
 };
 
 async function move(delta) {
+  if (delta > 0 && session.status === "lobby" && session.mode === "draw") {
+    const n = getRounds(session.mode, session.prompt_index, session.scenario).length;
+    if (roundsBlocked(n)) return alert(ROUNDS_WARNING);
+  }
   const stages = stagesFor(session.mode, session);
   const i = Math.max(0, stages.indexOf(session.status)); // o sesiune veche cu etapa necunoscuta porneste de la inceput
   const next = stages[Math.max(0, Math.min(stages.length - 1, i + delta))];
@@ -304,7 +332,9 @@ async function render() {
         <p><b>Scenariu:</b> <select id="scenario-select">${options
           .map((o) => `<option value="${escapeHtml(o.id)}"${current && o.id === current.id ? " selected" : ""}>${escapeHtml(o.title)}</option>`)
           .join("")}</select></p>
-        <p class="hint">${nRounds} ${nRounds === 1 ? "rundă" : "runde"}. Scenariile se gestionează mai jos, la „Scenariile mele”.</p>`;
+        <p class="hint">${nRounds} ${nRounds === 1 ? "rundă" : "runde"}. Scenariile se gestionează mai jos, la „Scenariile mele”.</p>
+        ${roundsBlocked(nRounds) ? `<p class="error-msg">${ROUNDS_WARNING}</p>` : ""}`;
+      probeRounds(nRounds);
     } else if (session.mode === "client") {
       const cur = session.scenario;
       const base = baseClientScenarios();
