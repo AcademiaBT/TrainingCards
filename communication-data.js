@@ -82,6 +82,19 @@ const LABELS_MODEL = {
   debrief: "Pasul 4 · Debrief",
   ended: "Încheiată",
 };
+// „Ce ai înțeles?”: după fiecare reveal urmează un pas în care participanții văd răspunsurile tuturor (anonim)
+const STAGES_CLIENT = ["lobby", "round1", "round1_reveal", "round1_results", "round2", "round2_reveal", "round2_results", "debrief", "ended"];
+const LABELS_CLIENT = {
+  lobby: "Lobby",
+  round1: "Runda 1 · fără clarificări",
+  round1_reveal: "Reveal runda 1",
+  round1_results: "Răspunsurile tuturor · runda 1",
+  round2: "Runda 2 · cu clarificări",
+  round2_reveal: "Reveal runda 2",
+  round2_results: "Răspunsurile tuturor · runda 2",
+  debrief: "Debrief",
+  ended: "Încheiată",
+};
 const STAGES_ONE_ROUND = ["lobby", "round1", "round1_reveal", "debrief", "ended"];
 
 // Rundele unui scenariu de desen (1 sau 2), cu regula rundei dedusă din „permite întrebări”
@@ -98,12 +111,14 @@ export function scenarioRounds(scenario) {
 
 export function stagesFor(mode, session) {
   if (mode === "model") return STAGES_MODEL;
+  if (mode === "client") return STAGES_CLIENT;
   if (mode === "draw" && scenarioRounds(session?.scenario).length === 1) return STAGES_ONE_ROUND;
   return STAGES_DEFAULT;
 }
 
 export function stageLabel(mode, status, session) {
   if (mode === "model") return LABELS_MODEL[status] || status;
+  if (mode === "client") return LABELS_CLIENT[status] || status;
   if (mode === "draw" && ["round1", "round1_reveal", "round2", "round2_reveal"].includes(status)) {
     const n = status.includes("2") ? 2 : 1;
     const r = scenarioRounds(session?.scenario)[n - 1];

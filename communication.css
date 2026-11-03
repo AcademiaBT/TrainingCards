@@ -635,3 +635,24 @@ ol.steps li {
   background:var(--green);
   color:#fff;
 }
+
+/* „Ce ai înțeles?”: răspunsurile tuturor (anonim) */
+.answers-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.answer-card {
+  border:1px solid var(--parchment-dark);
+  border-radius:10px;
+  padding:8px 14px;
+  background:#fff;
+}
+.answer-card p {
+  margin:6px 0;
+}
+.answer-card.mine {
+  border-color:var(--green);
+  box-shadow:0 0 0 2px var(--green);
+  margin:10px 0;
+}

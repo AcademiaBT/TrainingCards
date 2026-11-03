@@ -155,12 +155,16 @@ async function refresh() {
   if (data.status !== session.status) {
     // la model, ce e pe grila se trimite automat cand se iese din pasul de pozitionare
     if (session.mode === "model" && session.status === "round1" && modelPositions.length) await saveModel();
+    // la „Ce ai înțeles?”, ce a scris participantul se trimite automat când se iese din rundă
+    if (session.mode === "client" && (session.status === "round1" || session.status === "round2")) await saveClient();
     session = data;
     modelPositions = [];
     selectedPiece = null;
     render();
   } else if (session.mode === "model" && session.status === "round2_reveal") {
     showAllModelResults(); // rezultatele colegilor pot mai sosi
+  } else if (session.mode === "client" && session.status.endsWith("_results")) {
+    showAllClientAnswers();
   }
 }
 
@@ -193,6 +197,10 @@ function render() {
       showReveal();
       return;
     }
+  } else if (session.mode === "client" && session.status.endsWith("_results")) {
+    round = session.status.includes("2") ? 2 : 1;
+    showAllClientAnswers();
+    return;
   } else if (session.status.includes("reveal")) {
     round = session.status.includes("2") ? 2 : 1;
     showReveal();
@@ -674,6 +682,25 @@ async function saveModel() {
     );
 }
 
+function clientPayload() {
+  return {
+    type: "client",
+    assumption: $("assumption")?.value || "",
+    question: $("question")?.value || "",
+    answer: $("answer")?.value || "",
+  };
+}
+
+// salvare automata (fara alerte) a ce a scris participantul, daca a scris ceva
+async function saveClient() {
+  if (!$("answer") && !$("assumption") && !$("question")) return;
+  const payload = clientPayload();
+  if (!`${payload.assumption}${payload.question}${payload.answer}`.trim()) return;
+  return supabase
+    .from("communication_submissions")
+    .upsert({ session_id: session.id, participant_id: me.id, round, payload }, { onConflict: "session_id,participant_id,round" });
+}
+
 async function submit() {
   let payload;
   if (session.mode === "draw") {
@@ -681,14 +708,7 @@ async function submit() {
     payload = { type: "draw", image: canvas.toDataURL("image/png") };
   }
   if (session.mode === "model") payload = { type: "model", positions: modelPositions };
-  if (session.mode === "client") {
-    payload = {
-      type: "client",
-      assumption: $("assumption")?.value || "",
-      question: $("question")?.value || "",
-      answer: $("answer").value,
-    };
-  }
+  if (session.mode === "client") payload = clientPayload();
   const { error } = await supabase
     .from("communication_submissions")
     .upsert(
@@ -697,6 +717,37 @@ async function submit() {
     );
   if (error) return alert(error.message);
   $("submitted").hidden = false;
+}
+
+// ---------- „Ce ai înțeles?”: răspunsurile tuturor (anonim, al tău primul, fără informația lipsă) ----------
+async function showAllClientAnswers() {
+  $("reveal").hidden = false;
+  $("reveal-title").textContent = "Răspunsurile tuturor";
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
+  const { data: subs } = await supabase
+    .from("communication_submissions")
+    .select("participant_id,payload")
+    .eq("session_id", session.id)
+    .eq("round", round);
+
+  const all = (subs || []).filter((s) => s.payload?.type === "client");
+  const mine = all.find((s) => s.participant_id === me.id);
+  // ordine stabila, dar fara legatura cu ordinea intrarii in sesiune (ca sa nu poata fi ghicit cine e cine)
+  const others = all.filter((s) => s.participant_id !== me.id).sort((a, b) => (a.participant_id > b.participant_id ? 1 : -1));
+
+  const parts = (pl) =>
+    [
+      pl.assumption?.trim() ? `<p><b>Interpretare:</b> ${escapeHtml(pl.assumption)}</p>` : "",
+      pl.question?.trim() ? `<p><b>Clarificare:</b> ${escapeHtml(pl.question)}</p>` : "",
+      pl.answer?.trim() ? `<p><b>Răspuns:</b> ${escapeHtml(pl.answer)}</p>` : "",
+    ].join("") || `<p class="hint">(fără text)</p>`;
+  const card = (pl, title, isMine) => `<article class="answer-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}${parts(pl)}</article>`;
+
+  $("reveal-content").innerHTML = `
+    <div class="rule"><b>Clientul:</b> ${escapeHtml(p.message)}</div>
+    ${mine ? card(mine.payload, "Răspunsul tău", true) : `<article class="answer-card mine"><b>Răspunsul tău</b><p class="hint">Nu ai trimis un răspuns.</p></article>`}
+    <h3>Răspunsurile celorlalți participanți</h3>
+    <div class="answers-list">${others.map((s) => card(s.payload, "", false)).join("") || "<p>Niciun alt răspuns deocamdată.</p>"}</div>`;
 }
 
 // ---------- pasul 3 (model): rezultatele tuturor ----------

@@ -220,10 +220,18 @@ async function move(delta) {
     .eq("id", session.id)
     .select()
     .single();
-  if (!error) {
-    session = data;
-    render();
+  if (error) {
+    // constrangerea veche din baza de date nu accepta etapele noi („Răspunsurile tuturor”)
+    const old = error.code === "23514" || /check constraint|violates check/i.test(error.message || "");
+    alert(
+      old
+        ? "Etapa nu poate fi salvată: baza de date nu cunoaște încă etapele noi. Rulează o singură dată în Supabase scriptul add-communication-results-stages.sql."
+        : error.message
+    );
+    return;
   }
+  session = data;
+  render();
 }
 
 // ---------- afisare ----------
@@ -304,9 +312,12 @@ async function render() {
       html += `<div class="rule"><b>Descriere pentru ghid:</b><br>${escapeHtml(p.guide).replace(/\n/g, "<br>")}</div>`;
     }
     if (session.mode === "client") {
+      if (session.status.endsWith("_results")) {
+        html += `<p class="rule"><b>Răspunsurile tuturor.</b> Participanții văd acum, pe ecranul lor, răspunsurile tuturor colegilor (anonim), cu al lor primul. Informația lipsă nu li se mai afișează. Discutați diferențele de interpretare.</p>`;
+      }
       html += `<div class="rule"><b>Mesaj:</b> ${escapeHtml(p.message)}</div>`;
-      if (session.status.includes("reveal")) {
-        html += `<p><b>Informația lipsă:</b> ${escapeHtml(p.detail)}</p>`;
+      if (session.status.includes("reveal") || session.status.endsWith("_results")) {
+        html += `<p><b>Informația lipsă</b> (doar pentru trainer): ${escapeHtml(p.detail)}</p>`;
       }
     }
   }
