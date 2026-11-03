@@ -4,8 +4,9 @@
 //  • Desenează după instrucțiuni: scenariile le creează fiecare trainer, din pagina trainerului
 //    („Scenariile mele”): titlu, instrucțiuni (listă numerotată) și, opțional, o imagine de referință,
 //    pentru una sau două runde. Scenariul ales se copiază în sesiune (communication_sessions.scenario).
-//  • Ce ai înțeles?: scenariile se adaugă aici, în `ACTIVITIES.client.variants` (copiezi un bloc;
-//    mesaj = ce spune clientul, detail = informația ascunsă). Fiecare variantă are două runde.
+//  • Ce ai înțeles?: scenariile de bază sunt aici, în `ACTIVITIES.client.variants` (mesaj = ce spune clientul,
+//    detail = informația ascunsă), ca puncte de pornire; fiecare trainer le poate copia în „Scenariile mele”
+//    și le poate edita, sau își poate crea scenarii proprii (1 sau 2 runde), salvate în baza de date.
 //  • Reconstruiește modelul: nu se adaugă manual, modelele se generează.
 // =====================================================================
 
@@ -95,6 +96,7 @@ const LABELS_CLIENT = {
   debrief: "Debrief",
   ended: "Încheiată",
 };
+const STAGES_CLIENT_ONE = ["lobby", "round1", "round1_reveal", "round1_results", "debrief", "ended"];
 const STAGES_ONE_ROUND = ["lobby", "round1", "round1_reveal", "debrief", "ended"];
 
 // Rundele unui scenariu de desen (1 sau 2), cu regula rundei dedusă din „permite întrebări”
@@ -111,7 +113,7 @@ export function scenarioRounds(scenario) {
 
 export function stagesFor(mode, session) {
   if (mode === "model") return STAGES_MODEL;
-  if (mode === "client") return STAGES_CLIENT;
+  if (mode === "client") return session?.scenario?.rounds?.length === 1 ? STAGES_CLIENT_ONE : STAGES_CLIENT; // scenariu propriu cu o singura runda: fara runda 2
   if (mode === "draw" && scenarioRounds(session?.scenario).length === 1) return STAGES_ONE_ROUND;
   return STAGES_DEFAULT;
 }
@@ -252,9 +254,25 @@ function modelRounds(seed) {
 //  `index` = valoarea salvată în communication_sessions.prompt_index
 //  (desen / mesaje: numărul variantei; model: numărul din care se generează modelele)
 // ---------------------------------------------------------------------
+// Scenariu propriu la „Ce ai înțeles?”: 1 sau 2 runde, fiecare cu mesajul clientului și informația lipsă (doar pentru trainer)
+export function clientScenarioRounds(scenario) {
+  return scenario.rounds.slice(0, 2).map((r, i) => ({
+    title: r.title || scenario.title || `Runda ${i + 1}`,
+    message: r.message || "",
+    detail: r.detail || "",
+    rule: i === 0 ? C1_RULE : C2_RULE,
+  }));
+}
+
+// Scenariile de bază („Ce ai înțeles?”) din cod, ca puncte de pornire: [{ index, title, rounds }]
+export function baseClientScenarios() {
+  return ACTIVITIES.client.variants.map((v, index) => ({ index, title: v.rounds.map((r) => r.title).join(" → "), rounds: v.rounds }));
+}
+
 export function getRounds(mode, index = 0, scenario = null) {
   if (mode === "model") return modelRounds(Number(index) || 0);
   if (mode === "draw") return scenarioRounds(scenario);
+  if (mode === "client" && scenario?.rounds?.length) return clientScenarioRounds(scenario);
   const list = ACTIVITIES[mode].variants;
   return list[(Number(index) || 0) % list.length].rounds;
 }
@@ -278,5 +296,6 @@ export function randomVariant(mode, current = -1) {
 export function variantLabel(mode, index = 0, scenario = null) {
   if (mode === "model") return Number(index) ? `Model aleatoriu #${index}` : "Modelele clasice";
   if (mode === "draw") return scenario?.title || "—";
+  if (mode === "client" && scenario?.rounds?.length) return scenario.title || "—";
   return getRounds(mode, index).map((r) => r.title).join(" → ");
 }

@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -80,6 +80,7 @@ async function createSession(mode) {
   if (mode === "draw") {
     const sc = pickScenario();
     if (!sc) {
+      setTab("draw"); // (ascunde indicatia, de aceea se afiseaza dupa)
       $("scenario-hint").textContent = "Ca să pornești „Desenează după instrucțiuni”, creează mai întâi un scenariu propriu.";
       $("scenario-hint").hidden = false;
       openScenarioForm();
@@ -88,9 +89,11 @@ async function createSession(mode) {
     }
     scenario = snapshot(sc);
   }
+  let promptIndex = randomVariant(mode);
+  if (mode === "client") ({ scenario, prompt_index: promptIndex } = pickClientDefault());
   const { data, error } = await supabase
     .from("communication_sessions")
-    .insert({ session_code: code(), admin_email: user.email, mode, prompt_index: randomVariant(mode), scenario })
+    .insert({ session_code: code(), admin_email: user.email, mode, prompt_index: promptIndex, scenario })
     .select()
     .single();
   if (error) {
@@ -170,18 +173,27 @@ $("overlay-toggle").onchange = (e) => {
 };
 
 // ---------- schimbare varianta (doar in lobby, inainte sa porneasca activitatea) ----------
-async function changeScenario(id) {
+async function changeScenario(value) {
   if (!session || session.status !== "lobby") return;
-  const sc = myScenarios.find((x) => x.id === id);
-  if (!sc) return;
-  const { data, error } = await supabase
-    .from("communication_sessions")
-    .update({ scenario: snapshot(sc) })
-    .eq("id", session.id)
-    .select()
-    .single();
+  let patch;
+  if (session.mode === "client") {
+    // „base:N” = scenariu de baza din cod; „custom:ID” = scenariu propriu (se copiaza in sesiune)
+    if (value.startsWith("base:")) {
+      patch = { scenario: null, prompt_index: Number(value.slice(5)) || 0 };
+    } else {
+      const sc = myScenarios.find((x) => x.id === value.slice(7));
+      if (!sc) return;
+      patch = { scenario: snapshot(sc) };
+    }
+    localStorage.setItem(lastKey("client"), value);
+  } else {
+    const sc = myScenarios.find((x) => x.id === value);
+    if (!sc) return;
+    patch = { scenario: snapshot(sc) };
+    localStorage.setItem(lastKey("draw"), value);
+  }
+  const { data, error } = await supabase.from("communication_sessions").update(patch).eq("id", session.id).select().single();
   if (error) return alert(error.message);
-  localStorage.setItem(lastKey(), id);
   session = data;
   render();
 }
@@ -271,13 +283,26 @@ async function render() {
     if (session.mode === "draw") {
       const current = session.scenario;
       const nRounds = getRounds(session.mode, session.prompt_index, session.scenario).length;
-      const options = [...myScenarios];
+      const options = [...scenariosOf("draw")];
       if (current && !options.some((o) => o.id === current.id)) options.unshift(current); // scenariu sters intre timp: ramane in sesiune
       html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
         <p><b>Scenariu:</b> <select id="scenario-select">${options
           .map((o) => `<option value="${escapeHtml(o.id)}"${current && o.id === current.id ? " selected" : ""}>${escapeHtml(o.title)}</option>`)
           .join("")}</select></p>
         <p class="hint">${nRounds} ${nRounds === 1 ? "rundă" : "runde"}. Scenariile se gestionează mai jos, la „Scenariile mele”.</p>`;
+    } else if (session.mode === "client") {
+      const cur = session.scenario;
+      const base = baseClientScenarios();
+      const baseSel = cur ? -1 : (Number(session.prompt_index) || 0) % base.length;
+      const mine = [...scenariosOf("client")];
+      if (cur && !mine.some((o) => o.id === cur.id)) mine.unshift(cur); // scenariu sters intre timp: ramane in sesiune
+      const nRounds = getRounds(session.mode, session.prompt_index, session.scenario).length;
+      html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
+        <p><b>Scenariu:</b> <select id="scenario-select">
+          ${mine.length ? `<optgroup label="Scenariile mele">${mine.map((o) => `<option value="custom:${escapeHtml(o.id)}"${cur && o.id === cur.id ? " selected" : ""}>${escapeHtml(o.title)}</option>`).join("")}</optgroup>` : ""}
+          <optgroup label="Scenarii de bază">${base.map((b) => `<option value="base:${b.index}"${b.index === baseSel ? " selected" : ""}>${escapeHtml(b.title)}</option>`).join("")}</optgroup>
+        </select></p>
+        <p class="hint">${nRounds} ${nRounds === 1 ? "rundă" : "runde"}. Scenariile tale se gestionează mai jos, la „Scenariile mele” → „Ce ai înțeles?”.</p>`;
     } else {
       html = `<p>Distribuie linkul. Pornește când participanții au intrat.</p>
         <p><b>Variantă:</b> ${escapeHtml(variantLabel(session.mode, session.prompt_index, session.scenario))}</p>
@@ -405,20 +430,21 @@ function startWatch() {
 }
 
 // =====================================================================
-//  „Scenariile mele” (desen): fiecare trainer isi creeaza scenariile; ale altora nu se vad
+//  „Scenariile mele” (desen + „Ce ai înțeles?”): fiecare trainer își creează scenariile; ale altora nu se văd
 // =====================================================================
-let myScenarios = [];
-let form = null; // starea formularului: { id, title, rounds: [{ title, stepsText, image_url, blob, blobUrl, questions }] }
+let myScenarios = []; // toate scenariile mele (ambele moduri)
+let scenarioTab = "draw"; // fila activă din panou
+let form = null; // starea formularului: { id, mode, title, rounds: [...] }
 
-const lastKey = () => `comm_last_scenario_${(user?.email || "").toLowerCase()}`;
+const lastKey = (m = "draw") => `comm_last_${m === "client" ? "client_" : ""}scenario_${(user?.email || "").toLowerCase()}`;
 const snapshot = (sc) => ({ id: sc.id, title: sc.title, rounds: sc.rounds });
+const scenariosOf = (m) => myScenarios.filter((s) => s.mode === m);
 
 async function loadScenarios() {
   const { data, error } = await supabase
     .from("communication_scenarios")
     .select("*")
     .eq("owner_email", user.email.toLowerCase())
-    .eq("mode", "draw")
     .order("created_at", { ascending: false });
   if (error) {
     $("scenario-list").innerHTML = `<p class="error-msg">Nu pot citi scenariile: ${escapeHtml(error.message)}. Ai rulat scriptul SQL pentru scenarii?</p>`;
@@ -430,36 +456,80 @@ async function loadScenarios() {
 }
 
 function pickScenario() {
-  const last = localStorage.getItem(lastKey());
-  return myScenarios.find((s) => s.id === last) || myScenarios[0] || null;
+  const mine = scenariosOf("draw");
+  const last = localStorage.getItem(lastKey("draw"));
+  return mine.find((s) => s.id === last) || mine[0] || null;
+}
+
+// „Ce ai înțeles?”: implicit ultimul scenariu folosit (propriu sau de bază); altfel unul de bază, aleatoriu
+function pickClientDefault() {
+  const last = localStorage.getItem(lastKey("client")) || "";
+  if (last.startsWith("custom:")) {
+    const sc = scenariosOf("client").find((s) => s.id === last.slice(7));
+    if (sc) return { scenario: snapshot(sc), prompt_index: 0 };
+  }
+  if (last.startsWith("base:")) return { scenario: null, prompt_index: Number(last.slice(5)) || 0 };
+  return { scenario: null, prompt_index: randomVariant("client") };
+}
+
+function setTab(tab) {
+  scenarioTab = tab;
+  closeScenarioForm();
+  $("scenario-hint").hidden = true;
+  renderScenarioList();
 }
 
 function renderScenarioList() {
+  for (const t of ["draw", "client"]) {
+    $(`sc-tab-${t}`).classList.toggle("active", scenarioTab === t);
+    $(`sc-tab-${t}`).setAttribute("aria-pressed", String(scenarioTab === t));
+  }
+  const n = (s) => `${s.rounds.length} ${s.rounds.length === 1 ? "rundă" : "runde"}`;
   $("scenario-list").innerHTML =
-    myScenarios
+    scenariosOf(scenarioTab)
       .map(
         (s) => `<div class="sc-item"><b>${escapeHtml(s.title)}</b>
-          <span class="hint">${s.rounds.length} ${s.rounds.length === 1 ? "rundă" : "runde"}${s.rounds.some((r) => r.image_url) ? " · cu imagine" : ""}</span>
+          <span class="hint">${n(s)}${scenarioTab === "draw" && s.rounds.some((r) => r.image_url) ? " · cu imagine" : ""}</span>
           <button class="btn outline" data-sc-edit="${escapeHtml(s.id)}">Editează</button>
           <button class="btn outline" data-sc-del="${escapeHtml(s.id)}">Șterge</button></div>`
       )
       .join("") || `<p class="hint">Nu ai niciun scenariu încă.</p>`;
+  $("base-scenarios").innerHTML =
+    scenarioTab === "client"
+      ? `<h3>Scenarii de bază</h3>
+         <p class="hint">Sunt puncte de pornire, comune tuturor trainerilor, și nu se pot modifica. Copiază unul în „Scenariile mele” ca să-l editezi.</p>` +
+        baseClientScenarios()
+          .map(
+            (b) => `<div class="sc-item"><b>${escapeHtml(b.title)}</b><span class="hint">${n(b)} · de bază</span>
+              <button class="btn outline" data-sc-copy="${b.index}">Copiază în scenariile mele</button></div>`
+          )
+          .join("")
+      : "";
   document.querySelectorAll("[data-sc-edit]").forEach((b) => (b.onclick = () => openScenarioForm(b.dataset.scEdit)));
   document.querySelectorAll("[data-sc-del]").forEach((b) => (b.onclick = () => deleteScenario(b.dataset.scDel)));
+  document.querySelectorAll("[data-sc-copy]").forEach((b) => (b.onclick = () => copyBaseScenario(Number(b.dataset.scCopy))));
 }
 
-function blankRound(i) {
-  return { title: "", stepsText: "", image_url: null, blob: null, blobUrl: null, questions: i === 1 };
+function blankRound(i, mode) {
+  return mode === "client"
+    ? { title: "", message: "", detail: "" }
+    : { title: "", stepsText: "", image_url: null, blob: null, blobUrl: null, questions: i === 1 };
 }
 
 function openScenarioForm(id = null) {
   const sc = id ? myScenarios.find((s) => s.id === id) : null;
+  const mode = sc?.mode || scenarioTab;
   form = {
     id: sc?.id || null,
+    mode,
     title: sc?.title || "",
     rounds: sc
-      ? sc.rounds.map((r) => ({ title: r.title || "", stepsText: (r.steps || []).join("\n"), image_url: r.image_url || null, blob: null, blobUrl: null, questions: !!r.questions }))
-      : [blankRound(0)],
+      ? sc.rounds.map((r) =>
+          mode === "client"
+            ? { title: r.title || "", message: r.message || "", detail: r.detail || "" }
+            : { title: r.title || "", stepsText: (r.steps || []).join("\n"), image_url: r.image_url || null, blob: null, blobUrl: null, questions: !!r.questions }
+        )
+      : [blankRound(0, mode)],
   };
   $("scenario-form-title").textContent = sc ? "Editează scenariul" : "Scenariu nou";
   $("sc-title").value = form.title;
@@ -478,6 +548,24 @@ function closeScenarioForm() {
 }
 
 function renderFormRounds() {
+  if (form.mode === "client") {
+    $("sc-rounds").innerHTML = form.rounds
+      .map(
+        (r, i) => `<fieldset class="sc-round">
+          <legend>Runda ${i + 1} · ${i === 0 ? "fără clarificări" : "cu clarificări"}</legend>
+          <label for="sc-r${i}-title">Titlul rundei (opțional)</label>
+          <input id="sc-r${i}-title" type="text" maxlength="80" placeholder="implicit: numele scenariului" value="${escapeHtml(r.title)}">
+          <label for="sc-r${i}-message">Mesajul clientului (îl văd participanții)</label>
+          <textarea id="sc-r${i}-message" rows="3" placeholder="ex. Mi-ați blocat cardul exact când aveam nevoie de el.">${escapeHtml(r.message)}</textarea>
+          <label for="sc-r${i}-detail">Informația lipsă (o vezi doar tu, ca trainer; se dezvăluie la Reveal)</label>
+          <textarea id="sc-r${i}-detail" rows="3" placeholder="ex. Cardul este activ. Tranzacția a fost refuzată doar la un comerciant online.">${escapeHtml(r.detail)}</textarea>
+        </fieldset>`
+      )
+      .join("");
+    $("sc-add-round").hidden = form.rounds.length >= 2;
+    $("sc-remove-round").hidden = form.rounds.length < 2;
+    return;
+  }
   $("sc-rounds").innerHTML = form.rounds
     .map(
       (r, i) => `<fieldset class="sc-round">
@@ -540,8 +628,13 @@ function syncForm() {
   form.title = $("sc-title").value.trim();
   form.rounds.forEach((r, i) => {
     r.title = $(`sc-r${i}-title`).value.trim();
-    r.stepsText = $(`sc-r${i}-steps`).value;
-    r.questions = $(`sc-r${i}-q`).checked;
+    if (form.mode === "client") {
+      r.message = $(`sc-r${i}-message`).value;
+      r.detail = $(`sc-r${i}-detail`).value;
+    } else {
+      r.stepsText = $(`sc-r${i}-steps`).value;
+      r.questions = $(`sc-r${i}-q`).checked;
+    }
   });
 }
 
@@ -588,19 +681,32 @@ async function saveScenario() {
   const err = $("sc-error");
   err.textContent = "";
   if (!form.title) return (err.textContent = "Dă un nume scenariului.");
-  const parsed = form.rounds.map((r) => parseSteps(r.stepsText));
-  const empty = parsed.findIndex((s) => !s.length);
-  if (empty >= 0) return (err.textContent = `Runda ${empty + 1}: scrie cel puțin o instrucțiune.`);
+
+  let validate;
+  if (form.mode === "client") {
+    const noMsg = form.rounds.findIndex((r) => !r.message.trim());
+    if (noMsg >= 0) return (err.textContent = `Runda ${noMsg + 1}: scrie mesajul clientului.`);
+    const noDetail = form.rounds.findIndex((r) => !r.detail.trim());
+    if (noDetail >= 0) return (err.textContent = `Runda ${noDetail + 1}: scrie informația lipsă (o vezi doar tu, se dezvăluie la Reveal).`);
+  } else {
+    validate = form.rounds.map((r) => parseSteps(r.stepsText));
+    const empty = validate.findIndex((s) => !s.length);
+    if (empty >= 0) return (err.textContent = `Runda ${empty + 1}: scrie cel puțin o instrucțiune.`);
+  }
 
   $("sc-save").disabled = true;
   try {
     const rounds = [];
     for (let i = 0; i < form.rounds.length; i++) {
       const r = form.rounds[i];
-      const image_url = r.blob ? await uploadImage(r.blob) : r.image_url;
-      rounds.push({ title: r.title, steps: parsed[i], questions: r.questions, image_url: image_url || null });
+      if (form.mode === "client") {
+        rounds.push({ title: r.title, message: r.message.trim(), detail: r.detail.trim() });
+      } else {
+        const image_url = r.blob ? await uploadImage(r.blob) : r.image_url;
+        rounds.push({ title: r.title, steps: validate[i], questions: r.questions, image_url: image_url || null });
+      }
     }
-    const row = { owner_email: user.email.toLowerCase(), mode: "draw", title: form.title, rounds };
+    const row = { owner_email: user.email.toLowerCase(), mode: form.mode, title: form.title, rounds };
     const q = form.id
       ? supabase.from("communication_scenarios").update(row).eq("id", form.id)
       : supabase.from("communication_scenarios").insert(row);
@@ -616,6 +722,21 @@ async function saveScenario() {
   }
 }
 
+// copiaza un scenariu de baza (din cod) in scenariile mele, ca sa poata fi editat
+async function copyBaseScenario(index) {
+  const b = baseClientScenarios()[index];
+  if (!b) return;
+  const row = {
+    owner_email: user.email.toLowerCase(),
+    mode: "client",
+    title: `${b.title} (copie)`,
+    rounds: b.rounds.map((r) => ({ title: r.title, message: r.message, detail: r.detail })),
+  };
+  const { error } = await supabase.from("communication_scenarios").insert(row);
+  if (error) return alert(error.message);
+  await loadScenarios();
+}
+
 async function deleteScenario(id) {
   const sc = myScenarios.find((s) => s.id === id);
   if (!sc || !confirm(`Ștergi scenariul „${sc.title}”? Sesiunile deja pornite nu sunt afectate.`)) return;
@@ -625,11 +746,13 @@ async function deleteScenario(id) {
 }
 
 $("scenario-new").onclick = () => openScenarioForm();
+$("sc-tab-draw").onclick = () => setTab("draw");
+$("sc-tab-client").onclick = () => setTab("client");
 $("sc-cancel").onclick = closeScenarioForm;
 $("sc-save").onclick = saveScenario;
 $("sc-add-round").onclick = () => {
   syncForm();
-  form.rounds.push(blankRound(1));
+  form.rounds.push(blankRound(1, form.mode));
   renderFormRounds();
 };
 $("sc-remove-round").onclick = () => {
