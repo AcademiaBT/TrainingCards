@@ -15,6 +15,7 @@ let selectedPiece = null;
 let canvas = null;
 let ctx = null;
 let drawing = false;
+let finalizeShape = null; // fixeaza forma aflata in editare (apelat inainte de trimitere)
 let poll = null;
 
 function hideAll() {
@@ -233,6 +234,22 @@ const PEN_COLORS = [
 const PEN_WIDTH = 5;
 const ERASER_WIDTH = 32;
 
+const SHAPE_TOOLS = ["rect", "triangle", "circle"];
+// manerul de rotire al formei selectate: dimensiuni in pixeli de ECRAN (se inmultesc cu scara canvasului, ca sa fie atingibile pe telefon)
+const HANDLE_R = 14;
+const HANDLE_GAP = 40;
+const HANDLE_HIT = 26;
+const BOX_PAD = 6;
+const HANDLE_COLOR = "#2f6f4f";
+const TOOL_BUTTONS = { pen: "tool-pen", eraser: "tool-eraser", rect: "tool-rect", triangle: "tool-triangle", circle: "tool-circle" };
+const SHAPE_ICONS = {
+  rect: '<rect x="3" y="5" width="14" height="10"/>',
+  triangle: '<path d="M10 3 L18 17 H2 Z"/>',
+  circle: '<circle cx="10" cy="10" r="7"/>',
+};
+const shapeButton = (id, label) =>
+  `<button class="tool-btn" id="tool-${id}" aria-pressed="false" title="${label}" aria-label="${label}"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">${SHAPE_ICONS[id]}</svg><span class="lbl">${label}</span></button>`;
+
 function buildCanvas() {
   // pe telefon (ecran ingust sau scund) instructiunile sunt initial inchise, ca sa ramana loc pentru desen
   const compact = window.matchMedia("(max-width: 600px), (orientation: landscape) and (max-height: 520px)").matches;
@@ -241,7 +258,9 @@ function buildCanvas() {
       <summary>ℹ️ Cum desenezi</summary>
       <ul>
         <li>Desenezi ținând degetul (sau mouse-ul) apăsat pe zona albă.</li>
-        <li><b>Culoare:</b> atinge una dintre bulinele colorate sau bulina multicoloră pentru orice altă culoare.</li>
+        <li><b>Forme:</b> alege „Dreptunghi”, „Triunghi” sau „Cerc”, apoi trage pe zona albă în diagonală, de la un colț până la colțul opus. Cercul se încadrează în pătratul tras.</li>
+        <li><b>Rotire și mutare:</b> după ce ai tras o formă, ea rămâne selectată: trage <b>mânerul rotund</b> de lângă ea ca s-o rotești liber, la orice unghi, sau trage forma ca s-o muți. Apasă <b>✓ Gata</b> (sau alege alt instrument) ca s-o fixezi, ori <b>✕</b> ca s-o ștergi.</li>
+        <li><b>Culoare:</b> atinge una dintre bulinele colorate sau bulina multicoloră pentru orice altă culoare; se aplică și formelor.</li>
         <li><b>Radieră:</b> apasă „Radieră”, apoi treci peste ce vrei să ștergi. Revii la desen cu „Creion” sau alegând o culoare.</li>
         <li><b>Șterge tot</b> golește toată pagina.</li>
         <li>Când ești gata, apasă <b>Trimite răspunsul</b>. Dacă mai schimbi ceva, trimite din nou: se păstrează ultima versiune.</li>
@@ -253,6 +272,11 @@ function buildCanvas() {
         <button class="tool-btn" id="tool-eraser" aria-pressed="false">🧽 Radieră</button>
         <button class="tool-btn clear" id="clear-canvas">Șterge tot</button>
       </div>
+      <div class="tool-group" role="group" aria-label="Forme">
+        ${shapeButton("rect", "Dreptunghi")}
+        ${shapeButton("triangle", "Triunghi")}
+        ${shapeButton("circle", "Cerc")}
+      </div>
       <div class="tool-group" role="group" aria-label="Culoare">
         ${PEN_COLORS.map(
           (x, i) =>
@@ -263,7 +287,13 @@ function buildCanvas() {
         </label>
       </div>
     </div>
-    <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>`;
+    <div class="canvas-wrap">
+      <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>
+      <div class="shape-actions" id="shape-actions" hidden>
+        <button class="tool-btn done" id="shape-done" title="Fixează forma">✓ Gata</button>
+        <button class="tool-btn clear" id="shape-delete" title="Șterge forma" aria-label="Șterge forma">✕</button>
+      </div>
+    </div>`;
 
   canvas = $("canvas");
   ctx = canvas.getContext("2d");
@@ -277,27 +307,180 @@ function buildCanvas() {
 
   let tool = "pen";
   let penColor = PEN_COLORS[0].c;
+  const isShape = () => SHAPE_TOOLS.includes(tool);
   const applyTool = () => {
     ctx.strokeStyle = tool === "eraser" ? "#ffffff" : penColor;
     ctx.lineWidth = tool === "eraser" ? ERASER_WIDTH : PEN_WIDTH;
   };
+
+  // ---- forma in editare: ramane obiect (rotibil, mutabil) pana e fixata ----
+  let pending = null; // { type, cx, cy, w, h, rot, color }
+  let base = null; // imaginea canvasului de dinainte de forma
+  let snapshot = null; // la crearea unei forme noi
+  let origin = null;
+  let gesture = null; // { mode: "create" | "move" | "rotate", ... }
+
+  const showActions = (v) => ($("shape-actions").hidden = !v);
+  const kScale = () => CANVAS_W / canvas.getBoundingClientRect().width; // pixeli interni pe pixel de ecran
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  const shapePath = (s) => {
+    ctx.beginPath();
+    if (s.type === "circle") {
+      ctx.arc(0, 0, s.w / 2, 0, Math.PI * 2);
+    } else if (s.type === "rect") {
+      ctx.rect(-s.w / 2, -s.h / 2, s.w, s.h);
+    } else {
+      ctx.moveTo(0, -s.h / 2);
+      ctx.lineTo(s.w / 2, s.h / 2);
+      ctx.lineTo(-s.w / 2, s.h / 2);
+      ctx.closePath();
+    }
+  };
+  const renderShape = (s) => {
+    ctx.save();
+    ctx.translate(s.cx, s.cy);
+    ctx.rotate(s.rot);
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = PEN_WIDTH;
+    ctx.lineJoin = "round";
+    shapePath(s);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // pozitia manerului de rotire: deasupra formei; daca iese din canvas, dedesubt (sd = -1 sus, +1 jos)
+  const handleGeom = () => {
+    const k = kScale();
+    const hr = HANDLE_R * k;
+    const dist = pending.h / 2 + HANDLE_GAP * k;
+    const at = (sd) => ({ hx: pending.cx - sd * dist * Math.sin(pending.rot), hy: pending.cy + sd * dist * Math.cos(pending.rot) });
+    const fits = (q) => q.hx >= hr && q.hx <= CANVAS_W - hr && q.hy >= hr && q.hy <= CANVAS_H - hr;
+    const sd = gesture?.side ?? (fits(at(-1)) ? -1 : 1);
+    const q = at(sd);
+    return { hx: clamp(q.hx, hr, CANVAS_W - hr), hy: clamp(q.hy, hr, CANVAS_H - hr), hr, sd, k };
+  };
+
+  const drawHandles = () => {
+    const { hx, hy, hr, sd, k } = handleGeom();
+    const pad = BOX_PAD * k;
+    ctx.save();
+    ctx.translate(pending.cx, pending.cy);
+    ctx.rotate(pending.rot);
+    ctx.setLineDash([8 * k, 6 * k]);
+    ctx.lineWidth = 2 * k;
+    ctx.strokeStyle = HANDLE_COLOR;
+    ctx.strokeRect(-pending.w / 2 - pad, -pending.h / 2 - pad, pending.w + 2 * pad, pending.h + 2 * pad);
+    ctx.restore();
+    // conector + maner
+    const ex = pending.cx - sd * (pending.h / 2 + pad) * Math.sin(pending.rot);
+    const ey = pending.cy + sd * (pending.h / 2 + pad) * Math.cos(pending.rot);
+    ctx.save();
+    ctx.strokeStyle = HANDLE_COLOR;
+    ctx.fillStyle = "#ffffff";
+    ctx.lineWidth = 2 * k;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+    ctx.lineWidth = 3 * k;
+    ctx.beginPath();
+    ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // sageata circulara in maner
+    const r = hr * 0.52;
+    const a0 = -0.3 * Math.PI;
+    const a1 = 1.2 * Math.PI;
+    ctx.lineWidth = 2.4 * k;
+    ctx.beginPath();
+    ctx.arc(hx, hy, r, a0, a1);
+    ctx.stroke();
+    const px = hx + r * Math.cos(a1);
+    const py = hy + r * Math.sin(a1);
+    const tx = -Math.sin(a1);
+    const ty = Math.cos(a1);
+    const nx = Math.cos(a1);
+    const ny = Math.sin(a1);
+    ctx.fillStyle = HANDLE_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(px + tx * 5 * k, py + ty * 5 * k);
+    ctx.lineTo(px - tx * 2 * k + nx * 4.5 * k, py - ty * 2 * k + ny * 4.5 * k);
+    ctx.lineTo(px - tx * 2 * k - nx * 4.5 * k, py - ty * 2 * k - ny * 4.5 * k);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+
+  const renderPending = (handles) => {
+    ctx.putImageData(base, 0, 0);
+    renderShape(pending);
+    if (handles) drawHandles();
+  };
+  const bake = () => {
+    if (!pending) return;
+    renderPending(false);
+    pending = null;
+    base = null;
+    showActions(false);
+  };
+  const discard = () => {
+    if (!pending) return;
+    ctx.putImageData(base, 0, 0);
+    pending = null;
+    base = null;
+    showActions(false);
+  };
+  finalizeShape = bake;
+
+  const hitHandle = (p) => {
+    const g = handleGeom();
+    return Math.hypot(p.x - g.hx, p.y - g.hy) <= HANDLE_HIT * g.k;
+  };
+  const hitBody = (p) => {
+    const tol = 10 * kScale();
+    const dx = p.x - pending.cx;
+    const dy = p.y - pending.cy;
+    const cs = Math.cos(pending.rot);
+    const sn = Math.sin(pending.rot);
+    const lx = dx * cs + dy * sn;
+    const ly = -dx * sn + dy * cs;
+    if (pending.type === "circle") return Math.hypot(lx, ly) <= pending.w / 2 + tol;
+    return Math.abs(lx) <= pending.w / 2 + tol && Math.abs(ly) <= pending.h / 2 + tol;
+  };
+  // usoara "magnetizare" la unghiuri drepte (±2,5°), ca sa revii usor la forma dreapta; in rest rotirea e libera
+  const snapRot = (rot) => {
+    const step = Math.PI / 2;
+    const near = Math.round(rot / step) * step;
+    return Math.abs(rot - near) < (2.5 * Math.PI) / 180 ? near : rot;
+  };
+
   const setTool = (t) => {
+    if (pending && t !== tool) bake(); // schimbarea instrumentului fixeaza forma
     tool = t;
-    $("tool-pen").classList.toggle("active", t === "pen");
-    $("tool-eraser").classList.toggle("active", t === "eraser");
-    $("tool-pen").setAttribute("aria-pressed", String(t === "pen"));
-    $("tool-eraser").setAttribute("aria-pressed", String(t === "eraser"));
+    for (const [name, id] of Object.entries(TOOL_BUTTONS)) {
+      $(id).classList.toggle("active", name === t);
+      $(id).setAttribute("aria-pressed", String(name === t));
+    }
     canvas.classList.toggle("erasing", t === "eraser");
+    canvas.classList.toggle("shaping", SHAPE_TOOLS.includes(t));
     applyTool();
   };
-  $("tool-pen").onclick = () => setTool("pen");
-  $("tool-eraser").onclick = () => setTool("eraser");
+  for (const [name, id] of Object.entries(TOOL_BUTTONS)) $(id).onclick = () => setTool(name);
   const markActive = (el) => document.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("active", x === el));
+  // culoarea alesa se aplica si formei selectate; te readuce la creion doar daca erai pe radiera
+  const afterColor = () => {
+    if (pending) {
+      pending.color = penColor;
+      renderPending(true);
+    }
+    setTool(tool === "eraser" ? "pen" : tool);
+  };
   document.querySelectorAll(".swatch[data-color]").forEach((b) => {
     b.onclick = () => {
       penColor = b.dataset.color;
       markActive(b);
-      setTool("pen"); // alegerea unei culori te readuce la creion
+      afterColor();
     };
   });
   // culoare la alegere (selectorul nativ al dispozitivului)
@@ -305,7 +488,7 @@ function buildCanvas() {
     penColor = e.target.value;
     $("custom-swatch").style.setProperty("--c", penColor);
     markActive($("custom-swatch"));
-    setTool("pen");
+    afterColor();
   };
   applyTool();
 
@@ -317,32 +500,112 @@ function buildCanvas() {
       y: ((e.clientY - r.top) * CANVAS_H) / r.height,
     };
   };
+
+  // forma rezultata din tragerea de la un colt la colturile opus
+  const shapeFromDrag = (a, b) => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (tool === "circle") {
+      const size = Math.max(Math.abs(dx), Math.abs(dy));
+      return {
+        type: "circle",
+        cx: a.x + ((Math.sign(dx) || 1) * size) / 2,
+        cy: a.y + ((Math.sign(dy) || 1) * size) / 2,
+        w: size,
+        h: size,
+        rot: 0,
+        color: penColor,
+      };
+    }
+    return { type: tool, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, w: Math.abs(dx), h: Math.abs(dy), rot: 0, color: penColor };
+  };
+  const bigEnough = (a, b) => Math.abs(b.x - a.x) >= 8 || Math.abs(b.y - a.y) >= 8;
+
   const start = (e) => {
-    drawing = true;
-    canvas.setPointerCapture?.(e.pointerId);
     const p = pos(e);
     applyTool();
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    // un punct la simpla atingere
-    ctx.lineTo(p.x + 0.01, p.y);
-    ctx.stroke();
+    if (pending) {
+      if (hitHandle(p)) gesture = { mode: "rotate", side: handleGeom().sd };
+      else if (hitBody(p)) gesture = { mode: "move", ox: p.x - pending.cx, oy: p.y - pending.cy };
+      else bake(); // o atingere in afara formei o fixeaza si poti continua cu alta
+      if (gesture) {
+        drawing = true;
+        canvas.setPointerCapture?.(e.pointerId);
+        canvas.style.cursor = gesture.mode === "rotate" ? "grabbing" : "move";
+        e.preventDefault();
+        return;
+      }
+    }
+    drawing = true;
+    canvas.setPointerCapture?.(e.pointerId);
+    if (isShape()) {
+      snapshot = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
+      origin = p;
+      gesture = { mode: "create" };
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      // un punct la simpla atingere
+      ctx.lineTo(p.x + 0.01, p.y);
+      ctx.stroke();
+    }
     e.preventDefault();
   };
   const move = (e) => {
-    if (!drawing) return;
     const p = pos(e);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
+    if (!drawing) {
+      // pe desktop: cursor care arata ce se poate face
+      if (pending && e.pointerType === "mouse") canvas.style.cursor = hitHandle(p) ? "grab" : hitBody(p) ? "move" : "";
+      return;
+    }
+    if (gesture?.mode === "rotate") {
+      const a = Math.atan2(p.y - pending.cy, p.x - pending.cx);
+      pending.rot = snapRot(a - (gesture.side < 0 ? -Math.PI / 2 : Math.PI / 2));
+      renderPending(true);
+    } else if (gesture?.mode === "move") {
+      pending.cx = clamp(p.x - gesture.ox, 0, CANVAS_W);
+      pending.cy = clamp(p.y - gesture.oy, 0, CANVAS_H);
+      renderPending(true);
+    } else if (snapshot) {
+      ctx.putImageData(snapshot, 0, 0);
+      renderShape(shapeFromDrag(origin, p));
+    } else {
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
     e.preventDefault();
   };
-  const stop = () => (drawing = false);
+  const stop = (e) => {
+    if (gesture?.mode === "create" && snapshot) {
+      ctx.putImageData(snapshot, 0, 0);
+      const p = e?.type === "pointerup" ? pos(e) : null;
+      if (p && bigEnough(origin, p)) {
+        // forma ramane selectata: poate fi rotita, mutata, fixata sau stearsa
+        pending = shapeFromDrag(origin, p);
+        base = snapshot;
+        renderPending(true);
+        showActions(true);
+      }
+      snapshot = null;
+      origin = null;
+    }
+    if (gesture && gesture.mode !== "create") canvas.style.cursor = "";
+    gesture = null;
+    drawing = false;
+  };
 
   canvas.addEventListener("pointerdown", start);
   canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerup", stop);
   canvas.addEventListener("pointercancel", stop);
-  $("clear-canvas").onclick = paintBackground;
+  $("shape-done").onclick = bake;
+  $("shape-delete").onclick = discard;
+  $("clear-canvas").onclick = () => {
+    pending = null;
+    base = null;
+    showActions(false);
+    paintBackground();
+  };
 }
 
 // ---------- modul 2: model pe grila 4x4 ----------
@@ -413,7 +676,10 @@ async function saveModel() {
 
 async function submit() {
   let payload;
-  if (session.mode === "draw") payload = { type: "draw", image: canvas.toDataURL("image/png") };
+  if (session.mode === "draw") {
+    finalizeShape?.(); // o forma inca selectata (cu manere) se fixeaza inainte sa fie trimisa
+    payload = { type: "draw", image: canvas.toDataURL("image/png") };
+  }
   if (session.mode === "model") payload = { type: "model", positions: modelPositions };
   if (session.mode === "client") {
     payload = {

@@ -60,13 +60,19 @@
 /* Canvas 4:3, responsive: latimea e limitata de container si de inaltimea ferestrei
    (sa incapa pe verticala), dar nu sub 480px pe ecrane late. Pe telefon in portret ia toata latimea.
    A doua linie (dvh) o inlocuieste pe prima in browserele care o cunosc. */
-.draw-canvas {
+.canvas-wrap {
   display:block;
+  position:relative;
   width:min(100%, max(480px, calc((100vh - 400px) * 4 / 3)));
   width:min(100%, max(480px, calc((100dvh - 400px) * 4 / 3)));
   aspect-ratio:4 / 3;
-  height:auto;
   margin:0 auto;
+}
+.draw-canvas {
+  display:block;
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
   background:white;
   border:2px dashed var(--green);
   border-radius:10px;
@@ -334,7 +340,7 @@
   #activity .panel:has(.draw-canvas) #content {
     display:contents;
   }
-  #activity .panel:has(.draw-canvas) .draw-canvas {
+  #activity .panel:has(.draw-canvas) .canvas-wrap {
     grid-column:2;
     grid-row:1 / 8;
     width:min(100%, calc((100vh - 56px) * 4 / 3));
@@ -422,16 +428,8 @@
 .reveal-draw {
   max-width:640px;
 }
-.reveal-draw[data-view="both"] .model-overlay,
-.reveal-draw[data-view="model"] .model-overlay {
+.reveal-draw[data-view="both"] .model-overlay {
   display:block;
-}
-.reveal-draw[data-view="model"] .model-overlay {
-  color:#1a1a1a;
-  opacity:1;
-}
-.reveal-draw[data-view="model"] img {
-  visibility:hidden;
 }
 .hint {
   font-size:14px;
@@ -509,15 +507,13 @@
 }
 .reveal-draw[data-view="model"] img.model-orig {
   display:block;
+  visibility:visible;
 }
 /* suprapunerea: imaginea roșie trebuie să rămână transparentă (regula generală pentru imagini din chenarul de desen setează fundal alb) */
 .draw-wrap .model-overlay img,
 .result-card .draw-wrap .model-overlay img {
   background:transparent;
   object-fit:fill;
-}
-.reveal-draw[data-view="model"] .model-overlay {
-  display:none;
 }
 ol.steps {
   margin:6px 0 2px;
@@ -597,4 +593,45 @@ ol.steps li {
   flex-wrap:wrap;
   gap:8px;
   margin-top:12px;
+}
+
+/* instrumente de forma (dreptunghi, triunghi, cerc) */
+.tool-btn svg {
+  vertical-align:-4px;
+  margin-right:6px;
+}
+.draw-canvas.shaping {
+  cursor:crosshair;
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  /* ecran scund: butoanele de forma raman doar cu pictograma, ca sa incapa coloana din stanga */
+  #activity .panel:has(.draw-canvas) .tool-btn .lbl {
+    display:none;
+  }
+  #activity .panel:has(.draw-canvas) .tool-btn svg {
+    margin-right:0;
+  }
+}
+
+/* butoanele formei selectate (peste canvas, ca sa nu mute nimic din pagina) */
+.shape-actions {
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:2;
+  display:flex;
+  gap:6px;
+}
+.shape-actions[hidden] {
+  display:none;
+}
+.shape-actions .tool-btn {
+  background:#fff;
+  box-shadow:0 1px 5px rgba(0,0,0,.28);
+  padding:6px 12px;
+  font-size:13px;
+}
+.shape-actions .tool-btn.done {
+  background:var(--green);
+  color:#fff;
 }
