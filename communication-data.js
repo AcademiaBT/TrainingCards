@@ -97,7 +97,7 @@ const LABELS_CLIENT = {
   ended: "Încheiată",
 };
 const STAGES_CLIENT_ONE = ["lobby", "round1", "round1_reveal", "round1_results", "debrief", "ended"];
-const STAGES_ONE_ROUND = ["lobby", "round1", "round1_reveal", "debrief", "ended"];
+const STAGES_ONE_ROUND = ["lobby", "round1", "round1_reveal", "round1_results", "debrief", "ended"]; // desen cu o singura runda
 
 // Rundele unui scenariu de desen (1 sau 2), cu regula rundei dedusă din „permite întrebări”
 export function scenarioRounds(scenario) {
@@ -114,16 +114,18 @@ export function scenarioRounds(scenario) {
 export function stagesFor(mode, session) {
   if (mode === "model") return STAGES_MODEL;
   if (mode === "client") return session?.scenario?.rounds?.length === 1 ? STAGES_CLIENT_ONE : STAGES_CLIENT; // scenariu propriu cu o singura runda: fara runda 2
-  if (mode === "draw" && scenarioRounds(session?.scenario).length === 1) return STAGES_ONE_ROUND;
+  // desen: dupa fiecare reveal urmeaza „Desenele tuturor” (aceleasi etape ca la „Ce ai inteles?”)
+  if (mode === "draw") return scenarioRounds(session?.scenario).length === 1 ? STAGES_ONE_ROUND : STAGES_CLIENT;
   return STAGES_DEFAULT;
 }
 
 export function stageLabel(mode, status, session) {
   if (mode === "model") return LABELS_MODEL[status] || status;
   if (mode === "client") return LABELS_CLIENT[status] || status;
-  if (mode === "draw" && ["round1", "round1_reveal", "round2", "round2_reveal"].includes(status)) {
+  if (mode === "draw" && ["round1", "round1_reveal", "round1_results", "round2", "round2_reveal", "round2_results"].includes(status)) {
     const n = status.includes("2") ? 2 : 1;
     const r = scenarioRounds(session?.scenario)[n - 1];
+    if (status.endsWith("_results")) return `Desenele tuturor · runda ${n}`;
     return status.includes("reveal") ? `Reveal runda ${n}` : `Runda ${n} · ${r?.questions ? "cu" : "fără"} clarificări`;
   }
   return LABELS_DEFAULT[status] || status;

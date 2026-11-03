@@ -157,6 +157,8 @@ async function refresh() {
     if (session.mode === "model" && session.status === "round1" && modelPositions.length) await saveModel();
     // la „Ce ai înțeles?”, ce a scris participantul se trimite automat când se iese din rundă
     if (session.mode === "client" && (session.status === "round1" || session.status === "round2")) await saveClient();
+    // la desen, desenul de pe canvas (daca are ceva desenat) se trimite automat cand se iese din runda
+    if (session.mode === "draw" && (session.status === "round1" || session.status === "round2")) await saveDraw();
     session = data;
     modelPositions = [];
     selectedPiece = null;
@@ -165,6 +167,14 @@ async function refresh() {
     showAllModelResults(); // rezultatele colegilor pot mai sosi
   } else if (session.mode === "client" && session.status.endsWith("_results")) {
     showAllClientAnswers();
+  } else if (session.mode === "draw" && session.status.endsWith("_results")) {
+    // reimprospatare usoara: se cere doar lista de participanti care au trimis; imaginile se reiau numai daca numarul s-a schimbat
+    const { data: ids } = await supabase
+      .from("communication_submissions")
+      .select("participant_id")
+      .eq("session_id", session.id)
+      .eq("round", round);
+    if ((ids || []).length !== drawShownCount) showAllDrawings();
   }
 }
 
@@ -197,9 +207,10 @@ function render() {
       showReveal();
       return;
     }
-  } else if (session.mode === "client" && session.status.endsWith("_results")) {
+  } else if ((session.mode === "client" || session.mode === "draw") && session.status.endsWith("_results")) {
     round = session.status.includes("2") ? 2 : 1;
-    showAllClientAnswers();
+    if (session.mode === "draw") showAllDrawings();
+    else showAllClientAnswers();
     return;
   } else if (session.status.includes("reveal")) {
     round = session.status.includes("2") ? 2 : 1;
@@ -682,6 +693,27 @@ async function saveModel() {
     );
 }
 
+// salvare automata a desenului: doar daca pe canvas exista ceva desenat
+async function saveDraw() {
+  if (!canvas || !ctx || !$("canvas")) return;
+  finalizeShape?.();
+  const d = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H).data;
+  let ink = false;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] < 250 || d[i + 1] < 250 || d[i + 2] < 250) {
+      ink = true;
+      break;
+    }
+  }
+  if (!ink) return;
+  return supabase
+    .from("communication_submissions")
+    .upsert(
+      { session_id: session.id, participant_id: me.id, round, payload: { type: "draw", image: canvas.toDataURL("image/png") } },
+      { onConflict: "session_id,participant_id,round" }
+    );
+}
+
 function clientPayload() {
   return {
     type: "client",
@@ -717,6 +749,56 @@ async function submit() {
     );
   if (error) return alert(error.message);
   $("submitted").hidden = false;
+}
+
+// ---------- desen: desenele tuturor (anonim): modelul, desenul meu primul, apoi ale celorlalți ----------
+let drawShownCount = -1;
+let drawOverlayOn = false;
+
+async function showAllDrawings() {
+  $("reveal").hidden = false;
+  $("reveal-title").textContent = "Desenele tuturor";
+  const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
+  const { data: subs } = await supabase
+    .from("communication_submissions")
+    .select("participant_id,payload")
+    .eq("session_id", session.id)
+    .eq("round", round);
+
+  const all = (subs || []).filter((s) => s.payload?.type === "draw");
+  drawShownCount = all.length;
+  const mine = all.find((s) => s.participant_id === me.id);
+  // ordine stabila, dar fara legatura cu ordinea intrarii in sesiune (ca sa nu poata fi ghicit cine e cine)
+  const others = all.filter((s) => s.participant_id !== me.id).sort((a, b) => (a.participant_id > b.participant_id ? 1 : -1));
+
+  const ref = p.image ? escapeHtml(p.image) : null;
+  const card = (img, title, isMine) =>
+    `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}<div class="draw-wrap"><img src="${img}" alt="Desen">${ref ? `<div class="model-overlay" data-src="${ref}"></div>` : ""}</div></article>`;
+  const own = mine
+    ? card(mine.payload.image, "Desenul tău", true)
+    : `<article class="result-card mine"><b>Desenul tău</b><p class="hint">Nu ai trimis un desen.</p></article>`;
+
+  $("reveal-content").innerHTML = `
+    ${
+      ref
+        ? `<h3>Modelul</h3><div class="model-fig"><img src="${ref}" alt="Modelul"></div>
+           <label class="overlay-control"><input type="checkbox" id="results-overlay"${drawOverlayOn ? " checked" : ""}> Suprapune modelul (roșu) peste desene</label>`
+        : ""
+    }
+    <div class="results-grid is-draw own-result">${own}</div>
+    <h3>Desenele celorlalți participanți</h3>
+    <div class="results-grid is-draw">${others.map((s) => card(s.payload.image, "", false)).join("") || "<p>Niciun alt desen deocamdată.</p>"}</div>`;
+
+  const apply = () => document.querySelectorAll("#reveal-content .results-grid").forEach((g) => g.classList.toggle("show-overlay", drawOverlayOn));
+  apply();
+  hydrateOverlays($("reveal-content"));
+  const cb = $("results-overlay");
+  if (cb) {
+    cb.onchange = () => {
+      drawOverlayOn = cb.checked;
+      apply();
+    };
+  }
 }
 
 // ---------- „Ce ai înțeles?”: răspunsurile tuturor (anonim, al tău primul, fără informația lipsă) ----------

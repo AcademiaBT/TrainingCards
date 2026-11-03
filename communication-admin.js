@@ -276,7 +276,7 @@ async function render() {
   let html = "";
   if (session.status !== lastStatus) {
     lastStatus = session.status;
-    showModel = session.status.includes("reveal");
+    showModel = session.status.includes("reveal") || session.status.endsWith("_results");
   }
 
   if (session.status === "lobby") {
@@ -324,6 +324,9 @@ async function render() {
     }
   } else if (!ended) {
     html = `<p><b>${escapeHtml(p.title)}</b></p><p>${escapeHtml(p.rule)}</p>`;
+    if (session.mode === "draw" && session.status.endsWith("_results")) {
+      html += `<p class="rule"><b>Desenele tuturor.</b> Participanții văd acum, pe ecranul lor, modelul, desenul propriu (primul) și desenele celorlalți colegi, anonim. Discutați diferențele.</p>`;
+    }
     if (session.mode === "draw") {
       html += `<div class="rule"><b>Instrucțiuni de rostit:</b>${stepsHtml(p.steps)}</div>`;
     }

@@ -670,3 +670,8 @@ ol.steps li {
   border-radius:8px;
   max-width:100%;
 }
+
+/* „Desenele tuturor”: desenul propriu, mai mare */
+.results-grid.is-draw.own-result {
+  grid-template-columns:minmax(220px, 420px);
+}
