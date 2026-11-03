@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, MAX_ROUNDS } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -237,7 +237,7 @@ async function move(delta) {
     const old = error.code === "23514" || /check constraint|violates check/i.test(error.message || "");
     alert(
       old
-        ? "Etapa nu poate fi salvată: baza de date nu cunoaște încă etapele noi. Rulează o singură dată în Supabase scriptul add-communication-results-stages.sql."
+        ? "Etapa nu poate fi salvată: baza de date nu cunoaște încă etapele noi (de ex. pașii „Răspunsurile/Desenele tuturor” sau runda 3 și următoarele). Rulează o singură dată în Supabase scriptul add-communication-more-rounds.sql."
         : error.message
     );
     return;
@@ -261,6 +261,21 @@ async function render() {
   $("back").disabled = session.status === "lobby" || ended;
   $("next").disabled = ended;
   $("end").disabled = ended;
+  // hint deasupra fiecarui buton: etapa la care se ajunge cu click pe butonul de dedesubt
+  {
+    const stages = stagesFor(session.mode, session);
+    const idx = Math.max(0, stages.indexOf(session.status));
+    const name = (st) => `<b>${escapeHtml(stageLabel(session.mode, st, session))}</b>`;
+    $("back-hint").innerHTML = ended ? "" : idx > 0 ? `Înapoi la: ${name(stages[idx - 1])}` : "Ești la începutul sesiunii.";
+    const nxt = stages[idx + 1];
+    $("next-hint").innerHTML = ended
+      ? "Sesiunea s-a încheiat."
+      : !nxt
+        ? ""
+        : nxt === "ended"
+          ? `Urmează: ${name(nxt)} (sesiunea se închide)`
+          : `Urmează: ${name(nxt)}`;
+  }
   $("link-area").hidden = ended;
   $("ended-note").hidden = !ended;
 
@@ -271,7 +286,7 @@ async function render() {
   }
 
   const isModel = session.mode === "model";
-  const r = isModel ? 0 : session.status.includes("2") ? 1 : 0;
+  const r = isModel ? 0 : roundOf(session.status) - 1;
   const p = getRounds(session.mode, session.prompt_index, session.scenario)[r];
   let html = "";
   if (session.status !== lastStatus) {
@@ -384,8 +399,8 @@ async function loadData() {
 
   const ended = session.status === "ended";
   const isModel = session.mode === "model";
-  const round = isModel ? 1 : session.status.includes("2") ? 2 : 1;
   const rounds = getRounds(session.mode, session.prompt_index, session.scenario);
+  const round = isModel ? 1 : session.status === "debrief" ? rounds.length : roundOf(session.status); // la debrief: ultima runda
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
@@ -516,7 +531,7 @@ function renderScenarioList() {
 function blankRound(i, mode) {
   return mode === "client"
     ? { title: "", message: "", detail: "" }
-    : { title: "", stepsText: "", image_url: null, blob: null, blobUrl: null, questions: i === 1 };
+    : { title: "", stepsText: "", image_url: null, blob: null, blobUrl: null, questions: i >= 1 };
 }
 
 function openScenarioForm(id = null) {
@@ -565,8 +580,7 @@ function renderFormRounds() {
         </fieldset>`
       )
       .join("");
-    $("sc-add-round").hidden = form.rounds.length >= 2;
-    $("sc-remove-round").hidden = form.rounds.length < 2;
+    updateRoundButtons();
     return;
   }
   $("sc-rounds").innerHTML = form.rounds
@@ -622,8 +636,17 @@ function renderFormRounds() {
       showImage();
     };
   });
-  $("sc-add-round").hidden = form.rounds.length >= 2;
-  $("sc-remove-round").hidden = form.rounds.length < 2;
+  updateRoundButtons();
+}
+
+// butoanele de adaugare/eliminare runda: desen pana la MAX_ROUNDS, „Ce ai inteles?” pana la 2
+function updateRoundButtons() {
+  const max = form.mode === "client" ? 2 : MAX_ROUNDS;
+  const n = form.rounds.length;
+  $("sc-add-round").hidden = n >= max;
+  $("sc-add-round").textContent = `＋ Adaugă runda ${n + 1}`;
+  $("sc-remove-round").hidden = n < 2;
+  $("sc-remove-round").textContent = `Elimină runda ${n}`;
 }
 
 // citeste valorile din campuri in starea formularului
@@ -755,7 +778,7 @@ $("sc-cancel").onclick = closeScenarioForm;
 $("sc-save").onclick = saveScenario;
 $("sc-add-round").onclick = () => {
   syncForm();
-  form.rounds.push(blankRound(1, form.mode));
+  form.rounds.push(blankRound(form.rounds.length, form.mode));
   renderFormRounds();
 };
 $("sc-remove-round").onclick = () => {

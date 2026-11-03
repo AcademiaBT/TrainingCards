@@ -64,6 +64,24 @@ export const ACTIVITIES = {
 //  Valorile salvate în baza de date sunt cele permise de constrângerea existentă (nu cere SQL nou):
 //  la model, pasul 3 se salvează ca „round2_reveal”.
 // ---------------------------------------------------------------------
+// Numarul maxim de runde al unui scenariu de desen
+export const MAX_ROUNDS = 10;
+
+// round3 / round3_reveal / round3_results -> { kind: "round" | "reveal" | "results", n: 3 }; lobby / debrief / ended -> { kind, n: 0 }
+export function parseStatus(status) {
+  const m = /^round(\d+)(?:_(reveal|results))?$/.exec(status || "");
+  return m ? { kind: m[2] || "round", n: Number(m[1]) } : { kind: status, n: 0 };
+}
+export const roundOf = (status) => parseStatus(status).n || 1;
+export const isRoundStatus = (status) => parseStatus(status).kind === "round";
+
+// Lobby, apoi pentru fiecare runda: runda -> reveal -> toate raspunsurile/desenele, apoi debrief
+function stagesWithRounds(n) {
+  const out = ["lobby"];
+  for (let i = 1; i <= n; i++) out.push(`round${i}`, `round${i}_reveal`, `round${i}_results`);
+  return [...out, "debrief", "ended"];
+}
+
 const STAGES_DEFAULT = ["lobby", "round1", "round1_reveal", "round2", "round2_reveal", "debrief", "ended"];
 const STAGES_MODEL = ["lobby", "round1", "round1_reveal", "round2_reveal", "debrief", "ended"];
 const LABELS_DEFAULT = {
@@ -84,7 +102,6 @@ const LABELS_MODEL = {
   ended: "Încheiată",
 };
 // „Ce ai înțeles?”: după fiecare reveal urmează un pas în care participanții văd răspunsurile tuturor (anonim)
-const STAGES_CLIENT = ["lobby", "round1", "round1_reveal", "round1_results", "round2", "round2_reveal", "round2_results", "debrief", "ended"];
 const LABELS_CLIENT = {
   lobby: "Lobby",
   round1: "Runda 1 · fără clarificări",
@@ -96,13 +113,11 @@ const LABELS_CLIENT = {
   debrief: "Debrief",
   ended: "Încheiată",
 };
-const STAGES_CLIENT_ONE = ["lobby", "round1", "round1_reveal", "round1_results", "debrief", "ended"];
-const STAGES_ONE_ROUND = ["lobby", "round1", "round1_reveal", "round1_results", "debrief", "ended"]; // desen cu o singura runda
 
 // Rundele unui scenariu de desen (1 sau 2), cu regula rundei dedusă din „permite întrebări”
 export function scenarioRounds(scenario) {
   const list = Array.isArray(scenario?.rounds) && scenario.rounds.length ? scenario.rounds : [{ steps: [], questions: false }];
-  return list.slice(0, 2).map((r, i) => ({
+  return list.slice(0, MAX_ROUNDS).map((r, i) => ({
     title: r.title || scenario?.title || `Runda ${i + 1}`,
     steps: Array.isArray(r.steps) ? r.steps : [],
     image: r.image_url || null,
@@ -113,21 +128,22 @@ export function scenarioRounds(scenario) {
 
 export function stagesFor(mode, session) {
   if (mode === "model") return STAGES_MODEL;
-  if (mode === "client") return session?.scenario?.rounds?.length === 1 ? STAGES_CLIENT_ONE : STAGES_CLIENT; // scenariu propriu cu o singura runda: fara runda 2
-  // desen: dupa fiecare reveal urmeaza „Desenele tuturor” (aceleasi etape ca la „Ce ai inteles?”)
-  if (mode === "draw") return scenarioRounds(session?.scenario).length === 1 ? STAGES_ONE_ROUND : STAGES_CLIENT;
+  if (mode === "client") return stagesWithRounds(session?.scenario?.rounds?.length === 1 ? 1 : 2); // scenariu propriu cu o singura runda: fara runda 2
+  // desen: fiecare runda are runda -> reveal -> „Desenele tuturor”; numarul de runde vine din scenariu
+  if (mode === "draw") return stagesWithRounds(scenarioRounds(session?.scenario).length);
   return STAGES_DEFAULT;
 }
 
 export function stageLabel(mode, status, session) {
   if (mode === "model") return LABELS_MODEL[status] || status;
-  if (mode === "client") return LABELS_CLIENT[status] || status;
-  if (mode === "draw" && ["round1", "round1_reveal", "round1_results", "round2", "round2_reveal", "round2_results"].includes(status)) {
-    const n = status.includes("2") ? 2 : 1;
-    const r = scenarioRounds(session?.scenario)[n - 1];
-    if (status.endsWith("_results")) return `Desenele tuturor · runda ${n}`;
-    return status.includes("reveal") ? `Reveal runda ${n}` : `Runda ${n} · ${r?.questions ? "cu" : "fără"} clarificări`;
+  const { kind, n } = parseStatus(status);
+  if ((mode === "draw" || mode === "client") && n) {
+    if (kind === "reveal") return `Reveal runda ${n}`;
+    if (kind === "results") return mode === "draw" ? `Desenele tuturor · runda ${n}` : `Răspunsurile tuturor · runda ${n}`;
+    const questions = mode === "draw" ? scenarioRounds(session?.scenario)[n - 1]?.questions : n > 1;
+    return `Runda ${n} · ${questions ? "cu" : "fără"} clarificări`;
   }
+  if (mode === "client") return LABELS_CLIENT[status] || status;
   return LABELS_DEFAULT[status] || status;
 }
 

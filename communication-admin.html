@@ -61,7 +61,7 @@
         <input id="sc-title" type="text" maxlength="80" placeholder="ex. Casa cu copac">
         <div id="sc-rounds"></div>
         <div class="sc-actions">
-          <button class="btn outline" id="sc-add-round">＋ Adaugă runda 2 (cu clarificări)</button>
+          <button class="btn outline" id="sc-add-round">＋ Adaugă runda 2</button>
           <button class="btn outline" id="sc-remove-round" hidden>Elimină runda 2</button>
         </div>
         <div class="error-msg" id="sc-error"></div>
@@ -81,7 +81,7 @@
           </div>
           <button class="btn danger" id="end">Încheie</button>
         </div>
-        <p class="rule" id="ended-note" hidden>Sesiunea s-a încheiat: participanții nu mai pot intra. Mai jos rămân rezultatele ambelor runde. Pentru o sesiune nouă alege o activitate de mai sus.</p>
+        <p class="rule" id="ended-note" hidden>Sesiunea s-a încheiat: participanții nu mai pot intra. Mai jos rămân rezultatele tuturor rundelor. Pentru o sesiune nouă alege o activitate de mai sus.</p>
         <div id="link-area">
         <p>Link participanți:</p>
         <div class="session-link-box">
@@ -97,8 +97,14 @@
         </div>
         <p id="status-line"></p>
         <div class="comm-toolbar">
-          <button class="btn" id="back">← Etapa anterioară</button>
-          <button class="btn gold" id="next">Etapa următoare →</button>
+          <div class="nav-col">
+            <p class="nav-hint" id="back-hint"></p>
+            <button class="btn" id="back">← Etapa anterioară</button>
+          </div>
+          <div class="nav-col nav-col-right">
+            <p class="nav-hint" id="next-hint"></p>
+            <button class="btn gold" id="next">Etapa următoare →</button>
+          </div>
         </div>
       </div>
 

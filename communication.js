@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds } from "./communication-data.js";
+import { ACTIVITIES, DEBRIEF, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -156,9 +156,9 @@ async function refresh() {
     // la model, ce e pe grila se trimite automat cand se iese din pasul de pozitionare
     if (session.mode === "model" && session.status === "round1" && modelPositions.length) await saveModel();
     // la „Ce ai înțeles?”, ce a scris participantul se trimite automat când se iese din rundă
-    if (session.mode === "client" && (session.status === "round1" || session.status === "round2")) await saveClient();
+    if (session.mode === "client" && isRoundStatus(session.status)) await saveClient();
     // la desen, desenul de pe canvas (daca are ceva desenat) se trimite automat cand se iese din runda
-    if (session.mode === "draw" && (session.status === "round1" || session.status === "round2")) await saveDraw();
+    if (session.mode === "draw" && isRoundStatus(session.status)) await saveDraw();
     session = data;
     modelPositions = [];
     selectedPiece = null;
@@ -208,16 +208,16 @@ function render() {
       return;
     }
   } else if ((session.mode === "client" || session.mode === "draw") && session.status.endsWith("_results")) {
-    round = session.status.includes("2") ? 2 : 1;
+    round = roundOf(session.status);
     if (session.mode === "draw") showAllDrawings();
     else showAllClientAnswers();
     return;
   } else if (session.status.includes("reveal")) {
-    round = session.status.includes("2") ? 2 : 1;
+    round = roundOf(session.status);
     showReveal();
     return;
   } else {
-    round = session.status === "round2" ? 2 : 1;
+    round = roundOf(session.status);
   }
   $("activity").hidden = false;
   buildActivity();
