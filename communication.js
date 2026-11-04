@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -710,7 +710,7 @@ async function saveDraw() {
   return supabase
     .from("communication_submissions")
     .upsert(
-      { session_id: session.id, participant_id: me.id, round, payload: { type: "draw", image: canvas.toDataURL("image/png") } },
+      { session_id: session.id, participant_id: me.id, round, payload: { type: "draw", ...exportDrawing(canvas) }, submitted_at: new Date().toISOString() },
       { onConflict: "session_id,participant_id,round" }
     );
 }
@@ -738,14 +738,14 @@ async function submit() {
   let payload;
   if (session.mode === "draw") {
     finalizeShape?.(); // o forma inca selectata (cu manere) se fixeaza inainte sa fie trimisa
-    payload = { type: "draw", image: canvas.toDataURL("image/png") };
+    payload = { type: "draw", ...exportDrawing(canvas) };
   }
   if (session.mode === "model") payload = { type: "model", positions: modelPositions };
   if (session.mode === "client") payload = clientPayload();
   const { error } = await supabase
     .from("communication_submissions")
     .upsert(
-      { session_id: session.id, participant_id: me.id, round, payload },
+      { session_id: session.id, participant_id: me.id, round, payload, submitted_at: new Date().toISOString() },
       { onConflict: "session_id,participant_id,round" }
     );
   if (error) {
@@ -767,23 +767,26 @@ async function showAllDrawings() {
   $("reveal").hidden = false;
   $("reveal-title").textContent = "Desenele tuturor";
   const p = getRounds(session.mode, session.prompt_index, session.scenario)[round - 1];
-  const { data: subs } = await supabase
+  // doar lista (fara imagini); miniaturile se cer apoi, o singura data pentru fiecare desen
+  const { data: rows } = await supabase
     .from("communication_submissions")
-    .select("participant_id,payload")
+    .select("id, participant_id, submitted_at, kind:payload->>type")
     .eq("session_id", session.id)
     .eq("round", round);
 
-  const all = (subs || []).filter((s) => s.payload?.type === "draw");
+  const all = (rows || []).filter((r) => r.kind === "draw");
   drawShownCount = all.length;
-  const mine = all.find((s) => s.participant_id === me.id);
+  const mine = all.find((r) => r.participant_id === me.id);
   // ordine stabila, dar fara legatura cu ordinea intrarii in sesiune (ca sa nu poata fi ghicit cine e cine)
-  const others = all.filter((s) => s.participant_id !== me.id).sort((a, b) => (a.participant_id > b.participant_id ? 1 : -1));
+  const others = all.filter((r) => r.participant_id !== me.id).sort((a, b) => (a.participant_id > b.participant_id ? 1 : -1));
+  const thumb = await loadDrawThumbs(supabase, all);
+  const ownSrc = mine ? (await fetchFullDrawing(supabase, mine.id)) || thumb(mine) : null; // desenul propriu, in forma completa
 
   const ref = p.image ? escapeHtml(p.image) : null;
-  const card = (img, title, isMine) =>
-    `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}<div class="draw-wrap"><img src="${img}" alt="Desen">${ref ? `<div class="model-overlay" data-src="${ref}"></div>` : ""}</div></article>`;
-  const own = mine
-    ? card(mine.payload.image, "Desenul tău", true)
+  const card = (img, title, isMine, sid) =>
+    `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}<div class="draw-wrap"><img src="${img}" alt="Desen"${sid ? ` data-sid="${sid}"` : ""}>${ref ? `<div class="model-overlay" data-src="${ref}"></div>` : ""}</div></article>`;
+  const own = ownSrc
+    ? card(ownSrc, "Desenul tău", true)
     : `<article class="result-card mine"><b>Desenul tău</b><p class="hint">Nu ai trimis un desen.</p></article>`;
 
   $("reveal-content").innerHTML = `
@@ -795,7 +798,8 @@ async function showAllDrawings() {
     }
     <div class="results-grid is-draw own-result">${own}</div>
     <h3>Desenele celorlalți participanți</h3>
-    <div class="results-grid is-draw">${others.map((s) => card(s.payload.image, "", false)).join("") || "<p>Niciun alt desen deocamdată.</p>"}</div>`;
+    <div class="results-grid is-draw">${others.map((r) => (thumb(r) ? card(thumb(r), "", false, r.id) : "")).join("") || "<p>Niciun alt desen deocamdată.</p>"}</div>
+    ${others.length ? '<p class="hint">Atinge un desen ca să-l vezi mărit.</p>' : ""}`;
 
   const apply = () => document.querySelectorAll("#reveal-content .results-grid").forEach((g) => g.classList.toggle("show-overlay", drawOverlayOn));
   apply();
@@ -955,3 +959,6 @@ async function showReveal() {
 }
 
 init();
+
+// atingerea unui desen din galerie il deschide marit (se descarca atunci)
+enableLightbox($("reveal-content"), (id) => fetchFullDrawing(supabase, id));

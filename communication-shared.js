@@ -144,3 +144,86 @@ export function summaryHtml(summary, withMine) {
   return `<h3>Cum a mers grupul</h3>
     <table class="summary-table"><thead><tr><th>Runda</th><th>Descrierea</th>${withMine ? "<th>Tu</th>" : ""}<th>Piese la locul lor (medie)</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+// ---------------------------------------------------------------------
+//  Desene usoare: JPEG + miniatura, miniaturi cu cache, deschidere la atingere
+// ---------------------------------------------------------------------
+// Desenul se salveaza ca JPEG 640×480 (~10–25 KB, fata de 40–60 KB cat avea PNG-ul) + o miniatura 360×270 (~5–10 KB) pentru galerii.
+export function exportDrawing(source) {
+  const make = (w, h, quality) => {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d");
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, w, h);
+    g.imageSmoothingQuality = "high";
+    g.drawImage(source, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", quality);
+  };
+  return { image: make(640, 480, 0.82), thumb: make(360, 270, 0.78) };
+}
+
+// Miniaturile se cer doar pentru raspunsurile noi sau schimbate (cheie: id + submitted_at) si se tin in memorie.
+// Desenele mai vechi, fara miniatura (PNG), se iau o singura data in forma completa.
+const thumbCache = new Map();
+export async function loadDrawThumbs(supabase, rows) {
+  const keyOf = (r) => `${r.id}|${r.submitted_at ?? ""}`;
+  const need = rows.filter((r) => !thumbCache.has(keyOf(r)));
+  for (let i = 0; i < need.length; i += 40) {
+    const chunk = need.slice(i, i + 40);
+    const { data } = await supabase
+      .from("communication_submissions")
+      .select("id, thumb:payload->>thumb")
+      .in("id", chunk.map((r) => r.id));
+    const legacy = [];
+    for (const d of data || []) {
+      const r = chunk.find((x) => x.id === d.id);
+      if (!r) continue;
+      if (d.thumb) thumbCache.set(keyOf(r), d.thumb);
+      else legacy.push(r);
+    }
+    if (legacy.length) {
+      const { data: full } = await supabase
+        .from("communication_submissions")
+        .select("id, image:payload->>image")
+        .in("id", legacy.map((r) => r.id));
+      for (const d of full || []) {
+        const r = legacy.find((x) => x.id === d.id);
+        if (r && d.image) thumbCache.set(keyOf(r), d.image);
+      }
+    }
+  }
+  return (r) => thumbCache.get(keyOf(r)) || null;
+}
+
+export async function fetchFullDrawing(supabase, id) {
+  const { data } = await supabase.from("communication_submissions").select("image:payload->>image").eq("id", id).maybeSingle();
+  return data?.image || null;
+}
+
+export function openLightbox(src) {
+  const el = document.createElement("div");
+  el.className = "lightbox";
+  el.innerHTML = `<button class="lightbox-close" aria-label="Închide">✕</button><img src="${src}" alt="Desen mărit">`;
+  const onKey = (e) => e.key === "Escape" && close();
+  const close = () => {
+    el.remove();
+    document.removeEventListener("keydown", onKey);
+  };
+  el.onclick = close;
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(el);
+}
+
+// Atingerea unei miniaturi (img[data-sid]) deschide desenul complet, descarcat atunci
+export function enableLightbox(container, getFull) {
+  container.addEventListener("click", async (e) => {
+    const img = e.target.closest?.("img[data-sid]");
+    if (!img) return;
+    img.classList.add("loading");
+    const full = await getFull(img.dataset.sid).catch(() => null);
+    img.classList.remove("loading");
+    openLightbox(full || img.src);
+  });
+}

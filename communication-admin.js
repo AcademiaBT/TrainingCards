@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_SHORT_TIME, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, modelRoundSummary, summaryHtml } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, modelRoundSummary, summaryHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -447,9 +447,15 @@ async function render() {
 }
 
 async function loadData() {
-  const [{ data: parts }, { data: subs }] = await Promise.all([
+  const isDraw = session.mode === "draw";
+  // la desen NU se aduc imaginile la fiecare reimprospatare: doar lista (cateva zeci de octeti pe raspuns);
+  // miniaturile se cer numai pentru desenele noi sau schimbate si se tin in memorie
+  const subsQuery = isDraw
+    ? supabase.from("communication_submissions").select("id, participant_id, round, submitted_at, kind:payload->>type").eq("session_id", session.id)
+    : supabase.from("communication_submissions").select("*").eq("session_id", session.id);
+  const [{ data: parts }, { data: subsRaw }] = await Promise.all([
     supabase.from("communication_participants").select("*").eq("session_id", session.id).order("joined_at"),
-    supabase.from("communication_submissions").select("*").eq("session_id", session.id),
+    subsQuery,
   ]);
 
   $("participants").innerHTML =
@@ -459,6 +465,12 @@ async function loadData() {
   const isModel = session.mode === "model";
   const rounds = getRounds(session.mode, session.prompt_index, session.scenario);
   const round = session.status === "debrief" ? rounds.length : roundOf(session.status); // la debrief: ultima runda
+  let subs = subsRaw || [];
+  if (isDraw) {
+    const wanted = subs.filter((s) => s.kind === "draw" && (ended ? true : s.round === round));
+    const thumb = await loadDrawThumbs(supabase, wanted);
+    subs = wanted.map((s) => ({ ...s, payload: { type: "draw", image: thumb(s) } })).filter((s) => s.payload.image);
+  }
   const aliasById = Object.fromEntries((parts || []).map((p) => [p.id, p.alias]));
   $("results").innerHTML =
     (subs || [])
@@ -470,7 +482,8 @@ async function loadData() {
           s.payload,
           rounds[s.round - 1]?.image,
           rounds[s.round - 1]?.target,
-          rounds[s.round - 1]?.axes
+          rounds[s.round - 1]?.axes,
+          s.id
         )
       )
       .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
@@ -482,10 +495,10 @@ async function loadData() {
   $("results").classList.toggle("show-overlay", overlayOn);
 }
 
-function resultCard(alias, p, refImage, target, axes) {
+function resultCard(alias, p, refImage, target, axes, sid) {
   let body = "";
   if (p.type === "draw") {
-    body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen">${refImage ? `<div class="model-overlay" data-src="${escapeHtml(refImage)}"></div>` : ""}</div>`;
+    body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen"${sid ? ` data-sid="${escapeHtml(String(sid))}"` : ""}>${refImage ? `<div class="model-overlay" data-src="${escapeHtml(refImage)}"></div>` : ""}</div>`;
   }
   if (p.type === "model") {
     const cmp = target ? compareModel(target, p.positions || []) : null;
@@ -848,5 +861,8 @@ $("sc-remove-round").onclick = () => {
   form.rounds.pop();
   renderFormRounds();
 };
+
+// atingerea unui desen din „Rezultate” il deschide marit (se descarca atunci)
+enableLightbox($("results"), (id) => fetchFullDrawing(supabase, id));
 
 init();
