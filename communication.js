@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays } from "./communication-shared.js";
+import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
+import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -193,7 +193,14 @@ function render() {
   }
   if (session.status === "debrief") {
     $("debrief").hidden = false;
-    $("debrief-list").innerHTML = DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+    $("debrief-list").innerHTML = debriefFor(session.mode).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+    // la model: textul de transfer potrivit si rezumatul scorurilor pe runde; la celelalte moduri ramane ca pana acum
+    if (session.mode === "model") {
+      $("debrief-transfer").textContent = DEBRIEF_MODEL_TRANSFER;
+      showModelSummary();
+    } else {
+      $("debrief-summary").innerHTML = "";
+    }
     return;
   }
   if ((session.mode === "client" || session.mode === "draw" || session.mode === "model") && session.status.endsWith("_results")) {
@@ -831,6 +838,13 @@ async function showAllClientAnswers() {
     ${mine ? card(mine.payload, "Răspunsul tău", true) : `<article class="answer-card mine"><b>Răspunsul tău</b><p class="hint">Nu ai trimis un răspuns.</p></article>`}
     <h3>Răspunsurile celorlalți participanți</h3>
     <div class="answers-list">${others.map((s) => card(s.payload, "", false)).join("") || "<p>Niciun alt răspuns deocamdată.</p>"}</div>`;
+}
+
+// ---------- debrief (model): scorul pe runde, al meu si media grupului (anonim) ----------
+async function showModelSummary() {
+  const { data: subs } = await supabase.from("communication_submissions").select("participant_id,round,payload").eq("session_id", session.id);
+  const rounds = getRounds(session.mode, session.prompt_index, session.scenario);
+  $("debrief-summary").innerHTML = summaryHtml(modelRoundSummary(subs, rounds, me?.id), true);
 }
 
 // ---------- pasul 3 (model): rezultatele tuturor ----------

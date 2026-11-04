@@ -112,3 +112,35 @@ export function hydrateOverlays(root = document) {
     fillOverlay(el, tinted);
   });
 }
+
+// ---------------------------------------------------------------------
+//  „Reconstruiește modelul”: scorul pe runde (pentru debrief)
+// ---------------------------------------------------------------------
+// subs: [{ participant_id, round, payload }]; rounds: rundele din getRounds. Intoarce, pentru fiecare runda: media grupului si scorul participantului `meId`.
+export function modelRoundSummary(subs, rounds, meId = null) {
+  return rounds.map((r, i) => {
+    const scores = [];
+    let mine = null;
+    (subs || [])
+      .filter((s) => s.round === i + 1 && s.payload?.type === "model")
+      .forEach((s) => {
+        const c = compareModel(r.target, s.payload.positions || []).correct;
+        scores.push(c);
+        if (meId && s.participant_id === meId) mine = c;
+      });
+    return { n: i + 1, label: r.styleLabel, total: r.target.length, count: scores.length, avg: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null, mine };
+  });
+}
+
+const fmt = (x) => x.toFixed(1).replace(".", ",");
+export function summaryHtml(summary, withMine) {
+  const rows = summary
+    .map((r) => {
+      const pct = r.avg == null ? 0 : Math.round((r.avg / r.total) * 100);
+      return `<tr><td class="nw">Runda ${r.n}</td><td>${esc(r.label)}</td>${withMine ? `<td class="nw">${r.mine == null ? "—" : `${r.mine} / ${r.total}`}</td>` : ""}
+        <td>${r.avg == null ? "—" : `<div class="bar"><span style="width:${pct}%"></span></div>${fmt(r.avg)} / ${r.total} <span class="hint">(${r.count} ${r.count === 1 ? "participant" : "participanți"})</span>`}</td></tr>`;
+    })
+    .join("");
+  return `<h3>Cum a mers grupul</h3>
+    <table class="summary-table"><thead><tr><th>Runda</th><th>Descrierea</th>${withMine ? "<th>Tu</th>" : ""}<th>Piese la locul lor (medie)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}

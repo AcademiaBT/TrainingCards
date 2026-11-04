@@ -142,6 +142,21 @@ export function stageLabel(mode, status, session) {
   return LABELS_DEFAULT[status] || status;
 }
 
+// Debrief la „Reconstruiește modelul” (3 runde: interpretabilă, stufoasă, exactă)
+export const DEBRIEF_MODEL = [
+  "Runda 1 · descrierea interpretabilă: ce ai presupus fără să-ți dai seama când ai auzit „lângă”, „undeva sub” sau „mai spre dreapta”? Cum ai decis unde pui fiecare piesă?",
+  "La „Rezultatele tuturor”: aceeași descriere, atâtea așezări diferite. De unde vin diferențele dintre colegi și ce ar fi trebuit să se spună ca ele să dispară?",
+  "Runda 2 · descrierea stufoasă: informația corectă era acolo, dar îngropată în cuvinte. Ce te-a încurcat mai mult: lungimea, repetițiile sau digresiunile? Ce ai reținut și ce ai pierdut pe drum?",
+  "Comparând rundele 1 și 2: care a fost mai grea și de ce? Ce spune asta despre ideea că „mai multe explicații” înseamnă „mai clar”?",
+  "Runda 3 · descrierea exactă, cu sistem de referință: ce a schimbat faptul că rândurile și coloanele erau numerotate și la fel pentru toți? De ce nu mai era loc de interpretări?",
+  "Unde, la serviciu, dai sau primești instrucțiuni ca în runda 1 sau 2? Ce „sistem de referință” (termeni, exemple, format, pași numerotați) ai putea stabili cu colegii sau cu clienții, ca să ajungi la runda 3?",
+];
+export const DEBRIEF_MODEL_TRANSFER =
+  "Aceeași informație poate fi înțeleasă foarte diferit: prea vagă, lasă loc interpretărilor; prea lungă, se pierde pe drum; exactă și cu un sistem de referință comun, e înțeleasă la fel de toți.";
+export const DEBRIEF_MODEL_SHORT_TIME = "Dacă ai puțin timp: întrebările 2, 4 și 6.";
+
+export const debriefFor = (mode) => (mode === "model" ? DEBRIEF_MODEL : DEBRIEF);
+
 export const DEBRIEF = [
   "Ce presupuneri ai făcut fără să îți dai seama?",
   "Ce s-a schimbat când ai putut clarifica și verifica înțelegerea?",

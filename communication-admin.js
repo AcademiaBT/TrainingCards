@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, DEBRIEF, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText } from "./communication-shared.js";
+import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_SHORT_TIME, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
+import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, modelRoundSummary, summaryHtml } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -13,6 +13,7 @@ let lastPromptHtml = "";
 let showModel = false; // desenul de referinta: ascuns in timpul rundei, vizibil la reveal
 let overlayOn = false; // suprapunere model peste desenele participantilor
 let lastStatus = null;
+let showPreview = false; // previzualizarea modelelor in lobby: ascunsa implicit (ecranul poate fi proiectat)
 
 function code() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -320,6 +321,7 @@ async function render() {
   let html = "";
   if (session.status !== lastStatus) {
     lastStatus = session.status;
+    showPreview = false;
     showModel = session.status.includes("reveal") || session.status.endsWith("_results");
   }
 
@@ -355,11 +357,24 @@ async function render() {
         <p><b>Variantă:</b> ${escapeHtml(variantLabel(session.mode, session.prompt_index, session.scenario))}</p>
         <p class="hint">${nRounds} runde: descriere interpretabilă → descriere stufoasă → descriere exactă, cu sistem de referință. Fiecare rundă are alt model.</p>
         ${roundsBlocked(nRounds) ? `<p class="error-msg">${ROUNDS_WARNING}</p>` : ""}
-        <button class="btn outline" id="reroll">🎲 Altă variantă</button>`;
+        <button class="btn outline" id="reroll">🎲 Altă variantă</button>
+        <button class="btn outline" id="toggle-preview">${showPreview ? "Ascunde previzualizarea" : "👁 Previzualizează modelele"}</button>
+        ${
+          showPreview
+            ? `<div class="preview-row">${getRounds(session.mode, session.prompt_index, session.scenario)
+                .map(
+                  (r, i) => `<figure><figcaption><b>Runda ${i + 1}</b> · ${escapeHtml(r.styleLabel)}</figcaption>${gridHtml(r.target, {}, { axes: r.axes })}
+                    <details><summary>Descrierea de citit</summary><div class="preview-guide">${escapeHtml(r.guide).replace(/\n/g, "<br>")}</div></details></figure>`
+                )
+                .join("")}</div>
+              <p class="hint">Previzualizarea e vizibilă doar pe ecranul tău. Dacă îl proiectezi, ascunde-o înainte ca participanții să vadă ecranul.</p>`
+            : `<p class="hint">Previzualizarea modelelor este ascunsă, ca să nu apară pe ecranul proiectat.</p>`
+        }`;
       probeRounds(nRounds);
     }
   } else if (session.status === "debrief") {
-    html = `<ol>${DEBRIEF.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
+    html = `<ol>${debriefFor(session.mode).map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
+    if (session.mode === "model") html += `<div id="debrief-summary"></div><p class="hint">${DEBRIEF_MODEL_SHORT_TIME}</p>`;
   } else if (isModel && !ended) {
     const { kind, n } = parseStatus(session.status);
     const head = `<p><b>Runda ${n} din ${rounds_n} · ${escapeHtml(p.styleLabel)}</b></p>`;
@@ -405,6 +420,12 @@ async function render() {
     $("trainer-prompt").innerHTML = html;
     lastPromptHtml = html;
     if ($("reroll")) $("reroll").onclick = reroll;
+    if ($("toggle-preview")) {
+      $("toggle-preview").onclick = () => {
+        showPreview = !showPreview;
+        render();
+      };
+    }
     if ($("scenario-select")) $("scenario-select").onchange = (e) => changeScenario(e.target.value);
     if ($("toggle-model")) {
       $("toggle-model").onclick = () => {
@@ -454,6 +475,9 @@ async function loadData() {
       )
       .join("") || (ended ? "Niciun răspuns trimis în această sesiune." : "Niciun răspuns pentru această rundă.");
   hydrateOverlays($("results"));
+  if (isModel && session.status === "debrief" && $("debrief-summary")) {
+    $("debrief-summary").innerHTML = summaryHtml(modelRoundSummary(subs, rounds), false);
+  }
   $("results").classList.toggle("is-draw", session.mode === "draw");
   $("results").classList.toggle("show-overlay", overlayOn);
 }
