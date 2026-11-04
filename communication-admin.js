@@ -458,6 +458,7 @@ async function loadData() {
     subsQuery,
   ]);
 
+  $("participants-count").textContent = `(${(parts || []).length})`; // câți participanți s-au înscris
   $("participants").innerHTML =
     (parts || []).map((p) => `<div>✓ ${escapeHtml(p.alias)}</div>`).join("") || "Niciun participant încă.";
 
