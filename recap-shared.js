@@ -151,34 +151,58 @@ export function createArena(root) {
 // questions: [{ id, team, body, hidden }]; opts: { author: (q) => text|null, onToggle: (q) => void, newIds: Set }
 export function renderLists(root, questions, opts = {}) {
   const scroll = root.scrollTop;
+  // pozitiile de dinainte, ca o intrebare ascunsa / reafisata sa se MUTE animat in noul loc (nu sa sara)
+  const before = new Map([...root.querySelectorAll(".qitem")].map((li) => [li.dataset.id, li.getBoundingClientRect()]));
   root.innerHTML = "";
   root.classList.add("qlists");
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const makeItem = (q) => {
+    const li = el("li", `qitem${q.hidden ? " is-hidden" : ""}${opts.newIds?.has(q.id) ? " is-new" : ""}`);
+    li.dataset.id = q.id;
+    li.append(el("span", "qtext", q.body));
+    const author = opts.author?.(q);
+    if (author) li.append(el("small", "qauthor", author));
+    if (opts.onToggle) {
+      const b = el("button", "qbtn", q.hidden ? "Arată" : "Ascunde");
+      b.onclick = () => opts.onToggle(q);
+      li.append(b);
+    }
+    return li;
+  };
   [1, 2].forEach((t) => {
-    const mine = questions.filter((q) => q.team === t).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
-    const shown = mine.filter((q) => !q.hidden).length;
+    const mine = questions.filter((q) => q.team === t);
+    // afisate: in ordinea aruncarii; ascunse: la final, cea mai recent ascunsa prima
+    const visible = mine.filter((q) => !q.hidden).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
+    const hidden = mine.filter((q) => q.hidden).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
     const col = el("section", `qcol team-${t}`);
     const head = el("h4", "qhead");
-    head.append(el("span", "qtitle", `Întrebările echipei ${TEAMS[t].name}`), el("span", "qcount", String(shown)));
+    head.append(el("span", "qtitle", `Întrebările echipei ${TEAMS[t].name}`), el("span", "qcount", String(visible.length)));
     col.append(head, el("div", "qdir", `${TEAMS[t].name} → ${TEAMS[otherTeam(t)].name}`));
     const ol = el("ol", "qlist");
-    if (!mine.length) ol.append(el("li", "qempty", "Încă nicio întrebare."));
-    mine.forEach((q) => {
-      const li = el("li", `qitem${q.hidden ? " is-hidden" : ""}${opts.newIds?.has(q.id) ? " is-new" : ""}`);
-      li.dataset.id = q.id;
-      li.append(el("span", "qtext", q.body));
-      const author = opts.author?.(q);
-      if (author) li.append(el("small", "qauthor", author));
-      if (opts.onToggle) {
-        const b = el("button", "qbtn", q.hidden ? "Arată" : "Ascunde");
-        b.onclick = () => opts.onToggle(q);
-        li.append(b);
-      }
-      ol.append(li);
-    });
+    if (!visible.length) ol.append(el("li", "qempty", hidden.length ? "Nicio întrebare afișată." : "Încă nicio întrebare."));
+    visible.forEach((q) => ol.append(makeItem(q)));
     col.append(ol);
+    if (hidden.length) {
+      col.append(el("div", "qhidden-head", `Ascunse de trainer (${hidden.length})`));
+      const ul = el("ul", "qlist qhidden");
+      hidden.forEach((q) => ul.append(makeItem(q)));
+      col.append(ul);
+    }
     root.append(col);
   });
   root.scrollTop = scroll;
+  if (!reduced && before.size) {
+    root.querySelectorAll(".qitem").forEach((li) => {
+      const old = before.get(li.dataset.id);
+      if (!old) return;
+      const now = li.getBoundingClientRect();
+      const dx = old.left - now.left;
+      const dy = old.top - now.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      li.style.zIndex = "2";
+      li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 500, easing: "cubic-bezier(.2,.8,.2,1)" }).onfinish = () => (li.style.zIndex = "");
+    });
+  }
 }
 
 // =====================================================================

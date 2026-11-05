@@ -176,7 +176,26 @@
 .qitem .qauthor { display:block; color:#7a7360; font-size:11.5px; }
 .qitem.is-new { animation:q-flash 2.2s ease-out; }
 @keyframes q-flash { 0% { background:#fff3b0; } 100% { background:transparent; } }
-.qitem.is-hidden .qtext { text-decoration:line-through; color:#9a9484; }
+/* intrebari ascunse (doar la trainer): la finalul listei, cu fundal si font rosii */
+.qhidden-head {
+  margin:6px 12px 0;
+  padding-top:8px;
+  border-top:1px dashed #d79a93;
+  font-size:12px;
+  font-weight:700;
+  color:#a61b12;
+}
+.qlist.qhidden { list-style:none; padding:6px 12px 10px; }
+.qitem.is-hidden {
+  position:relative;
+  padding:7px 10px;
+  border-left:4px solid #c0392b;
+  border-radius:6px;
+  background:#f8d7d3;
+  color:#a61b12;
+}
+.qitem.is-hidden .qauthor { color:#b3524a; }
+.qitem.is-hidden .qbtn { border-color:#c0392b; background:#fff; color:#a61b12; }
 .qempty { list-style:none; margin-left:-18px; color:#9a9484; }
 .qbtn {
   margin-left:8px;
