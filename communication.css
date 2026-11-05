@@ -837,3 +837,11 @@ img[data-sid].loading {
   font-size:20px;
   cursor:pointer;
 }
+
+/* legaturi in antetul paginilor de trainer */
+.header-links {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
+}

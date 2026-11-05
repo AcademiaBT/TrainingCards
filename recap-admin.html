@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Recapitulare · Trainer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="communication.css">
+  <link rel="stylesheet" href="recap.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">Activități online</div>
+      <h1>Recapitulare · Trainer</h1>
+    </div>
+    <div class="header-links">
+      <a class="btn outline header-link" href="communication-admin.html">← Nodul comunicării</a>
+      <a class="btn outline header-link" href="admin.html">Carduri de training</a>
+    </div>
+  </header>
+
+  <button class="btn outline" id="projector-exit">Ieși din modul proiector</button>
+
+  <main>
+    <section id="auth-box" class="panel">
+      <h2>Autentificare trainer</h2>
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Parolă">
+      <button class="btn" id="login">Intră</button>
+      <div class="error-msg" id="auth-error"></div>
+    </section>
+
+    <section id="creator" class="panel" hidden>
+      <h2>Pornește o recapitulare</h2>
+      <p>Participanții intră pe un link (sau cod QR), sunt împărțiți aleatoriu în două echipe și își aruncă întrebări, ca bulgări de hârtie, către echipa adversă. Poate urma după orice activitate, indiferent de conținut.</p>
+      <label for="topic">Tema recapitulării (apare pe ecranele participanților)</label>
+      <input id="topic" maxlength="120" placeholder="ex. Hardiness · cele 3 componente">
+      <button class="btn" id="create">Creează sesiunea</button>
+      <div class="error-msg" id="create-error"></div>
+    </section>
+
+    <section id="live" hidden>
+      <div id="recap-top" class="panel">
+        <span class="badge" id="status-badge"></span>
+        <h2 id="topic-title"></h2>
+        <p>Link participanți:</p>
+        <div class="session-link-box">
+          <span id="join-link"></span>
+          <button class="btn outline" id="copy">Copiază</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn outline" id="qr-btn" style="font-size:12px; padding:5px 10px;">Arată codul QR</button>
+          <button class="btn outline" id="qr-dl-btn" style="font-size:12px; padding:5px 10px;">⬇ Descarcă QR</button>
+        </div>
+        <img id="qr-img" alt="Cod QR" style="display:none; margin-top:8px; width:160px; height:160px; border-radius:8px; border:1px solid var(--parchment-dark); background:#fff;">
+        <div class="recap-controls">
+          <button class="btn gold" id="start">Împarte în echipe și pornește</button>
+          <button class="btn outline" id="resplit">🔀 Reîmparte echipele</button>
+          <button class="btn outline" id="copy-questions">📋 Copiază întrebările</button>
+          <button class="btn outline" id="projector">🖥 Mod proiector</button>
+          <button class="btn" id="end" style="background:var(--red); color:#fff;">Încheie</button>
+          <button class="btn" id="new-session" hidden>Sesiune nouă</button>
+        </div>
+        <p class="hint" id="controls-hint"></p>
+      </div>
+
+      <div class="recap-admin-grid">
+        <aside class="panel recap-side">
+          <h3>Participanți <span id="participants-count">(0)</span></h3>
+          <div class="team-boxes" id="team-boxes"></div>
+        </aside>
+        <div>
+          <p class="topic-line" id="topic-line"></p>
+          <div id="arena"></div>
+          <div id="qlists"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="recap-admin.js"></script>
+</body>
+</html>
