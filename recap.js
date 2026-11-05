@@ -12,6 +12,7 @@ let store = null;
 let arena = null;
 let poll = null;
 let busy = false;
+let myCount = 0; // cate intrebari am aruncat eu in aceasta sesiune (pentru limita stabilita de trainer)
 let cooldownUntil = 0;
 let cooldownTimer = null;
 let newIds = new Set();
@@ -107,8 +108,15 @@ async function buildGame() {
     banner.textContent = `Ești în echipa ${TEAMS[t].name}`;
     $("q-label").textContent = `Întrebare pentru echipa ${TEAMS[otherTeam(t)].name}`;
   }
+  await loadMyCount();
   updateThrowButton();
   await syncQuestions();
+}
+
+async function loadMyCount() {
+  if (!me?.team) return;
+  const { data } = await supabase.from("recap_questions").select("id").eq("session_id", session.id).eq("participant_id", me.id);
+  myCount = (data || []).length;
 }
 
 async function syncQuestions() {
@@ -144,10 +152,14 @@ function drawAll() {
 function updateThrowButton() {
   const text = $("q-text").value;
   $("q-count").textContent = `${text.length}/${MAX_LEN}`;
+  const limit = session?.max_questions || 0; // 0 = fara limita
+  const reached = limit > 0 && myCount >= limit;
   const left = Math.ceil((cooldownUntil - Date.now()) / 1000);
   const playing = session?.status === "play" && !!me?.team;
-  $("throw-btn").disabled = !playing || !text.trim() || left > 0;
-  $("throw-btn").textContent = left > 0 ? `Aruncă întrebarea (${left})` : "Aruncă întrebarea";
+  $("q-text").disabled = reached;
+  $("q-left").textContent = limit > 0 ? (reached ? `Ai folosit toate întrebările (${myCount}/${limit}).` : `Întrebări rămase: ${limit - myCount} din ${limit}`) : "";
+  $("throw-btn").disabled = !playing || reached || !text.trim() || left > 0;
+  $("throw-btn").textContent = reached ? "Limita de întrebări atinsă" : left > 0 ? `Aruncă întrebarea (${left})` : "Aruncă întrebarea";
 }
 
 function startCooldown(seconds) {
@@ -164,6 +176,7 @@ const THROW_ERRORS = {
   recap_rate_limit: "Așteaptă câteva secunde înainte de următoarea întrebare.",
   recap_not_playing: "Recapitularea nu este activă acum.",
   recap_team_mismatch: "Echipa ta s-a schimbat. Reîncarcă pagina.",
+  recap_limit_reached: "Ai folosit toate întrebările permise de trainer.",
 };
 
 async function throwQuestion() {
@@ -179,9 +192,11 @@ async function throwQuestion() {
   if (error) {
     const key = Object.keys(THROW_ERRORS).find((k) => (error.message || "").includes(k));
     $("q-msg").textContent = key ? THROW_ERRORS[key] : error.message;
+    if (key === "recap_limit_reached") myCount = Math.max(myCount, session.max_questions || 0);
     startCooldown(key === "recap_rate_limit" ? 3 : 1);
     return;
   }
+  myCount++;
   store.remember(data);
   arena.fly(me.team); // bulgarele pleaca imediat, fara sa astepte reimprospatarea
   drawAll();
@@ -201,10 +216,19 @@ $("throw-btn").onclick = throwQuestion;
 let tick = 0;
 async function refresh() {
   tick++;
-  const { data } = await supabase.from("recap_sessions").select("status, topic").eq("id", session.id).maybeSingle();
+  const { data, error } = await supabase.from("recap_sessions").select("status, topic, max_questions").eq("id", session.id).maybeSingle();
+  if (!error && !data) {
+    // trainerul a inchis de tot recapitularea (sesiunea a fost stearsa)
+    clearInterval(poll);
+    clearInterval(cooldownTimer);
+    document.body.classList.remove("recap-playing");
+    return fail("Recapitularea a fost închisă de trainer. Mulțumim pentru participare!");
+  }
   if (!data) return;
   const changed = data.status !== session.status || data.topic !== session.topic;
+  const limitChanged = data.max_questions !== session.max_questions;
   session = { ...session, ...data };
+  if (limitChanged && !$("game").hidden) updateThrowButton(); // trainerul a schimbat limita
   if (me && !me.team && session.status !== "lobby") {
     const { data: p } = await supabase.from("recap_participants").select("team").eq("id", me.id).maybeSingle();
     if (p?.team) {

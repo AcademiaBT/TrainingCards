@@ -216,3 +216,25 @@ body.projector .qhead { font-size:18px; }
 #projector-exit { display:none; position:fixed; top:10px; right:12px; z-index:20; opacity:.55; }
 body.projector #projector-exit { display:inline-block; }
 body.projector #projector-exit:hover { opacity:1; }
+
+/* limita de intrebari + instructiuni */
+.q-left { min-height:18px; margin:-4px 0 8px; font-size:13px; color:#4a4636; }
+.num-input { width:110px; font:inherit; padding:8px 10px; border:1px solid var(--parchment-dark); border-radius:10px; box-sizing:border-box; }
+.limit-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0 4px; }
+.limit-row label { margin:0; font-weight:600; }
+#creator label { display:block; margin:12px 0 4px; font-weight:600; }
+.recap-help {
+  margin-top:14px;
+  padding:10px 14px;
+  background:#fffdf6;
+  border:1px solid var(--parchment-dark);
+  border-radius:10px;
+  font-size:14.5px;
+}
+.recap-help summary { cursor:pointer; font-weight:700; }
+.recap-help ol { margin:10px 0 2px; padding-left:22px; }
+.recap-help li { margin:7px 0; line-height:1.4; }
+body.projector .recap-help { display:none; }
+#creator #topic { display:block; width:100%; max-width:560px; box-sizing:border-box; }
+#creator #max-questions { display:block; }
+#creator #create { display:block; margin-top:16px; }

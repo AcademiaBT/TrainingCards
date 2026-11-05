@@ -36,8 +36,22 @@
       <p>Participanții intră pe un link (sau cod QR), sunt împărțiți aleatoriu în două echipe și își aruncă întrebări, ca bulgări de hârtie, către echipa adversă. Poate urma după orice activitate, indiferent de conținut.</p>
       <label for="topic">Tema recapitulării (apare pe ecranele participanților)</label>
       <input id="topic" maxlength="120" placeholder="ex. Hardiness · cele 3 componente">
+      <label for="max-questions">Număr maxim de întrebări pe participant <span class="hint">(0 = fără limită)</span></label>
+      <input id="max-questions" class="num-input" type="number" min="0" max="100" step="1" value="0" inputmode="numeric">
       <button class="btn" id="create">Creează sesiunea</button>
       <div class="error-msg" id="create-error"></div>
+      <details class="recap-help" open>
+        <summary>📖 Instrucțiuni: cum folosești Recapitularea</summary>
+        <ol>
+          <li><b>Pregătire:</b> scrie tema și stabilește <b>numărul maxim de întrebări pe participant</b> (0 = fără limită), apoi apasă „Creează sesiunea”. Limita o poți schimba și mai târziu, din panoul sesiunii.</li>
+          <li><b>Intrarea participanților:</b> distribuie linkul sau codul QR. Fiecare intră cu un alias (fără cont) și așteaptă. Vezi în dreapta „Participanți (n)”.</li>
+          <li><b>Pornirea:</b> „Împarte în echipe și pornește” formează aleatoriu echipele <b>Roșii</b> și <b>Albaștri</b>, cât mai egale (minimum 2 participanți). Cine intră mai târziu e pus automat în echipa mai mică. Spune-le regula: fiecare scrie întrebări pentru echipa adversă, din ce ați recapitulat, și le aruncă.</li>
+          <li><b>În timpul jocului:</b> bulgării de hârtie zboară spre tabăra adversă, iar întrebările apar listate pe echipe. Tu vezi și <b>aliasul autorului</b>. Poți <b>ascunde</b> o întrebare nepotrivită (dispare și de la participanți), poți <b>schimba limita</b> de întrebări, poți <b>reîmpărți echipele</b> (întrebările deja aruncate rămân la echipa lor) sau poți apăsa <b>Mod proiector</b> pentru ecranul din sală (rămân doar câmpul de luptă și întrebările). Participanții văd doar echipa autorului.</li>
+          <li><b>Sugestie de desfășurare:</b> lasă 5–10 minute pentru aruncat întrebări, apoi citește întrebările cu voce tare, pe rând, iar echipa adversă răspunde oral. Folosește „Copiază întrebările” ca să păstrezi lista.</li>
+          <li><b>Încheie:</b> oprește aruncarea de întrebări. Câmpul de luptă și întrebările rămân vizibile la participanți, pentru discuția finală.</li>
+          <li><b>Închide de tot:</b> după „Încheie”, șterge definitiv sesiunea, participanții și întrebările; linkul nu mai funcționează, iar participanții văd un mesaj de mulțumire. <b>Copiază întrebările înainte</b>, dacă vrei să le păstrezi. „Sesiune nouă” doar te duce la ecranul de creare, fără să șteargă nimic.</li>
+        </ol>
+      </details>
     </section>
 
     <section id="live" hidden>
@@ -54,6 +68,10 @@
           <button class="btn outline" id="qr-dl-btn" style="font-size:12px; padding:5px 10px;">⬇ Descarcă QR</button>
         </div>
         <img id="qr-img" alt="Cod QR" style="display:none; margin-top:8px; width:160px; height:160px; border-radius:8px; border:1px solid var(--parchment-dark); background:#fff;">
+        <div class="limit-row">
+          <label for="max-live">Număr maxim de întrebări pe participant <span class="hint">(0 = fără limită)</span></label>
+          <input id="max-live" class="num-input" type="number" min="0" max="100" step="1" value="0" inputmode="numeric">
+        </div>
         <div class="recap-controls">
           <button class="btn gold" id="start">Împarte în echipe și pornește</button>
           <button class="btn outline" id="resplit">🔀 Reîmparte echipele</button>
@@ -61,8 +79,21 @@
           <button class="btn outline" id="projector">🖥 Mod proiector</button>
           <button class="btn" id="end" style="background:var(--red); color:#fff;">Încheie</button>
           <button class="btn" id="new-session" hidden>Sesiune nouă</button>
+          <button class="btn outline" id="delete-session" hidden>🗑 Închide de tot</button>
         </div>
         <p class="hint" id="controls-hint"></p>
+        <details class="recap-help">
+        <summary>📖 Instrucțiuni: cum folosești Recapitularea</summary>
+        <ol>
+          <li><b>Pregătire:</b> scrie tema și stabilește <b>numărul maxim de întrebări pe participant</b> (0 = fără limită), apoi apasă „Creează sesiunea”. Limita o poți schimba și mai târziu, din panoul sesiunii.</li>
+          <li><b>Intrarea participanților:</b> distribuie linkul sau codul QR. Fiecare intră cu un alias (fără cont) și așteaptă. Vezi în dreapta „Participanți (n)”.</li>
+          <li><b>Pornirea:</b> „Împarte în echipe și pornește” formează aleatoriu echipele <b>Roșii</b> și <b>Albaștri</b>, cât mai egale (minimum 2 participanți). Cine intră mai târziu e pus automat în echipa mai mică. Spune-le regula: fiecare scrie întrebări pentru echipa adversă, din ce ați recapitulat, și le aruncă.</li>
+          <li><b>În timpul jocului:</b> bulgării de hârtie zboară spre tabăra adversă, iar întrebările apar listate pe echipe. Tu vezi și <b>aliasul autorului</b>. Poți <b>ascunde</b> o întrebare nepotrivită (dispare și de la participanți), poți <b>schimba limita</b> de întrebări, poți <b>reîmpărți echipele</b> (întrebările deja aruncate rămân la echipa lor) sau poți apăsa <b>Mod proiector</b> pentru ecranul din sală (rămân doar câmpul de luptă și întrebările). Participanții văd doar echipa autorului.</li>
+          <li><b>Sugestie de desfășurare:</b> lasă 5–10 minute pentru aruncat întrebări, apoi citește întrebările cu voce tare, pe rând, iar echipa adversă răspunde oral. Folosește „Copiază întrebările” ca să păstrezi lista.</li>
+          <li><b>Încheie:</b> oprește aruncarea de întrebări. Câmpul de luptă și întrebările rămân vizibile la participanți, pentru discuția finală.</li>
+          <li><b>Închide de tot:</b> după „Încheie”, șterge definitiv sesiunea, participanții și întrebările; linkul nu mai funcționează, iar participanții văd un mesaj de mulțumire. <b>Copiază întrebările înainte</b>, dacă vrei să le păstrezi. „Sesiune nouă” doar te duce la ecranul de creare, fără să șteargă nimic.</li>
+        </ol>
+      </details>
       </div>
 
       <div class="recap-admin-grid">

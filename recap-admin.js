@@ -15,6 +15,22 @@ let participants = [];
 let newIds = new Set();
 
 const code = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+// limita de intrebari pe participant: numar intreg intre 0 si 100 (0 = fara limita); nu coboara sub 0
+const clampLimit = (v) => Math.min(100, Math.max(0, Math.floor(Number(v) || 0)));
+function guardLimitInput(input, onCommit) {
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "-" || e.key === "+" || e.key === "e" || e.key === "E" || e.key === ".") e.preventDefault(); // doar cifre
+  });
+  input.addEventListener("input", () => {
+    if (input.value !== "" && Number(input.value) < 0) input.value = "0";
+  });
+  const commit = () => {
+    input.value = String(clampLimit(input.value));
+    onCommit?.(Number(input.value));
+  };
+  input.addEventListener("change", commit);
+  input.addEventListener("blur", commit);
+}
 const joinUrl = () => new URL(`recap.html?s=${session.session_code}`, location.href).href;
 const shuffle = (a) => {
   a = [...a];
@@ -56,7 +72,7 @@ $("create").onclick = async () => {
   $("create-error").textContent = "";
   const { data, error } = await supabase
     .from("recap_sessions")
-    .insert({ session_code: code(), admin_email: user.email, topic: $("topic").value.trim() })
+    .insert({ session_code: code(), admin_email: user.email, topic: $("topic").value.trim(), max_questions: clampLimit($("max-questions").value) })
     .select()
     .single();
   if (error) return ($("create-error").textContent = error.message + " (ai rulat scriptul add-recap.sql în Supabase?)");
@@ -86,6 +102,10 @@ function render() {
   $("status-badge").textContent = STATUS[session.status];
   $("topic-title").textContent = session.topic || "Recapitulare";
   $("topic-line").textContent = session.topic ? `Tema: ${session.topic}` : "";
+  if (document.activeElement !== $("max-live")) $("max-live").value = String(session.max_questions || 0);
+  $("max-live").disabled = session.status === "ended";
+  $("delete-session").hidden = session.status === "play";
+  $("delete-session").textContent = session.status === "lobby" ? "🗑 Anulează sesiunea" : "🗑 Închide de tot";
   $("start").hidden = session.status !== "lobby";
   $("resplit").hidden = session.status !== "play";
   $("end").hidden = session.status === "ended";
@@ -95,7 +115,7 @@ function render() {
       ? "Așteaptă să intre participanții, apoi apasă „Împarte în echipe și pornește”. Cine intră mai târziu este pus automat în echipa mai mică."
       : session.status === "play"
         ? "Participanții își aruncă întrebările. Poți ascunde o întrebare nepotrivită (se ascunde și din ecranele lor) sau poți folosi „Mod proiector” pentru ecranul din sală."
-        : "Recapitularea s-a încheiat. Poți copia întrebările sau începe o sesiune nouă.";
+        : "Recapitularea s-a încheiat: nu se mai pot arunca întrebări, iar participanții văd în continuare câmpul de luptă. Copiază întrebările dacă vrei să le păstrezi, apoi „Închide de tot” (șterge sesiunea și oprește linkul) sau „Sesiune nouă”.";
   renderParticipants();
 }
 
@@ -214,6 +234,26 @@ $("end").onclick = async () => {
   if (error) return alert(error.message);
   session = data;
   render();
+};
+guardLimitInput($("max-questions"));
+guardLimitInput($("max-live"), async (v) => {
+  if (!session || session.status === "ended" || v === session.max_questions) return;
+  const { error } = await supabase.from("recap_sessions").update({ max_questions: v }).eq("id", session.id);
+  if (error) return alert(error.message);
+  session.max_questions = v;
+});
+$("delete-session").onclick = async () => {
+  const msg =
+    session.status === "lobby"
+      ? "Anulezi sesiunea? Participanții înscriși vor fi scoși, iar linkul nu va mai funcționa."
+      : "Închizi de tot recapitularea?\n\nSe șterg definitiv sesiunea, participanții și întrebările, iar linkul nu va mai funcționa. Dacă vrei să păstrezi întrebările, apasă mai întâi „Copiază întrebările”.";
+  if (!confirm(msg)) return;
+  const { error } = await supabase.from("recap_sessions").delete().eq("id", session.id);
+  if (error) return alert(error.message);
+  clearInterval(poll);
+  session = null;
+  $("live").hidden = true;
+  $("creator").hidden = false;
 };
 $("new-session").onclick = () => {
   clearInterval(poll);
