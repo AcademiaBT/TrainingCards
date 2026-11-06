@@ -169,13 +169,14 @@ async function downloadQr(filename, format, triggerBtn) {
 $("qr-dl-png-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.png`, "png", e.target);
 $("qr-dl-jpg-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.jpg`, "jpg", e.target);
 
-// pătrățelele de reper peste desenele din „Rezultate”: le pornește / le oprește trainerul (alegerea rămâne pe dispozitiv)
+// pătrățele de reper (cu numerotare) peste modelul din „Instrucțiuni trainer” și peste desenele din „Rezultate”.
+// Trainerul are nevoie de coordonate ca să dea și să verifice indicații precise, deci grila e PORNITĂ implicit; o poate opri (alegerea rămâne pe dispozitiv).
 const GRID_KEY = "comm_grid_admin";
 const gridOnAdmin = () => {
   try {
-    return localStorage.getItem(GRID_KEY) === "1";
+    return localStorage.getItem(GRID_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 };
 function setGridAdmin(on) {
@@ -185,10 +186,12 @@ function setGridAdmin(on) {
     /* mod privat */
   }
   document.body.classList.toggle("grid-on", on);
-  $("grid-toggle").checked = on;
+  document.querySelectorAll(".grid-check-admin").forEach((c) => (c.checked = on)); // bifa din „Rezultate” și cea de lângă model rămân la fel
 }
 setGridAdmin(gridOnAdmin());
-$("grid-toggle").onchange = (e) => setGridAdmin(e.target.checked);
+document.addEventListener("change", (e) => {
+  if (e.target.matches?.(".grid-check-admin")) setGridAdmin(e.target.checked);
+});
 
 $("overlay-toggle").onchange = (e) => {
   overlayOn = e.target.checked;
@@ -422,6 +425,8 @@ async function render() {
     if (session.mode === "draw" && p.image) {
       html += `<div class="model-fig-block">
         <button class="btn outline" id="toggle-model">${showModel ? "Ascunde modelul" : "Arată modelul"}</button>
+        <label class="overlay-control grid-control-inline"><input type="checkbox" class="grid-check-admin"> Pătrățele (reper: coloane A–L, rânduri 1–9)</label>
+        <p class="hint">Cu pătrățelele pornite poți da și verifica indicații precise, cu coordonate: „începe în C4”, „cercul în F6”. Participanții își pornesc grila din butonul „▦ Grilă” de pe canvas.</p>
         ${showModel ? gridFrame(`<div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>`, "model") : ""}
       </div>`;
     }
@@ -441,6 +446,7 @@ async function render() {
   if (html !== lastPromptHtml) {
     $("trainer-prompt").innerHTML = html;
     lastPromptHtml = html;
+    document.querySelectorAll(".grid-check-admin").forEach((c) => (c.checked = gridOnAdmin()));
     if ($("reroll")) $("reroll").onclick = reroll;
     if ($("toggle-preview")) {
       $("toggle-preview").onclick = () => {

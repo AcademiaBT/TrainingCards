@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { TEAMS, MAX_LEN, COOLDOWN_S, otherTeam, createArena, renderLists, createStore, STORE_COLS } from "./recap-shared.js";
+import { TEAMS, MAX_LEN, COOLDOWN_S, otherTeam, createArena, renderLists, createStore, STORE_COLS, createClock, timerInfo, fmtTime } from "./recap-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -12,6 +12,8 @@ let store = null;
 let arena = null;
 let poll = null;
 let busy = false;
+const clock = createClock(supabase); // ora serverului: timpul rămas e același pe toate ecranele
+let lastTimerState = null;
 let endedShown = false; // nota de încheiere a fost deja adusă în vedere
 let myCount = 0; // cate intrebari am aruncat eu in aceasta sesiune (pentru limita stabilita de trainer)
 let cooldownUntil = 0;
@@ -57,6 +59,7 @@ async function init() {
   if (!data) return fail("Sesiunea nu există.");
   session = data;
   window.TCTheme?.initParticipant(supabase, "recap", session.id); // tema trainerului
+  await clock.sync();
   const saved = localStorage.getItem(`recap_${session.id}`);
   if (saved) {
     const { data: p } = await supabase.from("recap_participants").select("*").eq("id", saved).maybeSingle();
@@ -65,6 +68,7 @@ async function init() {
   render();
   window.__recapReady = true;
   poll = setInterval(refresh, 2000);
+  setInterval(renderTimer, 1000);
 }
 
 function render() {
@@ -119,6 +123,7 @@ async function buildGame() {
     $("q-label").textContent = `Întrebare pentru echipa ${TEAMS[otherTeam(t)].name}`;
   }
   await loadMyCount();
+  renderTimer();
   updateThrowButton();
   await syncQuestions();
 }
@@ -157,13 +162,49 @@ function drawAll() {
     newIds,
     myTeam: me?.team,
     returning,
-    onReturn: session.status === "play" && me?.team ? returnQuestion : null,
+    onReturn: session.status === "play" && me?.team && !timerBlocked() ? returnQuestion : null,
   });
 }
 
 // ---------------------------------------------------------------------
 //  Aruncarea întrebării
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+//  Cronometrul
+// ---------------------------------------------------------------------
+function timerState() {
+  return session?.status === "play" ? timerInfo(session, clock.now()).state : "none";
+}
+const timerBlocked = () => ["paused", "expired"].includes(timerState());
+
+function renderTimer() {
+  if (!session) return;
+  const bar = $("timer-bar");
+  const info = timerInfo(session, clock.now());
+  const show = session.status === "play" && info.state !== "none";
+  bar.hidden = !show;
+  if (show) {
+    const low = info.state === "running" && info.remaining <= 10;
+    $("timer-display").textContent = fmtTime(info.remaining);
+    $("timer-display").className = `timer-display ${info.state}${low ? " low" : ""}`;
+    $("timer-label").textContent = info.state === "expired" ? "Timpul a expirat" : info.state === "paused" ? "Pauză" : "Timp rămas";
+    $("timer-note").textContent =
+      info.state === "expired"
+        ? "⏰ Aruncatul de întrebări s-a oprit. Așteaptă instrucțiunile trainerului."
+        : info.state === "paused"
+          ? "⏸ Pauză: timpul e oprit, iar aruncatul de întrebări așteaptă trainerul."
+          : "Poți arunca întrebări până expiră timpul.";
+  }
+  const st = session.status === "play" ? info.state : "none";
+  if (st !== lastTimerState) {
+    lastTimerState = st; // s-a schimbat starea (pornit, pauză, expirat): se actualizează câmpul și butoanele „Aruncă înapoi”
+    if (!$("game").hidden) {
+      updateThrowButton();
+      if (store && arena) drawAll();
+    }
+  }
+}
+
 function updateThrowButton() {
   const text = $("q-text").value;
   $("q-count").textContent = `${text.length}/${MAX_LEN}`;
@@ -171,10 +212,14 @@ function updateThrowButton() {
   const reached = limit > 0 && myCount >= limit;
   const left = Math.ceil((cooldownUntil - Date.now()) / 1000);
   const playing = session?.status === "play" && !!me?.team;
-  $("q-text").disabled = reached;
+  const tState = timerState();
+  const tBlocked = tState === "paused" || tState === "expired";
+  $("q-text").disabled = reached || tBlocked;
   $("q-left").textContent = limit > 0 ? (reached ? `Ai folosit toate întrebările (${myCount}/${limit}).` : `Întrebări rămase: ${limit - myCount} din ${limit}`) : "";
-  $("throw-btn").disabled = !playing || reached || !text.trim() || left > 0;
-  $("throw-btn").textContent = reached ? "Limita de întrebări atinsă" : left > 0 ? `Aruncă întrebarea (${left})` : "Aruncă întrebarea";
+  $("throw-btn").disabled = !playing || reached || tBlocked || !text.trim() || left > 0;
+  $("throw-btn").textContent = tBlocked
+    ? tState === "paused" ? "Pauză" : "Timpul a expirat"
+    : reached ? "Limita de întrebări atinsă" : left > 0 ? `Aruncă întrebarea (${left})` : "Aruncă întrebarea";
 }
 
 function startCooldown(seconds) {
@@ -192,6 +237,8 @@ const THROW_ERRORS = {
   recap_not_playing: "Recapitularea nu este activă acum.",
   recap_team_mismatch: "Echipa ta s-a schimbat. Reîncarcă pagina.",
   recap_limit_reached: "Ai folosit toate întrebările permise de trainer.",
+  recap_time_up: "Timpul a expirat: nu se mai pot arunca întrebări.",
+  recap_timer_paused: "Pauză: aruncatul de întrebări e oprit până reia trainerul cronometrul.",
 };
 
 async function throwQuestion() {
@@ -226,9 +273,11 @@ const RETURN_ERRORS = {
   recap_parent_hidden: "Întrebarea a fost ascunsă de trainer.",
   recap_return_own_team: "Nu poți returna întrebările echipei tale.",
   recap_not_playing: "Recapitularea nu este activă acum.",
+  recap_time_up: "Timpul a expirat: nu se mai pot arunca întrebări.",
+  recap_timer_paused: "Pauză: aruncatul de întrebări e oprit până reia trainerul cronometrul.",
 };
 async function returnQuestion(q) {
-  if (returning.has(q.id) || !me?.team) return;
+  if (returning.has(q.id) || !me?.team || timerBlocked()) return;
   returning.add(q.id);
   $("q-msg").textContent = "";
   drawAll();
@@ -261,7 +310,7 @@ $("throw-btn").onclick = throwQuestion;
 let tick = 0;
 async function refresh() {
   tick++;
-  const { data, error } = await supabase.from("recap_sessions").select("status, topic, max_questions").eq("id", session.id).maybeSingle();
+  const { data, error } = await supabase.from("recap_sessions").select("status, topic, max_questions, timer_status, timer_total_seconds, timer_remaining_seconds, timer_ends_at").eq("id", session.id).maybeSingle();
   if (!error && !data) {
     // trainerul a inchis de tot recapitularea (sesiunea a fost stearsa)
     clearInterval(poll);
@@ -273,6 +322,8 @@ async function refresh() {
   const changed = data.status !== session.status || data.topic !== session.topic;
   const limitChanged = data.max_questions !== session.max_questions;
   session = { ...session, ...data };
+  if (tick % 15 === 0) clock.sync(); // ceasul serverului se reverifică din când în când
+  renderTimer();
   if (limitChanged && !$("game").hidden) updateThrowButton(); // trainerul a schimbat limita
   if (me && !me.team && session.status !== "lobby") {
     const { data: p } = await supabase.from("recap_participants").select("team").eq("id", me.id).maybeSingle();

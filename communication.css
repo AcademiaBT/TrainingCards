@@ -919,3 +919,7 @@ body.grid-on .canvas-wrap .grid-overlay { display:block; }
 }
 body.grid-on .draw-wrap::after,
 body.grid-on .model-fig::after { display:block; }
+
+/* bifa „Pătrățele” de lângă modelul din „Instrucțiuni trainer” */
+.grid-control-inline { margin:0 0 0 14px; vertical-align:middle; }
+.model-fig-block .hint { margin:8px 0 0; }

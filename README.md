@@ -79,3 +79,10 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 ### v65: mesaj de încheiere la Recapitulare, numerotarea grilei în afara desenului
 - **Recapitulare:** după „Încheie”, participanții văd sus mesajul „Recapitularea s-a încheiat. Trainerul a oprit aruncarea de întrebări. Mulțumim pentru participare!” (înainte pagina doar ascundea câmpul de scris).
 - **Desen — grilă:** numerotarea (literele A–L deasupra, cifrele 1–9 în stânga) stă **în afara zonei de desen**, într-un cadru cu margini, **și la participant, și la trainer**: pe canvas, la reveal, în galerie, la „Rezultate” și la modelul de referință. Liniile rămân peste desen, iar pe laptop desenul nu își schimbă mărimea când se pornește grila. Fără modificări în Supabase.
+
+### v66: desen — grila numerotată a trainerului, pornită implicit
+- Trainerul vede **grila cu numerotare (A–L, 1–9) pornită implicit**, peste **modelul din „Instrucțiuni trainer”** și peste desenele din „Rezultate”, ca să poată da și verifica indicații cu coordonate. Bifa „Pătrățele” este acum și **lângă model**, nu doar în „Rezultate” (cele două se sincronizează), cu o notă despre folosirea coordonatelor. La participant grila rămâne oprită implicit, pornită din butonul „▦ Grilă”. Fără modificări în Supabase.
+
+### v67: Recapitulare — cronometru (Start cu timp / fără timp, Pauză, Adaugă timp)
+- În Lobby: **„Start cu timp”** (minute și secunde; implicit 5:00) sau **„Start fără timp”**. Participanții văd **timpul rămas** sus; trainerul are **Pauză / Reia**, **Adaugă timp** (minute și secunde) și poate activa un cronometru și într-o sesiune pornită fără timp. **La pauză sau după expirare nu se mai poate arunca nimic** (nici „Aruncă înapoi”); regula e impusă și în baza de date. Timpul se calculează cu **ora serverului** (același pe toate ecranele, chiar cu ceas decalat). În „Mod proiector”, timpul apare mare.
+- Supabase: rulează din nou `supabase/add-recap.sql` (idempotent; coloane noi pe `recap_sessions`, funcțiile `recap_timer` și `recap_server_time`, regulă nouă la aruncarea întrebărilor).

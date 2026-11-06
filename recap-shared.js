@@ -294,3 +294,46 @@ export function leafOf(rows, id) {
   for (let i = 0; cur && child.has(cur.id) && i < 10000; i++) cur = child.get(cur.id);
   return cur;
 }
+
+// =====================================================================
+//  Cronometrul (timpul pentru aruncarea întrebărilor)
+// =====================================================================
+// Ceasul serverului: timpul rămas se calculează cu ora serverului, nu cu ceasul (posibil decalat) al telefonului sau al calculatorului.
+export function createClock(supabase) {
+  let offset = 0; // server − ceasul meu, în ms
+  return {
+    async sync() {
+      const t0 = Date.now();
+      try {
+        const { data } = await supabase.rpc("recap_server_time");
+        const t1 = Date.now();
+        if (data) offset = new Date(data).getTime() - (t0 + t1) / 2; // mijlocul drumului dus-întors
+      } catch {
+        /* fără ceasul serverului se folosește ceasul local */
+      }
+    },
+    now: () => Date.now() + offset,
+  };
+}
+
+// Starea cronometrului sesiunii: { state: "none" | "running" | "paused" | "expired", remaining: secunde }
+export function timerInfo(session, nowMs) {
+  const st = session?.timer_status || "not_started";
+  if (st === "running" && session.timer_ends_at) {
+    const rem = Math.max(0, (new Date(session.timer_ends_at).getTime() - nowMs) / 1000);
+    return { state: rem <= 0 ? "expired" : "running", remaining: rem };
+  }
+  if (st === "paused") return { state: "paused", remaining: session.timer_remaining_seconds || 0 };
+  if (st === "expired") return { state: "expired", remaining: 0 };
+  return { state: "none", remaining: 0 }; // „fără timp” sau sesiune mai veche, fără cronometru
+}
+
+// 05:00 (minute:secunde); cu ore, 1:05:00. Se rotunjește în sus, ca „00:00” să apară doar la expirare.
+export function fmtTime(sec) {
+  const t = Math.max(0, Math.ceil(sec - 1e-6));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  const two = (n) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${two(m)}:${two(s)}`;
+}

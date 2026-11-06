@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { TEAMS, otherTeam, createArena, renderLists, createStore, questionsAsText, leafOf } from "./recap-shared.js";
+import { TEAMS, otherTeam, createArena, renderLists, createStore, questionsAsText, leafOf, createClock, timerInfo, fmtTime } from "./recap-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -11,6 +11,9 @@ let store = null;
 let arena = null;
 let poll = null;
 let busy = false;
+const clock = createClock(supabase); // ora serverului
+let expiring = false;
+let tickCount = 0;
 let participants = [];
 let newIds = new Set();
 
@@ -92,6 +95,7 @@ function openSession(s) {
   store = createStore(supabase, session.id, { withAuthor: true });
   participants = [];
   render();
+  clock.sync();
   tickNow();
   clearInterval(poll);
   poll = setInterval(tickNow, 2500);
@@ -107,18 +111,75 @@ function render() {
   $("max-live").disabled = session.status === "ended";
   $("delete-session").hidden = session.status === "play";
   $("delete-session").textContent = session.status === "lobby" ? "🗑 Anulează sesiunea" : "🗑 Închide de tot";
-  $("start").hidden = session.status !== "lobby";
+  $("start-box").hidden = session.status !== "lobby";
   $("resplit").hidden = session.status !== "play";
   $("end").hidden = session.status === "ended";
   $("new-session").hidden = session.status !== "ended";
   $("controls-hint").textContent =
     session.status === "lobby"
-      ? "Așteaptă să intre participanții, apoi apasă „Împarte în echipe și pornește”. Cine intră mai târziu este pus automat în echipa mai mică."
+      ? "Așteaptă să intre participanții, apoi alege „Start cu timp” sau „Start fără timp”. Cine intră mai târziu este pus automat în echipa mai mică."
       : session.status === "play"
         ? "Participanții își aruncă întrebările. Poți ascunde o întrebare nepotrivită (se ascunde și din ecranele lor) sau poți folosi „Mod proiector” pentru ecranul din sală."
         : "Recapitularea s-a încheiat: nu se mai pot arunca întrebări, iar participanții văd în continuare câmpul de luptă. Copiază întrebările dacă vrei să le păstrezi, apoi „Închide de tot” (șterge sesiunea și oprește linkul) sau „Sesiune nouă”.";
   renderParticipants();
+  renderTimerPanel();
 }
+
+// ---------- cronometru ----------
+const minSecToSeconds = (minId, secId) => (Math.max(0, parseInt($(minId).value, 10) || 0) * 60) + Math.min(59, Math.max(0, parseInt($(secId).value, 10) || 0));
+
+function renderTimerPanel() {
+  const play = session?.status === "play";
+  const info = timerInfo(session, clock.now());
+  $("timer-panel").hidden = !play;
+  if (!play) {
+    $("proj-timer").hidden = true;
+    return;
+  }
+  const none = info.state === "none";
+  $("timer-none-box").hidden = !none;
+  $("timer-running-box").hidden = none;
+  if (!none) {
+    $("timer-setup-box").hidden = true;
+    const low = info.state === "running" && info.remaining <= 10;
+    $("timer-display").textContent = fmtTime(info.remaining);
+    $("timer-display").className = `timer-display ${info.state}${low ? " low" : ""}`;
+    $("timer-status-label").textContent =
+      info.state === "running" ? "Cronometru pornit: vizibil live la participanți" : info.state === "paused" ? "Pauză: participanții văd timpul înghețat și nu pot arunca întrebări" : "⏰ Timpul a expirat: participanții nu mai pot arunca întrebări. Adaugă timp sau încheie sesiunea.";
+    $("timer-status-label").className = `timer-status ${info.state === "expired" ? "expired" : ""}`;
+    $("timer-pause-btn").textContent = info.state === "paused" ? "Reia" : "Pauză";
+    $("timer-pause-btn").hidden = info.state === "expired";
+  }
+  // același timp, mare, pentru ecranul din sală (mod proiector)
+  $("proj-timer").hidden = none;
+  if (!none) {
+    $("proj-timer").textContent = fmtTime(info.remaining);
+    $("proj-timer").className = `proj-timer ${info.state}${info.state === "running" && info.remaining <= 10 ? " low" : ""}`;
+  }
+}
+
+async function timerAction(action, seconds = 0) {
+  const { data, error } = await supabase.rpc("recap_timer", { p_session: session.id, p_action: action, p_seconds: seconds });
+  if (error) {
+    alert(error.message + (/recap_timer|function|schema/i.test(error.message) ? "\n\n(ai rulat scriptul add-recap.sql în Supabase?)" : ""));
+    return null;
+  }
+  session = data;
+  render();
+  return data;
+}
+
+// la fiecare secundă: afișajul + marcarea expirării (baza de date oprește oricum întrebările după ora de expirare)
+setInterval(async () => {
+  if (!session) return;
+  renderTimerPanel();
+  const info = timerInfo(session, clock.now());
+  if (session.status === "play" && session.timer_status === "running" && info.state === "expired" && !expiring) {
+    expiring = true;
+    await timerAction("expire");
+    expiring = false;
+  }
+}, 1000);
 
 function renderParticipants() {
   $("participants-count").textContent = `(${participants.length})`;
@@ -183,6 +244,7 @@ async function syncQuestions() {
 // ---------- reimprospatare periodica ----------
 async function tickNow() {
   if (!session) return;
+  if (++tickCount % 12 === 0) clock.sync(); // ceasul serverului se reverifică din când în când
   const [{ data: s }, { data: parts }] = await Promise.all([
     supabase.from("recap_sessions").select("*").eq("id", session.id).maybeSingle(),
     supabase.from("recap_participants").select("id, alias, team, joined_at").eq("session_id", session.id).order("joined_at"),
@@ -219,14 +281,36 @@ async function assignLateJoiners() {
   }
 }
 
-$("start").onclick = async () => {
+// Start: împarte participanții în echipe și pornește (cu timp sau fără timp)
+async function startPlay(seconds) {
   const { data: parts } = await supabase.from("recap_participants").select("id").eq("session_id", session.id);
   if (!parts || parts.length < 2) return alert("Sunt necesari cel puțin 2 participanți pentru a forma două echipe.");
+  if (seconds !== null && seconds <= 0) return alert("Setează o durată mai mare de 0.");
   await assignTeams(parts.map((p) => p.id));
-  const { data, error } = await supabase.from("recap_sessions").update({ status: "play" }).eq("id", session.id).select().single();
-  if (error) return alert(error.message);
-  session = data;
-  await tickNow();
+  const ok = await timerAction(seconds === null ? "play_untimed" : "play_timed", seconds || 0);
+  if (ok) await tickNow();
+}
+$("start").onclick = () => startPlay(null);
+$("start-timed").onclick = () => startPlay(minSecToSeconds("start-min", "start-sec"));
+$("timer-enable-btn").onclick = () => {
+  $("timer-enable-btn").hidden = true;
+  $("timer-setup-box").hidden = false;
+};
+$("timer-cancel-btn").onclick = () => {
+  $("timer-setup-box").hidden = true;
+  $("timer-enable-btn").hidden = false;
+};
+$("timer-start-btn").onclick = async () => {
+  const sec = minSecToSeconds("timer-min", "timer-sec");
+  if (sec <= 0) return alert("Setează o durată mai mare de 0.");
+  await timerAction("start", sec);
+  $("timer-enable-btn").hidden = false;
+};
+$("timer-pause-btn").onclick = () => timerAction(session.timer_status === "paused" ? "resume" : "pause");
+$("timer-extend-btn").onclick = async () => {
+  const sec = minSecToSeconds("timer-extend-min", "timer-extend-sec");
+  if (sec <= 0) return;
+  await timerAction("extend", sec);
 };
 $("resplit").onclick = async () => {
   if (!confirm("Reîmpărți aleatoriu participanții în echipe? Întrebările deja aruncate rămân la echipa care le-a aruncat.")) return;
