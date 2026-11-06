@@ -63,10 +63,9 @@
 .canvas-wrap {
   display:block;
   position:relative;
-  width:min(100%, max(480px, calc((100vh - 400px) * 4 / 3)));
-  width:min(100%, max(480px, calc((100dvh - 400px) * 4 / 3)));
+  width:100%; /* mărimea o stabilește cadrul .grid-frame.is-canvas */
   aspect-ratio:4 / 3;
-  margin:0 auto;
+  margin:0;
 }
 .draw-canvas {
   display:block;
@@ -340,11 +339,15 @@
   #activity .panel:has(.draw-canvas) #content {
     display:contents;
   }
-  #activity .panel:has(.draw-canvas) .canvas-wrap {
+  #activity .panel:has(.draw-canvas) .grid-frame.is-canvas {
     grid-column:2;
     grid-row:1 / 8;
     width:min(100%, calc((100vh - 56px) * 4 / 3));
     width:min(100%, calc((100dvh - 56px) * 4 / 3));
+  }
+  /* cu grila pornită, cadrul primește și marginea pentru etichete; canvasul rămâne în ecran pe înălțime */
+  body.grid-on #activity .panel:has(.draw-canvas) .grid-frame.is-canvas {
+    width:min(100%, calc((100dvh - 56px - var(--gutter)) * 4 / 3 + var(--gutter)));
   }
 }
 
@@ -426,7 +429,7 @@
   margin:8px 0 10px;
 }
 .reveal-draw {
-  max-width:640px;
+  max-width:none; /* limita de mărime e pe cadru (.grid-frame.reveal), ca etichetele grilei să rămână lipite de desen */
 }
 .reveal-draw[data-view="both"] .model-overlay {
   display:block;
@@ -850,9 +853,42 @@ img[data-sid].loading {
   justify-content:flex-end;
 }
 
-/* ---------- grila de pătrățele (reper pentru instrucțiuni): strat peste canvas, imaginile de referință și desenele ---------- */
+/* ---------- grila de pătrățele (reper pentru instrucțiuni) ----------
+   Liniile sunt un strat peste desen. Numerotarea (A–L, 1–9) stă ÎN AFARA zonei de desen, în marginile cadrului .grid-frame. */
+.grid-frame { position:relative; --gutter:22px; --bw:1px; }
+body.grid-on .grid-frame { padding:var(--gutter) 0 0 var(--gutter); }
+.grid-axis-cols,
+.grid-axis-rows {
+  display:none; /* apar doar când participantul / trainerul pornește grila (body.grid-on) */
+  position:absolute;
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  color:var(--ink-soft);
+  pointer-events:none;
+}
+body.grid-on .grid-axis-cols,
+body.grid-on .grid-axis-rows { display:grid; }
+.grid-axis-cols { top:0; left:calc(var(--gutter) + var(--bw)); right:var(--bw); height:var(--gutter); grid-template-columns:repeat(12, 1fr); align-items:center; text-align:center; }
+.grid-axis-rows { left:0; top:calc(var(--gutter) + var(--bw)); bottom:var(--bw); width:var(--gutter); grid-template-rows:repeat(9, 1fr); align-items:center; justify-items:center; }
+@media (max-width: 600px) {
+  .grid-frame { --gutter:19px; }
+  .grid-axis-cols, .grid-axis-rows { font-size:10px; }
+}
+/* cadrul canvasului: aceeași mărime ca înainte; doar cu grila pornită se adaugă marginea pentru etichete */
+.grid-frame.is-canvas {
+  --bw:2px;
+  margin:0 auto;
+  width:min(100%, max(480px, calc((100vh - 400px) * 4 / 3)));
+  width:min(100%, max(480px, calc((100dvh - 400px) * 4 / 3)));
+}
+body.grid-on .grid-frame.is-canvas { width:min(100%, max(480px, calc((100dvh - 400px) * 4 / 3 + var(--gutter)))); }
+.grid-frame.model { margin-top:10px; max-width:460px; }
+.grid-frame.reveal { max-width:640px; }
+body.grid-on .grid-frame.reveal { max-width:calc(640px + var(--gutter)); }
+.grid-frame.model > .model-fig { margin-top:0; max-width:none; }
 .canvas-wrap .grid-overlay {
-  display:none; /* apare doar când participantul apasă „Grilă” (body.grid-on) */
+  display:none; /* apare doar când se pornește grila (body.grid-on) */
   position:absolute;
   inset:2px;
   z-index:1;
@@ -863,20 +899,7 @@ img[data-sid].loading {
     linear-gradient(to right, rgba(0,0,0,.16) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0,0,0,.16) 1px, transparent 1px);
   background-size:calc(100% / 12) calc(100% / 9);
-  color:#1a1a1a;
 }
-.grid-overlay .grid-cols,
-.grid-overlay .grid-rows {
-  position:absolute;
-  display:grid;
-  font-size:clamp(9px, 1.5vw, 12px);
-  font-weight:700;
-  line-height:1;
-  color:rgba(26,26,26,.62);
-  text-shadow:0 0 3px #fff, 0 0 3px #fff;
-}
-.grid-overlay .grid-cols { top:3px; left:0; right:0; grid-template-columns:repeat(12, 1fr); text-align:center; }
-.grid-overlay .grid-rows { top:0; bottom:0; left:4px; grid-template-rows:repeat(9, 1fr); align-items:center; }
 body.grid-on .canvas-wrap .grid-overlay { display:block; }
 .grid-control { margin:8px 0; }
 /* aceleași pătrățele, doar linii, peste imaginile de referință și desenele din rezultate / galerie */

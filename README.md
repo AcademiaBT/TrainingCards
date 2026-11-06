@@ -75,3 +75,7 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 
 ### v64: Recapitulare — schimb de întrebări între echipe, fără etichete
 - Fără etichetele „aruncată înapoi” / „returnată de”. Fiecare întrebare apare **o singură dată, doar la echipa care trebuie să răspundă** (coloana „Întrebări pentru echipa …”). „↩ Aruncă înapoi” o mută în lista celeilalte echipe, **fără limită, până încheie trainerul sesiunea**; dublele apăsări simultane sunt oprite. „Ascunde” acționează pe ultima aruncare. Fără modificări în Supabase.
+
+### v65: mesaj de încheiere la Recapitulare, numerotarea grilei în afara desenului
+- **Recapitulare:** după „Încheie”, participanții văd sus mesajul „Recapitularea s-a încheiat. Trainerul a oprit aruncarea de întrebări. Mulțumim pentru participare!” (înainte pagina doar ascundea câmpul de scris).
+- **Desen — grilă:** numerotarea (literele A–L deasupra, cifrele 1–9 în stânga) stă **în afara zonei de desen**, într-un cadru cu margini, **și la participant, și la trainer**: pe canvas, la reveal, în galerie, la „Rezultate” și la modelul de referință. Liniile rămân peste desen, iar pe laptop desenul nu își schimbă mărimea când se pornește grila. Fără modificări în Supabase.

@@ -233,10 +233,14 @@ export function enableLightbox(container, getFull) {
 // ---------------------------------------------------------------------
 export const GRID_COLS = 12;
 export const GRID_ROWS = 9;
-// Etichetele coloanelor (sus) și ale rândurilor (stânga), pentru instrucțiuni de tipul „începe în C4”.
-// Grila e un strat peste canvas: nu se salvează în desenul trimis.
-export function gridLabelsHtml() {
+// Etichetele coloanelor (deasupra) și ale rândurilor (în stânga) stau ÎN AFARA zonei de desen, în marginile unui cadru (.grid-frame),
+// pentru instrucțiuni de tipul „începe în C4”. Grila e un strat peste desen: nu se salvează în desenul trimis.
+export function gridAxesHtml() {
   const cols = Array.from({ length: GRID_COLS }, (_, i) => `<span>${String.fromCharCode(65 + i)}</span>`).join("");
   const rows = Array.from({ length: GRID_ROWS }, (_, i) => `<span>${i + 1}</span>`).join("");
-  return `<div class="grid-overlay" aria-hidden="true"><div class="grid-cols">${cols}</div><div class="grid-rows">${rows}</div></div>`;
+  return `<div class="grid-axis-cols" aria-hidden="true">${cols}</div><div class="grid-axis-rows" aria-hidden="true">${rows}</div>`;
 }
+// Încadrează o zonă de desen (canvas, desen, imagine de referință) cu etichetele grilei în margini
+export const gridFrame = (inner, cls = "") => `<div class="grid-frame${cls ? " " + cls : ""}">${gridAxesHtml()}${inner}</div>`;
+// Stratul cu liniile grilei de pe canvas
+export const gridLinesHtml = () => '<div class="grid-overlay" aria-hidden="true"></div>';

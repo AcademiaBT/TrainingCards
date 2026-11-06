@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_SHORT_TIME, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, modelRoundSummary, summaryHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, gridFrame, modelRoundSummary, summaryHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -422,7 +422,7 @@ async function render() {
     if (session.mode === "draw" && p.image) {
       html += `<div class="model-fig-block">
         <button class="btn outline" id="toggle-model">${showModel ? "Ascunde modelul" : "Arată modelul"}</button>
-        ${showModel ? `<div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>` : ""}
+        ${showModel ? gridFrame(`<div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>`, "model") : ""}
       </div>`;
     }
     if (session.mode === "model") {
@@ -522,7 +522,7 @@ async function loadData() {
 function resultCard(alias, p, refImage, target, axes, sid) {
   let body = "";
   if (p.type === "draw") {
-    body = `<div class="draw-wrap"><img src="${p.image}" alt="Desen"${sid ? ` data-sid="${escapeHtml(String(sid))}"` : ""}>${refImage ? `<div class="model-overlay" data-src="${escapeHtml(refImage)}"></div>` : ""}</div>`;
+    body = gridFrame(`<div class="draw-wrap"><img src="${p.image}" alt="Desen"${sid ? ` data-sid="${escapeHtml(String(sid))}"` : ""}>${refImage ? `<div class="model-overlay" data-src="${escapeHtml(refImage)}"></div>` : ""}</div>`);
   }
   if (p.type === "model") {
     const cmp = target ? compareModel(target, p.positions || []) : null;

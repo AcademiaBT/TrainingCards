@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, loadDrawThumbs, fetchFullDrawing, enableLightbox, gridLabelsHtml } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, gridFrame, gridLinesHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -340,14 +340,17 @@ function buildCanvas() {
         </label>
       </div>
     </div>
-    <div class="canvas-wrap">
+    ${gridFrame(
+      `<div class="canvas-wrap">
       <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>
-      ${gridLabelsHtml()}
+      ${gridLinesHtml()}
       <div class="shape-actions" id="shape-actions" hidden>
         <button class="tool-btn done" id="shape-done" title="Fixează forma">✓ Gata</button>
         <button class="tool-btn clear" id="shape-delete" title="Șterge forma" aria-label="Șterge forma">✕</button>
       </div>
-    </div>`;
+    </div>`,
+      "is-canvas"
+    )}`;
 
   canvas = $("canvas");
   ctx = canvas.getContext("2d");
@@ -822,7 +825,7 @@ async function showAllDrawings() {
 
   const ref = p.image ? escapeHtml(p.image) : null;
   const card = (img, title, isMine, sid) =>
-    `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}<div class="draw-wrap"><img src="${img}" alt="Desen"${sid ? ` data-sid="${sid}"` : ""}>${ref ? `<div class="model-overlay" data-src="${ref}"></div>` : ""}</div></article>`;
+    `<article class="result-card${isMine ? " mine" : ""}">${title ? `<b>${title}</b>` : ""}${gridFrame(`<div class="draw-wrap"><img src="${img}" alt="Desen"${sid ? ` data-sid="${sid}"` : ""}>${ref ? `<div class="model-overlay" data-src="${ref}"></div>` : ""}</div>`)}</article>`;
   const own = ownSrc
     ? card(ownSrc, "Desenul tău", true)
     : `<article class="result-card mine"><b>Desenul tău</b><p class="hint">Nu ai trimis un desen.</p></article>`;
@@ -830,7 +833,7 @@ async function showAllDrawings() {
   $("reveal-content").innerHTML = `
     ${
       ref
-        ? `<h3>Modelul</h3><div class="model-fig"><img src="${ref}" alt="Modelul"></div>
+        ? `<h3>Modelul</h3>${gridFrame(`<div class="model-fig"><img src="${ref}" alt="Modelul"></div>`, "model")}
            <label class="overlay-control"><input type="checkbox" id="results-overlay"${drawOverlayOn ? " checked" : ""}> Suprapune modelul (roșu) peste desene</label>`
         : ""
     }
@@ -959,15 +962,15 @@ async function showReveal() {
            <button class="tool-btn" data-view="model">Modelul</button>
            <button class="tool-btn" data-view="both">Suprapus</button>
          </div>
-         <div class="draw-wrap reveal-draw" id="reveal-draw" data-view="own">
+         ${gridFrame(`<div class="draw-wrap reveal-draw" id="reveal-draw" data-view="own">
            <img src="${x.image}" alt="Desenul tău">
            <img class="model-orig" src="${escapeHtml(p.image)}" alt="Modelul">
            <div class="model-overlay" data-src="${escapeHtml(p.image)}"></div>
-         </div>
+         </div>`, "reveal")}
          <p class="hint" id="reveal-hint" hidden>Modelul apare în roșu peste desenul tău.</p>`
       : `<h3>Desenul tău</h3><img src="${x.image}" style="max-width:100%;background:white">`;
   } else if (session.mode === "draw" && p.image) {
-    own = `<p>Nu ai trimis un desen în această rundă. Iată modelul:</p><div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>`;
+    own = `<p>Nu ai trimis un desen în această rundă. Iată modelul:</p>${gridFrame(`<div class="model-fig"><img src="${escapeHtml(p.image)}" alt="Modelul"></div>`, "model")}`;
   }
   if (x?.type === "client") {
     own = `<p><b>Răspunsul tău:</b> ${escapeHtml(x.answer)}</p>`;

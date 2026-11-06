@@ -12,6 +12,7 @@ let store = null;
 let arena = null;
 let poll = null;
 let busy = false;
+let endedShown = false; // nota de încheiere a fost deja adusă în vedere
 let myCount = 0; // cate intrebari am aruncat eu in aceasta sesiune (pentru limita stabilita de trainer)
 let cooldownUntil = 0;
 let cooldownTimer = null;
@@ -91,6 +92,11 @@ function render() {
 async function buildGame() {
   const ended = session.status === "ended";
   $("game").classList.toggle("ended", ended);
+  $("ended-note").hidden = !ended; // mesaj vizibil: trainerul a încheiat sesiunea
+  if (ended && !endedShown) {
+    endedShown = true;
+    $("ended-note").scrollIntoView?.({ block: "nearest" });
+  }
   show("game");
   $("topic-line").innerHTML = "";
   if (session.topic) {

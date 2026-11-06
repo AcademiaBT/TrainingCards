@@ -268,3 +268,15 @@ body.projector .recap-help { display:none; }
 /* „Aruncă înapoi”: buton pe întrebările la care răspunde echipa mea */
 .qret-btn { border-color:var(--green-text); color:var(--green-text); font-weight:600; }
 .qret-btn:disabled { opacity:.5; cursor:default; }
+
+/* nota afișată participanților când trainerul încheie sesiunea */
+.ended-note {
+  margin:0 0 12px;
+  padding:14px 16px;
+  border:1px solid var(--gold);
+  border-radius:12px;
+  background:var(--accent-soft);
+  color:var(--ink);
+  font-size:15px;
+  line-height:1.45;
+}
