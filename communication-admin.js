@@ -169,6 +169,27 @@ async function downloadQr(filename, format, triggerBtn) {
 $("qr-dl-png-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.png`, "png", e.target);
 $("qr-dl-jpg-btn").onclick = (e) => downloadQr(`qr-${session.session_code}.jpg`, "jpg", e.target);
 
+// pătrățelele de reper peste desenele din „Rezultate”: le pornește / le oprește trainerul (alegerea rămâne pe dispozitiv)
+const GRID_KEY = "comm_grid_admin";
+const gridOnAdmin = () => {
+  try {
+    return localStorage.getItem(GRID_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+function setGridAdmin(on) {
+  try {
+    localStorage.setItem(GRID_KEY, on ? "1" : "0");
+  } catch {
+    /* mod privat */
+  }
+  document.body.classList.toggle("grid-on", on);
+  $("grid-toggle").checked = on;
+}
+setGridAdmin(gridOnAdmin());
+$("grid-toggle").onchange = (e) => setGridAdmin(e.target.checked);
+
 $("overlay-toggle").onchange = (e) => {
   overlayOn = e.target.checked;
   $("results").classList.toggle("show-overlay", overlayOn);
@@ -438,6 +459,7 @@ async function render() {
 
   // comutatorul de suprapunere apare doar la desen, dupa lobby
   $("overlay-control").hidden = !(session.mode === "draw" && p.image && session.status !== "lobby");
+  $("grid-control").hidden = !(session.mode === "draw" && session.status !== "lobby");
 
   $("target").innerHTML =
     isModel && parseStatus(session.status).n > 0
@@ -667,6 +689,7 @@ function renderFormRounds() {
         <label for="sc-r${i}-title">Titlul rundei (opțional)</label>
         <input id="sc-r${i}-title" type="text" maxlength="80" placeholder="implicit: numele scenariului" value="${escapeHtml(r.title)}">
         <label for="sc-r${i}-steps">Instrucțiunile pe care le rostește trainerul (câte una pe rând; se numerotează automat)</label>
+        <p class="hint">Canvasul are pătrățele: <b>12 coloane (A–L)</b> și <b>9 rânduri (1–9)</b>, pe care participantul le pornește din butonul „Grilă” (nu apar în desenul trimis). Poți scrie instrucțiuni precum „Începe în C4” sau „Desenează un cerc în pătrățelul F6”.</p>
         <textarea id="sc-r${i}-steps" rows="6" placeholder="Desenează un pătrat mare în centru&#10;În interior, un cerc mic sus-stânga&#10;Sub cerc, un triunghi">${escapeHtml(r.stepsText)}</textarea>
         <div class="sc-preview"><b>Previzualizare:</b><div id="sc-r${i}-preview"></div></div>
         <label for="sc-r${i}-image">Imagine de referință (opțional): PNG, JPG sau BMP</label>

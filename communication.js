@@ -1,10 +1,43 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
-import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
+import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, loadDrawThumbs, fetchFullDrawing, enableLightbox, gridLabelsHtml } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
+
+// ---------- grila de pătrățele: o pornește / o oprește participantul (alegerea rămâne pe dispozitiv) ----------
+const GRID_KEY = "comm_grid";
+const gridOn = () => {
+  try {
+    return localStorage.getItem(GRID_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+function setGrid(on) {
+  try {
+    localStorage.setItem(GRID_KEY, on ? "1" : "0");
+  } catch {
+    /* mod privat: se aplică doar pe pagina curentă */
+  }
+  document.body.classList.toggle("grid-on", on);
+  document.querySelectorAll(".grid-check").forEach((c) => (c.checked = on));
+  const b = document.getElementById("grid-btn");
+  if (b) {
+    b.setAttribute("aria-pressed", String(on));
+    b.classList.toggle("active", on);
+  }
+}
+const gridCheckHtml = () =>
+  `<label class="overlay-control grid-control"><input type="checkbox" class="grid-check"${gridOn() ? " checked" : ""}> Pătrățele (reper: coloane A–L, rânduri 1–9)</label>`;
+document.body.classList.toggle("grid-on", gridOn());
+document.addEventListener("change", (e) => {
+  if (e.target.matches?.(".grid-check")) setGrid(e.target.checked);
+});
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.("#grid-btn")) setGrid(!gridOn());
+});
 const code = new URLSearchParams(location.search).get("s");
 
 let session = null;
@@ -289,6 +322,9 @@ function buildCanvas() {
         <button class="tool-btn" id="tool-eraser" aria-pressed="false">🧽 Radieră</button>
         <button class="tool-btn clear" id="clear-canvas">Șterge tot</button>
       </div>
+      <div class="tool-group" role="group" aria-label="Reper">
+        <button class="tool-btn${gridOn() ? " active" : ""}" id="grid-btn" aria-pressed="${gridOn()}" title="Pătrățele de reper (coloane A–L, rânduri 1–9). Nu apar în desenul trimis.">▦ Grilă</button>
+      </div>
       <div class="tool-group" role="group" aria-label="Forme">
         ${shapeButton("rect", "Dreptunghi")}
         ${shapeButton("triangle", "Triunghi")}
@@ -306,6 +342,7 @@ function buildCanvas() {
     </div>
     <div class="canvas-wrap">
       <canvas class="draw-canvas" id="canvas" width="${CANVAS_W}" height="${CANVAS_H}"></canvas>
+      ${gridLabelsHtml()}
       <div class="shape-actions" id="shape-actions" hidden>
         <button class="tool-btn done" id="shape-done" title="Fixează forma">✓ Gata</button>
         <button class="tool-btn clear" id="shape-delete" title="Șterge forma" aria-label="Șterge forma">✕</button>
@@ -797,6 +834,7 @@ async function showAllDrawings() {
            <label class="overlay-control"><input type="checkbox" id="results-overlay"${drawOverlayOn ? " checked" : ""}> Suprapune modelul (roșu) peste desene</label>`
         : ""
     }
+    ${gridCheckHtml()}
     <div class="results-grid is-draw own-result">${own}</div>
     <h3>Desenele celorlalți participanți</h3>
     <div class="results-grid is-draw">${others.map((r) => (thumb(r) ? card(thumb(r), "", false, r.id) : "")).join("") || "<p>Niciun alt desen deocamdată.</p>"}</div>
@@ -915,6 +953,7 @@ async function showReveal() {
     // desenul participantului + imaginea de referinta (daca runda are una): vizualizare simpla, model sau suprapus
     own = p.image
       ? `<h3>Desenul tău</h3>
+         ${gridCheckHtml()}
          <div class="tool-group view-switch" role="group" aria-label="Vizualizare">
            <button class="tool-btn active" data-view="own">Desenul meu</button>
            <button class="tool-btn" data-view="model">Modelul</button>

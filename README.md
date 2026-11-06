@@ -69,3 +69,6 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 ### v62: Recapitulare — „↩ Aruncă înapoi”
 - Pe întrebările adresate echipei lui, fiecare participant are „↩ Aruncă înapoi”: aceeași întrebare pleacă înapoi spre echipa care a pus-o. **O singură returnare pe întrebare** (primul coleg care apasă; dublurile sunt refuzate și în baza de date, prin index unic pe `parent_id`), dar lanțul poate continua, deci **ping-pong fără limită**. Returnările nu consumă din limita personală și nu au pauză.
 - Supabase: rulează din nou `supabase/add-recap.sql` (idempotent).
+
+### v63: desen — grilă de pătrățele
+- Butonul „▦ Grilă” (12 coloane A–L × 9 rânduri 1–9) afișează un reper peste canvas, la reveal și în galerie; **o pornește și o oprește participantul** (alegerea rămâne pe dispozitiv), iar grila nu intră în desenul salvat. Trainerul are bifa lui în „Rezultate”. Fără modificări în Supabase.

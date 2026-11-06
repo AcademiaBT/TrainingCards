@@ -227,3 +227,16 @@ export function enableLightbox(container, getFull) {
     openLightbox(full || img.src);
   });
 }
+
+// ---------------------------------------------------------------------
+//  Grila de pătrățele de pe canvasul de desen (12 coloane A–L × 9 rânduri 1–9; pătrate, ca la 4:3)
+// ---------------------------------------------------------------------
+export const GRID_COLS = 12;
+export const GRID_ROWS = 9;
+// Etichetele coloanelor (sus) și ale rândurilor (stânga), pentru instrucțiuni de tipul „începe în C4”.
+// Grila e un strat peste canvas: nu se salvează în desenul trimis.
+export function gridLabelsHtml() {
+  const cols = Array.from({ length: GRID_COLS }, (_, i) => `<span>${String.fromCharCode(65 + i)}</span>`).join("");
+  const rows = Array.from({ length: GRID_ROWS }, (_, i) => `<span>${i + 1}</span>`).join("");
+  return `<div class="grid-overlay" aria-hidden="true"><div class="grid-cols">${cols}</div><div class="grid-rows">${rows}</div></div>`;
+}
