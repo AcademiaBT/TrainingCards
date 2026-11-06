@@ -216,7 +216,7 @@ async function throwQuestion() {
 // „Aruncă înapoi”: aceeași întrebare, trimisă înapoi echipei care a pus-o. O singură returnare pe întrebare (primul coleg care apasă);
 // poate continua în lanț (ping-pong), iar returnările nu consumă din limita personală de întrebări.
 const RETURN_ERRORS = {
-  uq_recap_return_once: "Colegii tăi au returnat deja această întrebare.",
+  uq_recap_return_once: "Un coleg de-al tău a aruncat deja această întrebare.",
   recap_parent_hidden: "Întrebarea a fost ascunsă de trainer.",
   recap_return_own_team: "Nu poți returna întrebările echipei tale.",
   recap_not_playing: "Recapitularea nu este activă acum.",

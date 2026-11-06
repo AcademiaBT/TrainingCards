@@ -265,18 +265,6 @@ body.projector .recap-help { display:none; }
 #creator #max-questions { display:block; }
 #creator #create { display:block; margin-top:16px; }
 
-/* „Aruncă înapoi”: etichete pe întrebările returnate + buton pe cele adresate echipei mele */
-.qtag {
-  display:inline-block;
-  margin:3px 6px 0 0;
-  padding:2px 9px;
-  border-radius:999px;
-  font-size:11.5px;
-  font-weight:700;
-  color:var(--ink);
-  background:var(--parchment-dark);
-}
-.qtag.done { color:#1f5a3c; background:#e3ede5; }
+/* „Aruncă înapoi”: buton pe întrebările la care răspunde echipa mea */
 .qret-btn { border-color:var(--green-text); color:var(--green-text); font-weight:600; }
 .qret-btn:disabled { opacity:.5; cursor:default; }
-.qitem.is-hidden .qtag { background:var(--field-bg); color:var(--hidden-fg); }

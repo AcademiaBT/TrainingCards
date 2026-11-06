@@ -158,15 +158,21 @@ export function renderLists(root, questions, opts = {}) {
   root.innerHTML = "";
   root.classList.add("qlists");
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  const childOf = new Map(questions.filter((q) => q.parent_id).map((q) => [q.parent_id, q])); // întrebare → returnarea ei
-  const shownQ = opts.showHidden ? questions : questions.filter((q) => !q.hidden);
+  // O întrebare aruncată înapoi este aceeași întrebare, care a trecut la cealaltă echipă: în listă rămâne doar ultima ei „aruncare”,
+  // adică ea apare mereu doar la echipa care trebuie să răspundă acum (cea de partea cealaltă a celei care a aruncat-o ultima).
+  const byId = new Map(questions.map((q) => [q.id, q]));
+  const superseded = new Set(questions.filter((q) => q.parent_id).map((q) => q.parent_id)); // întrebările deja aruncate mai departe
+  const rootOf = (q) => {
+    let c = q;
+    for (let i = 0; i < 1000 && c.parent_id && byId.has(c.parent_id); i++) c = byId.get(c.parent_id);
+    return c.id;
+  };
+  const current = questions.filter((q) => !superseded.has(q.id));
+  const shownQ = opts.showHidden ? current : current.filter((q) => !q.hidden);
   const makeItem = (q) => {
     const li = el("li", `qitem${q.hidden ? " is-hidden" : ""}${opts.newIds?.has(q.id) ? " is-new" : ""}`);
-    li.dataset.id = q.id;
+    li.dataset.id = rootOf(q); // aceeași cheie pe tot lanțul: la fiecare aruncare întrebarea se MUTĂ animat în coloana celeilalte echipe
     li.append(el("span", "qtext", q.body));
-    if (q.parent_id) li.append(el("span", "qtag", "↩ aruncată înapoi"));
-    const back = childOf.get(q.id);
-    if (back) li.append(el("span", "qtag done", `↩ returnată de echipa ${TEAMS[back.team].name}`));
     const author = opts.author?.(q);
     if (author) li.append(el("small", "qauthor", author));
     if (opts.onToggle) {
@@ -174,8 +180,8 @@ export function renderLists(root, questions, opts = {}) {
       b.onclick = () => opts.onToggle(q);
       li.append(b);
     }
-    // „Aruncă înapoi”: doar pe întrebările adresate echipei mele, o singură dată pe întrebare (primul coleg care apasă)
-    if (opts.onReturn && !q.hidden && q.team !== opts.myTeam && !back) {
+    // „Aruncă înapoi”: pe întrebările la care răspunde echipa mea, de câte ori vrea, până încheie trainerul sesiunea
+    if (opts.onReturn && !q.hidden && q.team !== opts.myTeam) {
       const b = el("button", "qbtn qret-btn", "↩ Aruncă înapoi");
       b.disabled = !!opts.returning?.has(q.id);
       b.onclick = () => opts.onReturn(q);
@@ -184,14 +190,14 @@ export function renderLists(root, questions, opts = {}) {
     return li;
   };
   [1, 2].forEach((t) => {
-    const mine = shownQ.filter((q) => q.team === t);
+    const mine = shownQ.filter((q) => otherTeam(q.team) === t); // coloana echipei t: întrebările la care răspunde ea
     // afisate: in ordinea aruncarii; ascunse: la final, cea mai recent ascunsa prima
     const visible = mine.filter((q) => !q.hidden).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
     const hidden = mine.filter((q) => q.hidden).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
     const col = el("section", `qcol team-${t}`);
     const head = el("h4", "qhead");
-    head.append(el("span", "qtitle", `Întrebările echipei ${TEAMS[t].name}`), el("span", "qcount", String(visible.length)));
-    col.append(head, el("div", "qdir", `${TEAMS[t].name} → ${TEAMS[otherTeam(t)].name}`));
+    head.append(el("span", "qtitle", `Întrebări pentru echipa ${TEAMS[t].name}`), el("span", "qcount", String(visible.length)));
+    col.append(head, el("div", "qdir", `Răspunde echipa ${TEAMS[t].name}`));
     const ol = el("ol", "qlist");
     if (!visible.length) ol.append(el("li", "qempty", hidden.length ? "Nicio întrebare afișată." : "Încă nicio întrebare."));
     visible.forEach((q) => ol.append(makeItem(q)));
@@ -270,10 +276,21 @@ export function createStore(supabase, sessionId, { withAuthor = false } = {}) {
 // Textul întrebărilor, grupat pe echipe (pentru „Copiază”)
 export function questionsAsText(questions, topic = "") {
   const out = [topic ? `Recapitulare: ${topic}` : "Recapitulare"];
+  const superseded = new Set(questions.filter((q) => q.parent_id).map((q) => q.parent_id));
+  const current = questions.filter((q) => !superseded.has(q.id) && !q.hidden);
   [1, 2].forEach((t) => {
-    const mine = questions.filter((q) => q.team === t && !q.hidden).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
-    out.push("", `Echipa ${TEAMS[t].name} (${mine.length}) → ${TEAMS[otherTeam(t)].name}`);
-    mine.forEach((q, i) => out.push(`${i + 1}. ${q.body}${q.parent_id ? "  (↩ aruncată înapoi)" : ""}`));
+    // la întrebările aruncate înapoi, un singur rând: la echipa care răspunde acum
+    const mine = current.filter((q) => otherTeam(q.team) === t).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
+    out.push("", `Întrebări pentru echipa ${TEAMS[t].name} (${mine.length})`);
+    mine.forEach((q, i) => out.push(`${i + 1}. ${q.body}`));
   });
   return out.join("\n");
+}
+
+// Ultima „aruncare” dintr-un lanț de întrebări (cea care se vede acum în liste): de la un rând, urmăm returnările până la capăt.
+export function leafOf(rows, id) {
+  const child = new Map(rows.filter((r) => r.parent_id).map((r) => [r.parent_id, r]));
+  let cur = rows.find((r) => r.id === id) || null;
+  for (let i = 0; cur && child.has(cur.id) && i < 10000; i++) cur = child.get(cur.id);
+  return cur;
 }

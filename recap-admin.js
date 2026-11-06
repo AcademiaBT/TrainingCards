@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { TEAMS, otherTeam, createArena, renderLists, createStore, questionsAsText } from "./recap-shared.js";
+import { TEAMS, otherTeam, createArena, renderLists, createStore, questionsAsText, leafOf } from "./recap-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -153,7 +153,10 @@ function drawAll() {
     newIds,
     author: (q) => aliasById[q.participant_id] || null,
     onToggle: async (q) => {
-      await supabase.from("recap_questions").update({ hidden: !q.hidden }).eq("id", q.id);
+      // „Ascunde” / „Arată” lucrează pe ultima aruncare din lanț, chiar dacă întrebarea tocmai a fost aruncată înapoi și lista ta nu s-a reîmprospătat încă
+      const { data } = await supabase.from("recap_questions").select("id, parent_id, hidden").eq("session_id", session.id);
+      const leaf = leafOf(data || [], q.id) || q;
+      await supabase.from("recap_questions").update({ hidden: !leaf.hidden }).eq("id", leaf.id);
       await syncQuestions();
     },
   });
