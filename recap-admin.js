@@ -50,6 +50,8 @@ async function init() {
   if (data.session) {
     user = data.session.user;
     await enterAdmin();
+  } else {
+    window.TCTheme?.useDefault(); // ecranul de autentificare: mereu tema implicită, la toți
   }
 }
 async function enterAdmin() {

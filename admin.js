@@ -215,6 +215,7 @@ async function checkAuth() {
     showAdmin();
   } else {
     $("login-view").style.display = "block";
+    window.TCTheme?.useDefault(); // ecranul de autentificare: mereu tema implicită, la toți
   }
 }
 
@@ -238,6 +239,7 @@ $("login-btn").addEventListener("click", async () => {
 
 $("logout-btn").addEventListener("click", async () => {
   await supabase.auth.signOut();
+  window.TCTheme?.useDefault(); // după deconectare, următorul utilizator nu primește tema celui dinainte
   location.reload();
 });
 

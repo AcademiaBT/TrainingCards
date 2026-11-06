@@ -150,6 +150,21 @@
   }
   function cache(saved) { try { localStorage.setItem(LS_KEY, JSON.stringify(saved)); } catch (e) {} }
   function cached() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) { return null; } }
+  // Ecranul de autentificare și orice cont fără temă salvată folosesc tema implicită (Pergament), nu tema altcuiva rămasă în browser
+  function useDefault() {
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    apply(preset("pergament"));
+  }
+  // Există o autentificare Supabase în acest browser? (cheia standard sb-<proiect>-auth-token)
+  function hasLogin() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (/^sb-.+-auth-token$/.test(k) && localStorage.getItem(k)) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
 
   // ---------- Supabase ----------
   var savedTheme = null; // ultima temă salvată (pentru „Anulează”)
@@ -171,6 +186,7 @@
     return loadTrainer(supabase, email).then(function (saved) {
       savedTheme = saved;
       if (saved) { apply(resolve(saved)); cache(saved); }
+      else useDefault(); // cont fără temă salvată: tema implicită, nu cea rămasă în browser de la alt trainer
       return saved;
     }).catch(function () { /* fără tabel (scriptul SQL încă nerulat): rămâne tema din cache / implicită */ });
   }
@@ -308,13 +324,14 @@
     save.focus();
   }
 
-  var api = { PRESETS: PRESETS, deriveVars: deriveVars, contrast: contrast, resolve: resolve, apply: apply, initTrainer: initTrainer, initParticipant: initParticipant, openPicker: openPicker, _lum: lum, _mix: mix };
+  var api = { PRESETS: PRESETS, deriveVars: deriveVars, contrast: contrast, resolve: resolve, apply: apply, initTrainer: initTrainer, initParticipant: initParticipant, useDefault: useDefault, openPicker: openPicker, _lum: lum, _mix: mix };
   if (typeof window !== "undefined") window.TCTheme = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 
-  // pornire: paginile de trainer aplică imediat tema din cache (fără sclipire); cele de participant așteaptă sesiunea
+  // pornire: paginile de trainer aplică imediat tema din cache (fără sclipire), DOAR dacă cineva e deja autentificat;
+  // fără autentificare (ecranul de login) rămâne tema implicită. Paginile de participant așteaptă sesiunea.
   if (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme-role") === "trainer") {
     var c = cached();
-    if (c) apply(resolve(c));
+    if (c && hasLogin()) apply(resolve(c));
   }
 })();

@@ -86,3 +86,6 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 ### v67: Recapitulare — cronometru (Start cu timp / fără timp, Pauză, Adaugă timp)
 - În Lobby: **„Start cu timp”** (minute și secunde; implicit 5:00) sau **„Start fără timp”**. Participanții văd **timpul rămas** sus; trainerul are **Pauză / Reia**, **Adaugă timp** (minute și secunde) și poate activa un cronometru și într-o sesiune pornită fără timp. **La pauză sau după expirare nu se mai poate arunca nimic** (nici „Aruncă înapoi”); regula e impusă și în baza de date. Timpul se calculează cu **ora serverului** (același pe toate ecranele, chiar cu ceas decalat). În „Mod proiector”, timpul apare mare.
 - Supabase: rulează din nou `supabase/add-recap.sql` (idempotent; coloane noi pe `recap_sessions`, funcțiile `recap_timer` și `recap_server_time`, regulă nouă la aruncarea întrebărilor).
+
+### v68: ecranul de autentificare, mereu pe tema implicită
+- Ecranele de autentificare (jocuri cu cărți, Nodul comunicării, Recapitulare) folosesc **mereu tema implicită (Pergament), la toți**. Tema trainerului se aplică abia după autentificare; la deconectare nu rămâne în browser pentru următoarea persoană; un cont fără temă salvată nu o moștenește pe a altuia. Fără modificări în Supabase.
