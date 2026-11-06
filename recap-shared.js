@@ -148,7 +148,9 @@ export function createArena(root) {
 // =====================================================================
 //  Listele de întrebări, grupate pe echipe
 // =====================================================================
-// questions: [{ id, team, body, hidden }]; opts: { author: (q) => text|null, onToggle: (q) => void, newIds: Set }
+// questions: TOATE întrebările [{ id, team, body, hidden, parent_id, created_at, updated_at }] (cele ascunse se folosesc doar la relații)
+// opts: { author: (q) => text|null, onToggle: (q) => void (trainer), showHidden: bool (trainer), newIds: Set,
+//         myTeam: 1|2, onReturn: (q) => void (participant: „Aruncă înapoi”), returning: Set de id-uri în curs de trimitere }
 export function renderLists(root, questions, opts = {}) {
   const scroll = root.scrollTop;
   // pozitiile de dinainte, ca o intrebare ascunsa / reafisata sa se MUTE animat in noul loc (nu sa sara)
@@ -156,10 +158,15 @@ export function renderLists(root, questions, opts = {}) {
   root.innerHTML = "";
   root.classList.add("qlists");
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const childOf = new Map(questions.filter((q) => q.parent_id).map((q) => [q.parent_id, q])); // întrebare → returnarea ei
+  const shownQ = opts.showHidden ? questions : questions.filter((q) => !q.hidden);
   const makeItem = (q) => {
     const li = el("li", `qitem${q.hidden ? " is-hidden" : ""}${opts.newIds?.has(q.id) ? " is-new" : ""}`);
     li.dataset.id = q.id;
     li.append(el("span", "qtext", q.body));
+    if (q.parent_id) li.append(el("span", "qtag", "↩ aruncată înapoi"));
+    const back = childOf.get(q.id);
+    if (back) li.append(el("span", "qtag done", `↩ returnată de echipa ${TEAMS[back.team].name}`));
     const author = opts.author?.(q);
     if (author) li.append(el("small", "qauthor", author));
     if (opts.onToggle) {
@@ -167,10 +174,17 @@ export function renderLists(root, questions, opts = {}) {
       b.onclick = () => opts.onToggle(q);
       li.append(b);
     }
+    // „Aruncă înapoi”: doar pe întrebările adresate echipei mele, o singură dată pe întrebare (primul coleg care apasă)
+    if (opts.onReturn && !q.hidden && q.team !== opts.myTeam && !back) {
+      const b = el("button", "qbtn qret-btn", "↩ Aruncă înapoi");
+      b.disabled = !!opts.returning?.has(q.id);
+      b.onclick = () => opts.onReturn(q);
+      li.append(b);
+    }
     return li;
   };
   [1, 2].forEach((t) => {
-    const mine = questions.filter((q) => q.team === t);
+    const mine = shownQ.filter((q) => q.team === t);
     // afisate: in ordinea aruncarii; ascunse: la final, cea mai recent ascunsa prima
     const visible = mine.filter((q) => !q.hidden).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
     const hidden = mine.filter((q) => q.hidden).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
@@ -208,11 +222,12 @@ export function renderLists(root, questions, opts = {}) {
 // =====================================================================
 //  Sincronizarea întrebărilor: se cere doar ce s-a schimbat de la ultima verificare
 // =====================================================================
+export const STORE_COLS = "id, team, body, hidden, created_at, updated_at, parent_id"; // coloanele unei întrebări (pentru INSERT ... SELECT)
 export function createStore(supabase, sessionId, { withAuthor = false } = {}) {
   const map = new Map();
   let cursor = null;
   let first = true;
-  const cols = "id, team, body, hidden, created_at, updated_at" + (withAuthor ? ", participant_id" : "");
+  const cols = "id, team, body, hidden, created_at, updated_at, parent_id" + (withAuthor ? ", participant_id" : "");
   return {
     // intoarce { added: [...] (intrebari noi, fara cele din prima incarcare), changed: [...], all, initial }
     async sync() {
@@ -258,7 +273,7 @@ export function questionsAsText(questions, topic = "") {
   [1, 2].forEach((t) => {
     const mine = questions.filter((q) => q.team === t && !q.hidden).sort((a, b) => (a.created_at > b.created_at ? 1 : -1));
     out.push("", `Echipa ${TEAMS[t].name} (${mine.length}) → ${TEAMS[otherTeam(t)].name}`);
-    mine.forEach((q, i) => out.push(`${i + 1}. ${q.body}`));
+    mine.forEach((q, i) => out.push(`${i + 1}. ${q.body}${q.parent_id ? "  (↩ aruncată înapoi)" : ""}`));
   });
   return out.join("\n");
 }

@@ -149,6 +149,7 @@ function drawAll() {
   const c = store.visibleCounts();
   arena.setTotals(c[1], c[2]);
   renderLists($("qlists"), all, {
+    showHidden: true,
     newIds,
     author: (q) => aliasById[q.participant_id] || null,
     onToggle: async (q) => {

@@ -65,3 +65,7 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 - **Butonul „🎨 Temă”** în antetul celor trei panouri de trainer: 6 teme gata făcute (Pergament = aspectul de până acum, Noapte, Grafit, Albastru corporate, Bordo, Contrast înalt) sau **Personalizată**, cu 4 culori (fundal, suprafață, principală, accent). **Textul se alege automat**: deschis pe fundal închis, închis pe fundal deschis, cu contrast garantat ≥ 4,5:1 (și pe butoane, antet, margini, mesaje).
 - Se salvează **pe trainer** (`trainer_settings`) și se aplică pe paginile lui **și pe ecranele participanților la sesiunile lui**: jocurile cu cărți, Nodul comunicării și Recapitulare. Participanții primesc doar tema, printr-o funcție (`session_theme`), nu emailul trainerului. Rămân fixe: canvasul de desen, culorile echipelor, culorile de stare.
 - Fișiere: `theme.js` (motor + fereastră de alegere), `supabase/add-themes.sql` (idempotent; inclus în `install-complete.sql`).
+
+### v62: Recapitulare — „↩ Aruncă înapoi”
+- Pe întrebările adresate echipei lui, fiecare participant are „↩ Aruncă înapoi”: aceeași întrebare pleacă înapoi spre echipa care a pus-o. **O singură returnare pe întrebare** (primul coleg care apasă; dublurile sunt refuzate și în baza de date, prin index unic pe `parent_id`), dar lanțul poate continua, deci **ping-pong fără limită**. Returnările nu consumă din limita personală și nu au pauză.
+- Supabase: rulează din nou `supabase/add-recap.sql` (idempotent).

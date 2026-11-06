@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { TEAMS, MAX_LEN, COOLDOWN_S, otherTeam, createArena, renderLists, createStore } from "./recap-shared.js";
+import { TEAMS, MAX_LEN, COOLDOWN_S, otherTeam, createArena, renderLists, createStore, STORE_COLS } from "./recap-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
@@ -16,6 +16,7 @@ let myCount = 0; // cate intrebari am aruncat eu in aceasta sesiune (pentru limi
 let cooldownUntil = 0;
 let cooldownTimer = null;
 let newIds = new Set();
+let returning = new Set(); // întrebări pe care tocmai le arunc înapoi (butonul se dezactivează până la răspuns)
 let baseAlias = "";
 let suggestedAlias = "";
 
@@ -100,6 +101,8 @@ async function buildGame() {
   if (!arena) {
     arena = createArena($("arena"));
     store = createStore(supabase, session.id);
+  } else if (store) {
+    drawAll(); // starea s-a schimbat (de ex. „Încheie”): butoanele „Aruncă înapoi” dispar imediat, nu abia la următoarea sincronizare
   }
   const t = me?.team;
   const banner = $("team-banner");
@@ -116,8 +119,8 @@ async function buildGame() {
 
 async function loadMyCount() {
   if (!me?.team) return;
-  const { data } = await supabase.from("recap_questions").select("id").eq("session_id", session.id).eq("participant_id", me.id);
-  myCount = (data || []).length;
+  const { data } = await supabase.from("recap_questions").select("id, parent_id").eq("session_id", session.id).eq("participant_id", me.id);
+  myCount = (data || []).filter((q) => !q.parent_id).length; // întrebările returnate nu se numără la limita personală
 }
 
 async function syncQuestions() {
@@ -144,7 +147,12 @@ function drawAll() {
   const all = store.all();
   const c = store.visibleCounts();
   arena.setTotals(c[1], c[2]);
-  renderLists($("qlists"), all.filter((q) => !q.hidden), { newIds });
+  renderLists($("qlists"), all, {
+    newIds,
+    myTeam: me?.team,
+    returning,
+    onReturn: session.status === "play" && me?.team ? returnQuestion : null,
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -188,7 +196,7 @@ async function throwQuestion() {
   const { data, error } = await supabase
     .from("recap_questions")
     .insert({ session_id: session.id, participant_id: me.id, team: me.team, body })
-    .select("id, team, body, hidden, created_at, updated_at")
+    .select(STORE_COLS)
     .single();
   if (error) {
     const key = Object.keys(THROW_ERRORS).find((k) => (error.message || "").includes(k));
@@ -203,6 +211,36 @@ async function throwQuestion() {
   drawAll();
   $("q-text").value = "";
   startCooldown(COOLDOWN_S);
+}
+
+// „Aruncă înapoi”: aceeași întrebare, trimisă înapoi echipei care a pus-o. O singură returnare pe întrebare (primul coleg care apasă);
+// poate continua în lanț (ping-pong), iar returnările nu consumă din limita personală de întrebări.
+const RETURN_ERRORS = {
+  uq_recap_return_once: "Colegii tăi au returnat deja această întrebare.",
+  recap_parent_hidden: "Întrebarea a fost ascunsă de trainer.",
+  recap_return_own_team: "Nu poți returna întrebările echipei tale.",
+  recap_not_playing: "Recapitularea nu este activă acum.",
+};
+async function returnQuestion(q) {
+  if (returning.has(q.id) || !me?.team) return;
+  returning.add(q.id);
+  $("q-msg").textContent = "";
+  drawAll();
+  const { data, error } = await supabase
+    .from("recap_questions")
+    .insert({ session_id: session.id, participant_id: me.id, team: me.team, body: q.body, parent_id: q.id })
+    .select(STORE_COLS)
+    .single();
+  returning.delete(q.id);
+  if (error) {
+    const key = Object.keys(RETURN_ERRORS).find((k) => (error.message || "").includes(k)) || (error.code === "23505" ? "uq_recap_return_once" : null);
+    $("q-msg").textContent = key ? RETURN_ERRORS[key] : error.message;
+    await syncQuestions(); // se vede starea reala: cine a returnat-o deja
+    return;
+  }
+  store.remember(data);
+  arena.fly(me.team); // bulgarele pleaca imediat inapoi
+  drawAll();
 }
 
 $("q-text").addEventListener("input", updateThrowButton);
