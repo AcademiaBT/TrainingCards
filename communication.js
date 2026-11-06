@@ -49,6 +49,7 @@ async function init() {
   }
   if (!data) return fail("Sesiunea nu există.");
   session = data;
+  window.TCTheme?.initParticipant(supabase, "comm", session.id); // tema trainerului
   $("title").textContent = ACTIVITIES[session.mode].name;
 
   const saved = localStorage.getItem(`comm_${session.id}`);

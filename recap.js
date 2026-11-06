@@ -54,6 +54,7 @@ async function init() {
   }
   if (!data) return fail("Sesiunea nu există.");
   session = data;
+  window.TCTheme?.initParticipant(supabase, "recap", session.id); // tema trainerului
   const saved = localStorage.getItem(`recap_${session.id}`);
   if (saved) {
     const { data: p } = await supabase.from("recap_participants").select("*").eq("id", saved).maybeSingle();

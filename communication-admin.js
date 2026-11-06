@@ -41,6 +41,7 @@ function setCreator(visible) {
 
 async function enterAdmin() {
   $("auth-box").hidden = true;
+  window.TCTheme?.initTrainer(supabase, user.email); // tema salvată de trainer
   setCreator(true);
   await loadScenarios();
   await resumeActiveSession();

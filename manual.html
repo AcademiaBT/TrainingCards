@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="ro" data-theme-role="trainer">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
   .manual-wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
   .manual-wrap h2 { font-size: 22px; margin-top: 46px; padding-top: 10px; border-top: 1px solid var(--parchment-dark); }
   .manual-wrap h2:first-of-type { border-top: none; margin-top: 20px; }
-  .manual-wrap h3 { font-size: 17px; margin-top: 26px; color: var(--green-deep); }
+  .manual-wrap h3 { font-size: 17px; margin-top: 26px; color: var(--green-text); }
   .manual-wrap p, .manual-wrap li { font-size: 15px; line-height: 1.65; }
   .manual-wrap ul, .manual-wrap ol { padding-left: 22px; }
   .manual-wrap li { margin-bottom: 6px; }
@@ -17,12 +17,13 @@
   .toc { background: var(--card-bg); border: 1px solid var(--parchment-dark); border-radius: 12px; padding: 20px 24px; margin: 24px 0 40px; }
   .toc h3 { margin: 0 0 10px; color: var(--ink); }
   .toc ol { columns: 2; column-gap: 30px; }
-  .toc a { color: var(--green-deep); text-decoration: none; font-size: 14px; }
+  .toc a { color: var(--green-text); text-decoration: none; font-size: 14px; }
   .toc a:hover { text-decoration: underline; }
   .note { background: var(--parchment); border-left: 4px solid var(--gold); border-radius: 6px; padding: 10px 16px; font-size: 14px; margin: 14px 0; }
-  .warn { background: #FCEAE8; border-left: 4px solid var(--red); border-radius: 6px; padding: 10px 16px; font-size: 14px; margin: 14px 0; }
+  .warn { background: var(--danger-bg); border-left: 4px solid var(--red); border-radius: 6px; padding: 10px 16px; font-size: 14px; margin: 14px 0; }
   @media (max-width: 640px) { .toc ol { columns: 1; } }
 </style>
+<script src="theme.js"></script>
 </head>
 <body>
 
@@ -63,6 +64,7 @@
     <li><a href="#live-colourblind-nou">În timpul sesiunii — Colourblind</a></li>
     <li><a href="#nodul-comunicarii">Nodul comunicării — trei activități online</a></li>
     <li><a href="#recapitulare">Recapitulare — două echipe, întrebări aruncate ca bulgări de hârtie</a></li>
+    <li><a href="#tema">Tema de culori</a></li>
   </ol>
 </div>
 
@@ -245,6 +247,15 @@
 <li><b>Închide de tot:</b> apare după „Încheie” (în Lobby apare ca „Anulează sesiunea”). Șterge definitiv sesiunea, participanții și întrebările; linkul nu mai funcționează, iar participanții văd „Recapitularea a fost închisă de trainer”. Apasă mai întâi „📋 Copiază întrebările”, dacă vrei să le păstrezi. „Sesiune nouă” doar te duce la ecranul de creare: sesiunea veche rămâne, iar linkul ei încă afișează câmpul de luptă.</li>
 </ol>
 <p>La prima folosire (și la actualizarea de la v58 la v59), rulează în Supabase scriptul <code>supabase/add-recap.sql</code> (idempotent: îl poți rula din nou fără risc). Persoanele cu setarea „reduce mișcarea” activată în dispozitiv văd bulgării aterizând direct, fără zbor.</p></section>
+<section class="panel" id="tema"><h3>24. Tema de culori</h3>
+<p>În antetul paginilor de trainer (Carduri de training, Nodul comunicării, Recapitulare) apare butonul <b>🎨 Temă</b>. Tema se aplică <b>în toată aplicația</b>: pe paginile tale de trainer și pe <b>ecranele participanților la sesiunile pornite de tine</b>, la jocurile cu cărți, la Nodul comunicării și la Recapitulare. Fiecare trainer își are tema lui, salvată în cont; un alt trainer poate avea alta.</p>
+<ol>
+<li><b>Alege o temă gata făcută:</b> Pergament (aspectul de până acum, implicit), Noapte, Grafit, Albastru corporate, Bordo, Contrast înalt. Se previzualizează imediat, pe pagina pe care ești.</li>
+<li><b>Sau creează-ți una (Personalizată):</b> alegi doar <b>patru culori</b>: <b>fundal</b>, <b>suprafață</b> (carduri și panouri), <b>culoare principală</b> (antet și butoane) și <b>accent</b>.</li>
+<li><b>Culoarea textului se alege automat:</b> pe fundal închis, text deschis, iar pe fundal deschis, text închis; la fel pentru textul de pe butoane și de pe antet. Contrastul de citire este garantat (minimum 4,5:1). Dacă suprafața aleasă nu se potrivește cu fundalul (de ex. fundal negru și carduri albe), aplicația o apropie automat de fundal și îți spune.</li>
+<li>Apasă <b>„Salvează ca tema mea”</b> ca să rămână (sau „Anulează” / Escape ca să revii). <b>„Resetează la Pergament”</b> readuce aspectul de până acum.</li>
+</ol>
+<p>Elementele care trebuie să rămână fixe nu se schimbă: pânza de desen (albă), culorile echipelor (roșu și albastru), culorile de stare (verde la „completat”) și scena din câmpul de luptă. La prima folosire, rulează în Supabase <code>supabase/add-themes.sql</code> (idempotent). Participanții primesc <b>doar tema</b>, nu și adresa ta de email.</p></section>
 </main>
 </body>
 </html>

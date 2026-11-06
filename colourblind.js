@@ -82,6 +82,7 @@ async function init() {
     return;
   }
   session = data;
+  window.TCTheme?.initParticipant(supabase, "cards", session.id); // tema trainerului
 
   const storageKey = `cb_participant_${session.id}`;
   const savedId = localStorage.getItem(storageKey);

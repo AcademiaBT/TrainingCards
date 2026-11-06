@@ -51,6 +51,7 @@ async function init() {
 }
 async function enterAdmin() {
   $("auth-box").hidden = true;
+  window.TCTheme?.initTrainer(supabase, user.email); // tema salvată de trainer
   const { data } = await supabase
     .from("recap_sessions")
     .select("*")

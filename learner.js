@@ -92,6 +92,7 @@ async function init() {
     return;
   }
   sessionInfo = sessionData;
+  window.TCTheme?.initParticipant(supabase, "cards", sessionId); // tema trainerului
   if (sessionData.games?.name) {
     $("learner-game-title").textContent = sessionData.games.name;
     document.title = sessionData.games.name;

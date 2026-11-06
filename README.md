@@ -60,3 +60,8 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 - **Ușor la încărcare:** fără conexiuni permanente; fiecare participant cere doar ce s-a schimbat (~0,4 KB pe reîmprospătare, măsurat în teste), iar bulgării în exces nu se animează toți deodată.
 - **Fișiere:** `recap.html`, `recap.js`, `recap.css` (participant), `recap-admin.html`, `recap-admin.js` (trainer), `recap-shared.js` (câmpul de luptă, listele, sincronizarea). Independent de celelalte jocuri: are propriile tabele.
 - **Supabase:** rulează `supabase/add-recap.sql` (idempotent; inclus și în `install-complete.sql`; la actualizarea de la v58 se rulează din nou, pentru limita de întrebări). Tabelele `recap_sessions`, `recap_participants`, `recap_questions`; regulile (echipa autorului, sesiune activă, ritm, lungime) sunt impuse în baza de date.
+
+### v61: temă de culori (toată aplicația)
+- **Butonul „🎨 Temă”** în antetul celor trei panouri de trainer: 6 teme gata făcute (Pergament = aspectul de până acum, Noapte, Grafit, Albastru corporate, Bordo, Contrast înalt) sau **Personalizată**, cu 4 culori (fundal, suprafață, principală, accent). **Textul se alege automat**: deschis pe fundal închis, închis pe fundal deschis, cu contrast garantat ≥ 4,5:1 (și pe butoane, antet, margini, mesaje).
+- Se salvează **pe trainer** (`trainer_settings`) și se aplică pe paginile lui **și pe ecranele participanților la sesiunile lui**: jocurile cu cărți, Nodul comunicării și Recapitulare. Participanții primesc doar tema, printr-o funcție (`session_theme`), nu emailul trainerului. Rămân fixe: canvasul de desen, culorile echipelor, culorile de stare.
+- Fișiere: `theme.js` (motor + fereastră de alegere), `supabase/add-themes.sql` (idempotent; inclus în `install-complete.sql`).

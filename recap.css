@@ -1,9 +1,15 @@
 /* Modul „Recapitulare” */
 :root {
+  --team1-text: #c0392b;
+  --team2-text: #1f5fa8;
   --team1: #c0392b;
   --team1-soft: #f7dfdb;
   --team2: #1f5fa8;
   --team2-soft: #dbe7f6;
+  /* valori de rezervă; tema (theme.js) le calculează pentru fiecare temă, cu contrast garantat */
+  --hidden-bg: #f8d7d3;
+  --hidden-fg: #a61b12;
+  --hidden-line: #c0392b;
 }
 
 /* ---------- aranjarea ecranului ---------- */
@@ -59,7 +65,7 @@
   gap:10px;
   margin:6px 0 10px;
   font-size:13px;
-  color:#6b6b5a;
+  color:var(--grey);
 }
 #q-msg { color:var(--red); text-align:right; }
 #throw-btn { width:100%; }
@@ -70,7 +76,7 @@
 .topic-line {
   margin:0 0 8px;
   font-size:15px;
-  color:#4a4636;
+  color:var(--ink-soft);
 }
 .topic-line b { font-family:"Fraunces", Georgia, serif; }
 
@@ -152,7 +158,7 @@
 }
 .qcol {
   min-width:0;
-  background:#fff;
+  background:var(--card-bg);
   border:1px solid var(--parchment-dark);
   border-radius:12px;
   overflow:hidden;
@@ -169,34 +175,34 @@
 }
 .qcol.team-1 .qhead { background:var(--team1); }
 .qcol.team-2 .qhead { background:var(--team2); }
-.qcount { background:rgba(255,255,255,.25); border-radius:999px; padding:1px 9px; font-size:13px; }
-.qdir { padding:4px 12px; font-size:12px; color:#6b6b5a; border-bottom:1px solid var(--parchment-dark); }
+.qcount { background:rgba(0,0,0,.24); border-radius:999px; padding:1px 9px; font-size:13px; }
+.qdir { padding:4px 12px; font-size:12px; color:var(--grey); border-bottom:1px solid var(--parchment-dark); }
 .qlist { margin:0; padding:6px 12px 8px 30px; }
 .qitem { margin:7px 0; line-height:1.35; word-break:break-word; }
-.qitem .qauthor { display:block; color:#7a7360; font-size:11.5px; }
+.qitem .qauthor { display:block; color:var(--grey); font-size:11.5px; }
 .qitem.is-new { animation:q-flash 2.2s ease-out; }
-@keyframes q-flash { 0% { background:#fff3b0; } 100% { background:transparent; } }
+@keyframes q-flash { 0% { background:var(--accent-soft); } 100% { background:transparent; } }
 /* intrebari ascunse (doar la trainer): la finalul listei, cu fundal si font rosii */
 .qhidden-head {
   margin:6px 12px 0;
   padding-top:8px;
-  border-top:1px dashed #d79a93;
+  border-top:1px dashed var(--hidden-line);
   font-size:12px;
   font-weight:700;
-  color:#a61b12;
+  color:var(--hidden-fg);
 }
 .qlist.qhidden { list-style:none; padding:6px 12px 10px; }
 .qitem.is-hidden {
   position:relative;
   padding:7px 10px;
-  border-left:4px solid #c0392b;
+  border-left:4px solid var(--hidden-line);
   border-radius:6px;
-  background:#f8d7d3;
-  color:#a61b12;
+  background:var(--hidden-bg);
+  color:var(--hidden-fg);
 }
-.qitem.is-hidden .qauthor { color:#b3524a; }
-.qitem.is-hidden .qbtn { border-color:#c0392b; background:#fff; color:#a61b12; }
-.qempty { list-style:none; margin-left:-18px; color:#9a9484; }
+.qitem.is-hidden .qauthor { color:var(--hidden-fg); }
+.qitem.is-hidden .qbtn { border-color:var(--hidden-line); background:var(--field-bg); color:var(--hidden-fg); }
+.qempty { list-style:none; margin-left:-18px; color:var(--grey); }
 .qbtn {
   margin-left:8px;
   font:inherit;
@@ -204,7 +210,8 @@
   padding:1px 8px;
   border:1px solid var(--parchment-dark);
   border-radius:999px;
-  background:#fff;
+  background:var(--field-bg);
+  color:var(--ink);
   cursor:pointer;
 }
 @media (max-width: 800px) {
@@ -213,11 +220,11 @@
 
 /* ---------- pagina trainerului ---------- */
 .recap-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
-.team-box { background:#fff; border:1px solid var(--parchment-dark); border-radius:10px; padding:8px 12px; min-width:140px; }
+.team-box { background:var(--card-bg); border:1px solid var(--parchment-dark); border-radius:10px; padding:8px 12px; min-width:140px; }
 .team-box h4 { margin:0 0 4px; font-size:14px; }
-.team-box.team-1 h4 { color:var(--team1); }
-.team-box.team-2 h4 { color:var(--team2); }
-.team-box.team-0 h4 { color:#6b6b5a; }
+.team-box.team-1 h4 { color:var(--team1-text); }
+.team-box.team-2 h4 { color:var(--team2-text); }
+.team-box.team-0 h4 { color:var(--grey); }
 .team-box div { font-size:14px; }
 .team-boxes { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
 .recap-admin-grid { display:grid; grid-template-columns:minmax(260px, 340px) 1fr; gap:16px; align-items:start; }
@@ -237,7 +244,7 @@ body.projector #projector-exit { display:inline-block; }
 body.projector #projector-exit:hover { opacity:1; }
 
 /* limita de intrebari + instructiuni */
-.q-left { min-height:18px; margin:-4px 0 8px; font-size:13px; color:#4a4636; }
+.q-left { min-height:18px; margin:-4px 0 8px; font-size:13px; color:var(--ink-soft); }
 .num-input { width:110px; font:inherit; padding:8px 10px; border:1px solid var(--parchment-dark); border-radius:10px; box-sizing:border-box; }
 .limit-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0 4px; }
 .limit-row label { margin:0; font-weight:600; }
@@ -245,7 +252,7 @@ body.projector #projector-exit:hover { opacity:1; }
 .recap-help {
   margin-top:14px;
   padding:10px 14px;
-  background:#fffdf6;
+  background:var(--card-bg);
   border:1px solid var(--parchment-dark);
   border-radius:10px;
   font-size:14.5px;

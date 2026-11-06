@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="ro" data-theme-role="trainer">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin · Carduri de training</title>
 <link rel="stylesheet" href="style.css" />
+<script src="theme.js"></script>
 </head>
 <body>
 
 <div id="login-view" class="login-wrap" style="display:none;">
-  <div class="eyebrow" style="color:var(--gold); font-size:11px; letter-spacing:0.15em; text-transform:uppercase;">Trainer</div>
+  <div class="eyebrow" style="color:var(--accent-text); font-size:11px; letter-spacing:0.15em; text-transform:uppercase;">Trainer</div>
   <h2>Autentificare</h2>
   <label>Email</label>
   <input id="login-email" type="email" placeholder="trainer@exemplu.ro" />
@@ -29,6 +30,7 @@
       <button class="btn outline" id="stats-btn" style="border-color:var(--gold-soft); color:var(--gold-soft);">📊 Statistici</button>
       <a href="communication-admin.html" class="btn outline" style="border-color:var(--gold-soft); color:var(--gold-soft); text-decoration:none; display:inline-block;">🧩 Nodul comunicării</a>
       <a href="manual.html" target="_blank" class="btn outline" style="border-color:var(--gold-soft); color:var(--gold-soft); text-decoration:none; display:inline-block;">📖 Manual</a>
+      <button class="btn outline" id="theme-btn" hidden style="border-color:var(--gold-soft); color:var(--gold-soft);">🎨 Temă</button>
       <button class="btn outline" id="logout-btn" style="border-color:var(--gold-soft); color:var(--gold-soft);">Deconectare</button>
     </div>
   </header>
@@ -289,7 +291,7 @@
           </div>
 
           <div id="timer-running-box" style="display:none;">
-            <div id="timer-display" style="font-size:34px; font-family:'Fraunces',serif; font-weight:700; color:var(--green);">00:00:00</div>
+            <div id="timer-display" style="font-size:34px; font-family:'Fraunces',serif; font-weight:700; color:var(--green-text);">00:00:00</div>
             <p id="timer-status-label" style="font-size:12px; color:var(--grey); margin:2px 0 12px;"></p>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <button class="btn outline" id="timer-pause-btn">Pauză</button>
@@ -380,7 +382,7 @@
     <input type="file" id="bulk-file-input" accept="image/*" multiple style="width:100%;" />
     <div id="bulk-preview" style="margin-top:16px; display:flex; flex-direction:column; gap:10px;"></div>
     <div class="error-msg" id="bulk-error"></div>
-    <div id="bulk-progress" style="font-size:13px; color:var(--green); margin-top:8px;"></div>
+    <div id="bulk-progress" style="font-size:13px; color:var(--green-text); margin-top:8px;"></div>
     <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
       <button class="btn outline" id="bulk-cancel-btn">Închide</button>
       <button class="btn" id="bulk-save-btn" disabled>Încarcă toate cardurile</button>

@@ -74,7 +74,7 @@
   height:100%;
   box-sizing:border-box;
   background:white;
-  border:2px dashed var(--green);
+  border:2px dashed var(--green-text);
   border-radius:10px;
   touch-action:none;
 }
@@ -100,14 +100,14 @@
   font-size:14px;
   padding:8px 12px;
   border-radius:8px;
-  border:1px solid var(--green);
+  border:1px solid var(--green-text);
   background:transparent;
-  color:var(--green);
+  color:var(--green-text);
   cursor:pointer;
 }
 .tool-btn.active {
   background:var(--green);
-  color:var(--card-bg);
+  color:var(--on-primary);
 }
 .tool-btn.clear {
   border-color:var(--red);
@@ -125,7 +125,7 @@
   cursor:pointer;
 }
 .swatch.active {
-  box-shadow:0 0 0 3px var(--green);
+  box-shadow:0 0 0 3px var(--green-text);
 }
 
 /* buline multicolora = culoare la alegere; inelul interior arata culoarea aleasa */
@@ -164,7 +164,7 @@
   padding:8px 14px;
   border:1px solid var(--parchment-dark);
   border-radius:8px;
-  background:#fffdf6;
+  background:var(--card-bg);
   font-size:14px;
 }
 .how-to summary {
@@ -195,7 +195,7 @@
   align-items:center;
   justify-content:center;
   font-size:34px;
-  background:white;
+  background:var(--field-bg);
   cursor:pointer;
 }
 
@@ -209,7 +209,7 @@
 .piece {
   font-size:30px;
   border:1px solid var(--parchment-dark);
-  background:white;
+  background:var(--field-bg);
   border-radius:8px;
   padding:8px 13px;
   cursor:pointer;
@@ -229,7 +229,7 @@
   border:1px solid var(--parchment-dark);
   border-radius:10px;
   padding:10px;
-  background:white;
+  background:var(--field-bg);
 }
 
 .result-card img {
@@ -250,7 +250,7 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  border:1px solid #ddd;
+  border:1px solid var(--parchment-dark);
   font-size:20px;
 }
 
@@ -263,7 +263,7 @@
 .choice-list label {
   display:block;
   padding:8px;
-  background:white;
+  background:var(--field-bg);
   border-radius:8px;
   margin:6px 0;
 }
@@ -438,10 +438,12 @@
 
 /* Reconstruieste modelul: comparatie model / rezultat */
 .mini-model span.ok {
+  color:#1a1a1a;
   background:#dcefd8;
   border-color:#2e7d32;
 }
 .mini-model span.bad {
+  color:#1a1a1a;
   background:#f8dfd9;
   border-color:#c0392b;
 }
@@ -470,12 +472,12 @@
   display:inline-block;
   padding:6px 12px;
   border-radius:8px;
-  background:#f1ead6;
+  background:var(--accent-soft);
   font-weight:600;
 }
 .result-card.mine {
-  border-color:var(--green);
-  box-shadow:0 0 0 2px var(--green);
+  border-color:var(--green-text);
+  box-shadow:0 0 0 2px var(--green-text);
 }
 .results-grid.own-result {
   grid-template-columns:minmax(200px, 300px);
@@ -574,7 +576,7 @@ ol.steps li {
 .sc-preview {
   margin-top:6px;
   font-size:14px;
-  background:#fffdf6;
+  background:var(--card-bg);
   border:1px dashed var(--parchment-dark);
   border-radius:8px;
   padding:6px 12px;
@@ -627,13 +629,14 @@ ol.steps li {
 }
 .shape-actions .tool-btn {
   background:#fff;
+  color:#1a1a1a;
   box-shadow:0 1px 5px rgba(0,0,0,.28);
   padding:6px 12px;
   font-size:13px;
 }
 .shape-actions .tool-btn.done {
   background:var(--green);
-  color:#fff;
+  color:var(--on-primary);
 }
 
 /* „Ce ai înțeles?”: răspunsurile tuturor (anonim) */
@@ -646,14 +649,14 @@ ol.steps li {
   border:1px solid var(--parchment-dark);
   border-radius:10px;
   padding:8px 14px;
-  background:#fff;
+  background:var(--card-bg);
 }
 .answer-card p {
   margin:6px 0;
 }
 .answer-card.mine {
-  border-color:var(--green);
-  box-shadow:0 0 0 2px var(--green);
+  border-color:var(--green-text);
+  box-shadow:0 0 0 2px var(--green-text);
   margin:10px 0;
 }
 
@@ -711,7 +714,7 @@ ol.steps li {
   justify-content:center;
   font-weight:700;
   font-size:16px;
-  color:var(--green);
+  color:var(--green-text);
 }
 @media (max-width: 850px) {
   .model-grid.axes {
@@ -727,7 +730,7 @@ ol.steps li {
   border:0;
   font-size:12px;
   font-weight:700;
-  color:var(--green);
+  color:var(--green-text);
 }
 .compare-row .mini-model.axes {
   grid-template-columns:22px repeat(4, 46px);
@@ -755,7 +758,7 @@ ol.steps li {
   height:8px;
   min-width:90px;
   margin-bottom:3px;
-  background:#e8e1cf;
+  background:var(--parchment-dark);
   border-radius:4px;
   overflow:hidden;
 }
@@ -791,7 +794,7 @@ ol.steps li {
 .preview-guide {
   margin-top:6px;
   padding:8px 10px;
-  background:#fffdf6;
+  background:var(--card-bg);
   border:1px solid var(--parchment-dark);
   border-radius:8px;
   max-height:220px;
@@ -834,6 +837,7 @@ img[data-sid].loading {
   border:0;
   border-radius:50%;
   background:#fff;
+  color:#1a1a1a;
   font-size:20px;
   cursor:pointer;
 }

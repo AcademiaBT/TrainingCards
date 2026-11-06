@@ -348,6 +348,7 @@ async function loadTrainerStats() {
 async function showAdmin() {
   $("login-view").style.display = "none";
   $("admin-view").style.display = "block";
+  supabase.auth.getSession().then(({ data }) => data.session && window.TCTheme?.initTrainer(supabase, data.session.user.email)); // tema salvată de trainer
   await loadGames(); // incarca jocuri -> seturi -> deck -> verificare blocare, in cascada corecta
   await loadActiveSession();
 }
