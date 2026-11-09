@@ -48,7 +48,7 @@
           <li><b>Pregătire:</b> scrie tema și stabilește <b>numărul maxim de întrebări pe participant</b> (0 = fără limită), apoi apasă „Creează sesiunea”. Limita o poți schimba și mai târziu, din panoul sesiunii.</li>
           <li><b>Intrarea participanților:</b> distribuie linkul sau codul QR. Fiecare intră cu un alias (fără cont) și așteaptă. Vezi în dreapta „Participanți (n)”.</li>
           <li><b>Pornirea:</b> alegi <b>„Start cu timp”</b> (cu minutele și secundele pe care le scrii alături) sau <b>„Start fără timp”</b>. La start, participanții sunt împărțiți aleatoriu în echipele <b>Roșii</b> și <b>Albaștri</b>, cât mai egale (minimum 2 participanți). Cine intră mai târziu e pus automat în echipa mai mică. Spune-le regula: fiecare scrie întrebări pentru echipa adversă, din ce ați recapitulat, și le aruncă; cu timp, pot arunca până expiră cronometrul.</li>
-          <li><b>Permite aruncarea:</b> bifa din panou, <b>debifată implicit</b>. <b>Cât e debifată</b>, fiecare participant poate <b>scrie și trimite întrebări către echipa adversă</b> (în limita de întrebări pe care ai stabilit-o; 0 = nelimitat), dar în dreptul întrebărilor primite <b>nu apare niciun buton</b>. <b>Când o bifezi</b>, în acel moment <b>apare butonul „Aruncă înapoi”</b> la fiecare întrebare primită de la echipa adversă, iar echipele le pot arunca înapoi. Participanții pot scrie întrebări noi oricând, cât le permite limita. <b>Dacă o debifezi</b> în timpul aruncărilor, butoanele dispar, iar întrebările rămân <b>fixe, în echipele în care erau în clipa debifării</b>. O poți bifa și debifa oricând, de câte ori vrei.</li>
+          <li><b>Permite aruncarea:</b> comutatorul <b>„Aruncare”</b> din bara de deasupra câmpului de luptă (rămâne vizibilă când derulezi și apare și în „Mod proiector”), <b>oprit implicit</b>. <b>Cât e oprit</b>, fiecare participant poate <b>scrie și trimite întrebări către echipa adversă</b> (în limita de întrebări pe care ai stabilit-o; 0 = nelimitat), dar în dreptul întrebărilor primite <b>nu apare niciun buton</b>. <b>Când îl pornești</b>, în acel moment <b>apare butonul „Aruncă înapoi”</b> la fiecare întrebare primită de la echipa adversă, iar echipele le pot arunca înapoi. Participanții pot scrie întrebări noi oricând, cât le permite limita. <b>Dacă îl oprești</b> în timpul aruncărilor, butoanele dispar, iar întrebările rămân <b>fixe, în echipele în care erau în clipa opririi</b>. Îl poți porni și opri oricând, de câte ori vrei.</li>
           <li><b>Cronometrul:</b> cu timp, participanții văd timpul rămas sus și, la <b>Pauză</b> sau după expirare, nu mai pot arunca întrebări (nici „Aruncă înapoi”); întrebările rămân vizibile. <b>Pauză / Reia</b> oprește și repornește timpul; <b>Adaugă timp</b> (minute și secunde) prelungește sau, după expirare, repornește cronometrul. Dacă ai pornit fără timp, poți activa un cronometru oricând din panou. În <b>Mod proiector</b> timpul apare mare, pe ecranul din sală.</li>
           <li><b>În timpul jocului:</b> bulgării de hârtie zboară spre tabăra adversă, iar întrebările apar listate pe echipe. Tu vezi și <b>aliasul autorului</b>. Poți <b>ascunde</b> o întrebare nepotrivită (dispare și de la participanți), poți <b>schimba limita</b> de întrebări, poți <b>reîmpărți echipele</b> (întrebările deja aruncate rămân la echipa lor) sau poți apăsa <b>Mod proiector</b> pentru ecranul din sală (rămân doar câmpul de luptă și întrebările). Participanții văd doar echipa autorului.</li>
           <li><b>Sugestie de desfășurare:</b> lasă 5–10 minute pentru aruncat întrebări, apoi citește întrebările cu voce tare, pe rând, iar echipa adversă răspunde oral. Folosește „Copiază întrebările” ca să păstrezi lista.</li>
@@ -60,8 +60,15 @@
 
     <section id="live" hidden>
       <div id="recap-top" class="panel">
-        <span class="badge" id="status-badge"></span>
-        <h2 id="topic-title"></h2>
+        <div class="top-head">
+          <div class="top-head-main">
+            <span class="badge" id="status-badge"></span>
+            <h2 id="topic-title"></h2>
+          </div>
+          <button class="btn danger" id="end">Încheie</button>
+        </div>
+        <details class="setup-details" id="setup-details" open>
+        <summary id="setup-summary">⚙️ Setări sesiune: link, cod QR, limită de întrebări</summary>
         <p>Link participanți:</p>
         <div class="session-link-box">
           <span id="join-link"></span>
@@ -76,6 +83,7 @@
           <label for="max-live">Număr maxim de întrebări pe participant <span class="hint">(0 = fără limită)</span></label>
           <input id="max-live" class="num-input" type="number" min="0" max="100" step="1" value="0" inputmode="numeric">
         </div>
+        </details>
         <div class="start-box" id="start-box" hidden>
           <h4>Start</h4>
           <p class="hint">La start, participanții sunt împărțiți aleatoriu în două echipe. <b>Cu timp</b>: pot arunca întrebări până expiră cronometrul. <b>Fără timp</b>: fără limită, până încheii tu.</p>
@@ -88,42 +96,10 @@
             <button class="btn outline" id="start">Start fără timp</button>
           </div>
         </div>
-        <div class="allow-panel" id="allow-panel" hidden>
-          <label class="check-row"><input type="checkbox" id="allow-throw" checked> <b>Permite aruncarea</b></label>
-          <p class="hint" id="allow-status"></p>
-        </div>
-        <div class="timer-panel" id="timer-panel" hidden>
-          <h4>Cronometru</h4>
-          <div id="timer-none-box" hidden>
-            <p class="hint">Sesiunea rulează fără cronometru: participanții pot arunca întrebări fără limită de timp.</p>
-            <button class="btn outline" id="timer-enable-btn">Activează un cronometru acum</button>
-            <div id="timer-setup-box" hidden>
-              <div class="timer-inputs">
-                <input id="timer-min" class="timer-num" type="number" min="0" max="180" step="1" value="5" inputmode="numeric" aria-label="Minute"><span>min</span>
-                <input id="timer-sec" class="timer-num" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-label="Secunde"><span>sec</span>
-              </div>
-              <div class="start-btns">
-                <button class="btn gold" id="timer-start-btn">Start cronometru</button>
-                <button class="btn outline" id="timer-cancel-btn">Renunță</button>
-              </div>
-            </div>
-          </div>
-          <div id="timer-running-box" hidden>
-            <div class="timer-display" id="timer-display" role="timer" aria-live="off">00:00</div>
-            <p class="timer-status" id="timer-status-label"></p>
-            <div class="timer-actions">
-              <button class="btn outline" id="timer-pause-btn">Pauză</button>
-              <input id="timer-extend-min" class="timer-num" type="number" min="0" max="180" step="1" value="1" inputmode="numeric" aria-label="Minute de adăugat"><span>min</span>
-              <input id="timer-extend-sec" class="timer-num" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-label="Secunde de adăugat"><span>sec</span>
-              <button class="btn outline" id="timer-extend-btn">Adaugă timp</button>
-            </div>
-          </div>
-        </div>
         <div class="recap-controls">
           <button class="btn outline" id="resplit">🔀 Reîmparte echipele</button>
           <button class="btn outline" id="copy-questions">📋 Copiază întrebările</button>
           <button class="btn outline" id="projector">🖥 Mod proiector</button>
-          <button class="btn danger" id="end">Încheie</button>
           <button class="btn" id="new-session" hidden>Sesiune nouă</button>
           <button class="btn outline" id="delete-session" hidden>🗑 Închide de tot</button>
         </div>
@@ -134,7 +110,7 @@
           <li><b>Pregătire:</b> scrie tema și stabilește <b>numărul maxim de întrebări pe participant</b> (0 = fără limită), apoi apasă „Creează sesiunea”. Limita o poți schimba și mai târziu, din panoul sesiunii.</li>
           <li><b>Intrarea participanților:</b> distribuie linkul sau codul QR. Fiecare intră cu un alias (fără cont) și așteaptă. Vezi în dreapta „Participanți (n)”.</li>
           <li><b>Pornirea:</b> alegi <b>„Start cu timp”</b> (cu minutele și secundele pe care le scrii alături) sau <b>„Start fără timp”</b>. La start, participanții sunt împărțiți aleatoriu în echipele <b>Roșii</b> și <b>Albaștri</b>, cât mai egale (minimum 2 participanți). Cine intră mai târziu e pus automat în echipa mai mică. Spune-le regula: fiecare scrie întrebări pentru echipa adversă, din ce ați recapitulat, și le aruncă; cu timp, pot arunca până expiră cronometrul.</li>
-          <li><b>Permite aruncarea:</b> bifa din panou, <b>debifată implicit</b>. <b>Cât e debifată</b>, fiecare participant poate <b>scrie și trimite întrebări către echipa adversă</b> (în limita de întrebări pe care ai stabilit-o; 0 = nelimitat), dar în dreptul întrebărilor primite <b>nu apare niciun buton</b>. <b>Când o bifezi</b>, în acel moment <b>apare butonul „Aruncă înapoi”</b> la fiecare întrebare primită de la echipa adversă, iar echipele le pot arunca înapoi. Participanții pot scrie întrebări noi oricând, cât le permite limita. <b>Dacă o debifezi</b> în timpul aruncărilor, butoanele dispar, iar întrebările rămân <b>fixe, în echipele în care erau în clipa debifării</b>. O poți bifa și debifa oricând, de câte ori vrei.</li>
+          <li><b>Permite aruncarea:</b> comutatorul <b>„Aruncare”</b> din bara de deasupra câmpului de luptă (rămâne vizibilă când derulezi și apare și în „Mod proiector”), <b>oprit implicit</b>. <b>Cât e oprit</b>, fiecare participant poate <b>scrie și trimite întrebări către echipa adversă</b> (în limita de întrebări pe care ai stabilit-o; 0 = nelimitat), dar în dreptul întrebărilor primite <b>nu apare niciun buton</b>. <b>Când îl pornești</b>, în acel moment <b>apare butonul „Aruncă înapoi”</b> la fiecare întrebare primită de la echipa adversă, iar echipele le pot arunca înapoi. Participanții pot scrie întrebări noi oricând, cât le permite limita. <b>Dacă îl oprești</b> în timpul aruncărilor, butoanele dispar, iar întrebările rămân <b>fixe, în echipele în care erau în clipa opririi</b>. Îl poți porni și opri oricând, de câte ori vrei.</li>
           <li><b>Cronometrul:</b> cu timp, participanții văd timpul rămas sus și, la <b>Pauză</b> sau după expirare, nu mai pot arunca întrebări (nici „Aruncă înapoi”); întrebările rămân vizibile. <b>Pauză / Reia</b> oprește și repornește timpul; <b>Adaugă timp</b> (minute și secunde) prelungește sau, după expirare, repornește cronometrul. Dacă ai pornit fără timp, poți activa un cronometru oricând din panou. În <b>Mod proiector</b> timpul apare mare, pe ecranul din sală.</li>
           <li><b>În timpul jocului:</b> bulgării de hârtie zboară spre tabăra adversă, iar întrebările apar listate pe echipe. Tu vezi și <b>aliasul autorului</b>. Poți <b>ascunde</b> o întrebare nepotrivită (dispare și de la participanți), poți <b>schimba limita</b> de întrebări, poți <b>reîmpărți echipele</b> (întrebările deja aruncate rămân la echipa lor) sau poți apăsa <b>Mod proiector</b> pentru ecranul din sală (rămân doar câmpul de luptă și întrebările). Participanții văd doar echipa autorului.</li>
           <li><b>Sugestie de desfășurare:</b> lasă 5–10 minute pentru aruncat întrebări, apoi citește întrebările cu voce tare, pe rând, iar echipa adversă răspunde oral. Folosește „Copiază întrebările” ca să păstrezi lista.</li>
@@ -149,7 +125,47 @@
           <h3>Participanți <span id="participants-count">(0)</span></h3>
           <div class="team-boxes" id="team-boxes"></div>
         </aside>
-        <div>
+        <div class="recap-main">
+          <div class="live-bar" id="live-bar" hidden>
+            <div class="allow-panel" id="allow-panel" hidden>
+              <label class="switch-row" for="allow-throw">
+                <input type="checkbox" id="allow-throw" role="switch" aria-describedby="allow-status">
+                <span class="switch-label" id="allow-label">Aruncare oprită</span>
+              </label>
+              <p class="hint" id="allow-status"></p>
+              <div class="allow-toast" id="allow-toast" role="status" aria-live="polite"></div>
+            </div>
+            <div class="timer-panel" id="timer-panel" hidden>
+              <div id="timer-none-box" hidden>
+                <span class="hint">Sesiunea rulează fără cronometru.</span>
+                <button class="btn outline" id="timer-enable-btn">⏱ Activează un cronometru</button>
+                <div id="timer-setup-box" hidden>
+                  <div class="timer-inputs">
+                    <input id="timer-min" class="timer-num" type="number" min="0" max="180" step="1" value="5" inputmode="numeric" aria-label="Minute"><span>min</span>
+                    <input id="timer-sec" class="timer-num" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-label="Secunde"><span>sec</span>
+                  </div>
+                  <div class="start-btns">
+                    <button class="btn gold" id="timer-start-btn">Start cronometru</button>
+                    <button class="btn outline" id="timer-cancel-btn">Renunță</button>
+                  </div>
+                </div>
+              </div>
+              <div id="timer-running-box" hidden>
+                <div class="timer-line">
+                  <span class="timer-icon" aria-hidden="true">⏱</span>
+                  <div class="timer-display" id="timer-display" role="timer" aria-live="off">00:00</div>
+                  <button class="btn outline" id="timer-pause-btn">Pauză</button>
+                  <button class="btn outline" id="timer-plus1" title="Adaugă un minut">+1 min</button>
+                </div>
+                <p class="timer-status" id="timer-status-label"></p>
+                <div class="timer-actions">
+                  <input id="timer-extend-min" class="timer-num" type="number" min="0" max="180" step="1" value="1" inputmode="numeric" aria-label="Minute de adăugat"><span>min</span>
+                  <input id="timer-extend-sec" class="timer-num" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-label="Secunde de adăugat"><span>sec</span>
+                  <button class="btn outline" id="timer-extend-btn">Adaugă timp</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="proj-timer" id="proj-timer" role="timer" aria-live="off" hidden>00:00</div>
           <p class="topic-line" id="topic-line"></p>
           <div id="arena"></div>

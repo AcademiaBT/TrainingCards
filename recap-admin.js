@@ -14,6 +14,7 @@ let busy = false;
 const clock = createClock(supabase); // ora serverului
 let expiring = false;
 let tickCount = 0;
+let lastStatus = null; // pentru a strânge „Setări sesiune” o singură dată, la start
 let participants = [];
 let newIds = new Set();
 
@@ -126,18 +127,35 @@ function render() {
   renderParticipants();
   renderAllowPanel();
   renderTimerPanel();
+  // „Setări sesiune” (link, QR, limită) sunt deschise în Lobby și se strâng când începe jocul; rezumatul arată limita curentă
+  if (session.status !== lastStatus) {
+    $("setup-details").open = session.status === "lobby";
+    lastStatus = session.status;
+  }
+  updateSetupSummary();
+}
+function updateSetupSummary() {
+  $("setup-summary").textContent = `⚙️ Setări sesiune: link, cod QR, limită de întrebări (${session.max_questions ? session.max_questions + " pe participant" : "nelimitat"})`;
 }
 
 // ---------- „Permite aruncarea” ----------
 function renderAllowPanel() {
   const play = session?.status === "play";
+  $("live-bar").hidden = !play; // bara live (aruncare + cronometru) apare doar cât jocul rulează
   $("allow-panel").hidden = !play;
   if (!play) return;
   const on = session.throw_allowed !== false;
   if (document.activeElement !== $("allow-throw")) $("allow-throw").checked = on;
+  $("allow-label").textContent = on ? "Aruncare permisă" : "Aruncare oprită";
   $("allow-status").textContent = on
-    ? "Aruncarea e permisă: în dreptul fiecărei întrebări primite apare butonul „Aruncă înapoi”. Dacă o debifezi, butoanele dispar, iar întrebările rămân fixe, în echipele în care erau."
-    : "Aruncarea e oprită: participanții scriu și trimit întrebări către echipa adversă (în limita stabilită), dar în dreptul întrebărilor nu apare niciun buton „Aruncă înapoi” până bifezi „Permite aruncarea”.";
+    ? "Aruncarea e permisă: la fiecare întrebare primită apare butonul „Aruncă înapoi”."
+    : "Aruncarea e oprită: participanții trimit întrebări, dar fără butonul „Aruncă înapoi” la cele primite.";
+}
+let allowToastTimer = null;
+function allowToast(text) {
+  $("allow-toast").textContent = text;
+  clearTimeout(allowToastTimer);
+  allowToastTimer = setTimeout(() => ($("allow-toast").textContent = ""), 3200);
 }
 $("allow-throw").onchange = async (e) => {
   const on = e.target.checked;
@@ -148,6 +166,7 @@ $("allow-throw").onchange = async (e) => {
   }
   session = data;
   render();
+  allowToast(on ? "✔ Participanții pot arunca acum" : "Aruncarea e oprită: întrebările rămân unde sunt");
 };
 
 // ---------- cronometru ----------
@@ -331,6 +350,7 @@ $("timer-start-btn").onclick = async () => {
   await timerAction("start", sec);
   $("timer-enable-btn").hidden = false;
 };
+$("timer-plus1").onclick = () => timerAction("extend", 60); // adaugă rapid un minut
 $("timer-pause-btn").onclick = () => timerAction(session.timer_status === "paused" ? "resume" : "pause");
 $("timer-extend-btn").onclick = async () => {
   const sec = minSecToSeconds("timer-extend-min", "timer-extend-sec");
@@ -355,6 +375,7 @@ guardLimitInput($("max-live"), async (v) => {
   const { error } = await supabase.from("recap_sessions").update({ max_questions: v }).eq("id", session.id);
   if (error) return alert(error.message);
   session.max_questions = v;
+  updateSetupSummary(); // confirmarea se vede imediat
 });
 $("delete-session").onclick = async () => {
   const msg =

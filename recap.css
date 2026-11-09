@@ -338,8 +338,61 @@ body.projector .proj-timer:not([hidden]) { display:block; }
 /* „Aruncă înapoi”: apare doar cât bifa „Permite aruncarea” a trainerului e bifată; în timpul trimiterii e inactiv */
 .qret-btn:disabled { opacity:.55; cursor:default; }
 
-/* „Permite aruncarea” (trainer) */
-.check-row { display:flex; align-items:center; gap:8px; margin:10px 0 4px; font-size:14px; cursor:pointer; }
-.check-row input { width:20px; height:20px; accent-color:var(--green); }
-.allow-panel { margin:12px 0; padding:12px 14px; background:var(--card-bg); border:1px solid var(--parchment-dark); border-radius:12px; }
-.allow-panel .hint { margin:4px 0 0; }
+/* ---------- trainer: antet, setări strânse, bară live ---------- */
+.top-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.top-head-main h2 { margin:6px 0 0; }
+.top-head #end { margin-top:2px; } /* „Încheie”: singur, sus în dreapta, departe de comutatorul de aruncare */
+.setup-details { margin:10px 0 0; border:1px solid var(--parchment-dark); border-radius:12px; padding:2px 12px 10px; background:var(--card-bg); }
+.setup-details > summary { cursor:pointer; padding:9px 0; font-weight:700; list-style-position:inside; }
+.recap-main { min-width:0; }
+.live-bar {
+  position:sticky; top:0; z-index:15;
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px 22px;
+  margin:0 0 12px; padding:10px 14px;
+  background:var(--card-bg); border:1px solid var(--parchment-dark); border-radius:14px;
+  box-shadow:0 3px 10px rgba(0,0,0,.10);
+}
+.live-bar[hidden] { display:none; }
+.live-bar .allow-panel, .live-bar .timer-panel { margin:0; padding:0; border:0; background:none; flex:1 1 300px; min-width:0; }
+.live-bar .allow-panel .hint { margin:2px 0 0; font-size:12.5px; }
+.live-bar .timer-panel { border-left:1px solid var(--parchment-dark); padding-left:18px; }
+.live-bar .timer-panel .hint { margin:0 8px 0 0; }
+.switch-row { display:inline-flex; align-items:center; gap:12px; cursor:pointer; font-weight:700; font-size:16px; }
+.switch-row input[type="checkbox"] {
+  appearance:none; -webkit-appearance:none; flex:0 0 auto;
+  width:54px; height:30px; margin:0; border-radius:999px; position:relative; cursor:pointer;
+  background:var(--grey); transition:background .15s;
+}
+.switch-row input[type="checkbox"]::after {
+  content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .15s;
+}
+.switch-row input[type="checkbox"]:checked { background:var(--green); }
+.switch-row input[type="checkbox"]:checked::after { transform:translateX(24px); }
+.switch-row input[type="checkbox"]:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+.switch-label { min-width:140px; }
+.allow-toast { min-height:18px; font-size:13px; font-weight:600; color:var(--green-text); }
+.timer-line { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.timer-icon { font-size:20px; }
+.live-bar .timer-display { font-size:30px; }
+.live-bar .timer-line .btn { padding:6px 12px; font-size:13px; }
+.live-bar .timer-status { margin:4px 0 6px; }
+.live-bar .timer-actions { gap:6px; }
+
+/* modul proiector: bara devine o pastilă mică (comutatorul de aruncare), în colțul din stânga sus */
+body.projector .live-bar {
+  position:fixed; top:10px; left:12px; z-index:30; margin:0; padding:6px 14px; gap:0;
+  border-radius:999px; box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+body.projector .live-bar .timer-panel,
+body.projector .live-bar .allow-panel .hint { display:none !important; }
+body.projector .live-bar .allow-panel { flex:0 0 auto; }
+body.projector .live-bar .switch-label { min-width:0; font-size:14px; }
+body.projector .live-bar .allow-toast { position:absolute; top:100%; left:8px; margin-top:4px; padding:3px 10px; background:var(--card-bg); border-radius:999px; }
+@media (max-width: 800px) {
+  .live-bar { top:0; padding:8px 10px; }
+  .live-bar .timer-panel { border-left:0; padding-left:0; border-top:1px solid var(--parchment-dark); padding-top:8px; flex:1 1 100%; }
+  .live-bar .allow-panel { flex:1 1 100%; }
+}
+.live-bar .timer-num { width:58px; padding:6px 8px; }
+body.projector .live-bar .allow-toast { white-space:nowrap; }

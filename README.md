@@ -101,3 +101,7 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 
 ### v74: Recapitulare pe telefon — panou de scris minimizabil, cu restrângere automată
 - Pe telefon, panoul de scris are o **bară „✏️ Scrie o întrebare”** care îl strânge la o singură bară și îl deschide la loc; **se strânge singur după fiecare trimitere** și când nu se mai poate scrie (limită, pauză, timp expirat). Câmpul e mai mic și crește singur. Pe laptop nu se schimbă nimic. Fără SQL.
+
+### v75: pagina trainerului la Recapitulare — bară live, setări strânse, „Încheie” singur, pastilă în modul proiector
+- **Bară live** deasupra câmpului de luptă, lipită sus la derulare: **comutatorul „Aruncare”** (mare, cu starea scrisă și confirmare scurtă) și **cronometrul** (Pauză/Reia, +1 min, Adaugă timp). **„Setări sesiune”** (link, QR, limită) se strâng singure la start. **„Încheie”** e singur, sus în dreapta. În **Mod proiector**, bara devine o pastilă cu comutatorul. Fără SQL.
+
