@@ -15,6 +15,7 @@ let busy = false;
 const clock = createClock(supabase); // ora serverului: timpul rămas e același pe toate ecranele
 let lastTimerState = null;
 let endedShown = false; // nota de încheiere a fost deja adusă în vedere
+let composerOpen = true; // telefon: panoul de scris e deschis sau strâns la o bară (se strânge singur după fiecare trimitere)
 let myCount = 0; // cate intrebari am aruncat eu in aceasta sesiune (pentru limita stabilita de trainer)
 let cooldownUntil = 0;
 let cooldownTimer = null;
@@ -224,7 +225,47 @@ function updateThrowButton() {
   $("throw-btn").textContent = tBlocked
     ? tState === "paused" ? "Pauză" : "Timpul a expirat"
     : reached ? "Limita de întrebări atinsă" : left > 0 ? `Aruncă întrebarea (${left})` : "Aruncă întrebarea";
+
+  // Telefon: panoul de scris se strânge la o singură bară, ca să rămână loc pentru lista de întrebări.
+  // Se strânge singur după fiecare trimitere și cât nu se poate scrie (limită atinsă, pauză, timp expirat, sesiune nepornită).
+  const writable = playing && !reached && !tBlocked;
+  const collapsed = isPhone() && (!composerOpen || !writable);
+  $("composer").classList.toggle("collapsed", collapsed);
+  $("composer-bar").disabled = !writable;
+  $("composer-bar").setAttribute("aria-expanded", String(!collapsed));
+  $("composer-bar-chev").textContent = collapsed ? "▴" : "▾";
+  $("composer-bar-title").textContent = collapsed && text.trim() ? "✏️ Continuă întrebarea" : "✏️ Scrie o întrebare";
+  $("composer-bar-info").textContent = tBlocked
+    ? tState === "paused" ? "Pauză" : "Timpul a expirat"
+    : reached ? `Limita atinsă (${myCount}/${limit})`
+    : !playing ? ""
+    : collapsed && text.trim() ? `${text.length}/${MAX_LEN}`
+    : left > 0 ? `⏱ ${left} s`
+    : limit > 0 ? `${limit - myCount} rămase din ${limit}` : "";
 }
+
+const isPhone = () => window.matchMedia("(max-width: 800px)").matches;
+window.matchMedia("(max-width: 800px)").addEventListener("change", () => {
+  autoGrow();
+  updateThrowButton();
+});
+// câmpul de scris pornește mic pe telefon și crește singur, până la ~5 rânduri
+function autoGrow() {
+  const t = $("q-text");
+  if (!isPhone()) {
+    t.style.height = "";
+    return;
+  }
+  t.style.height = "auto";
+  t.style.height = `${Math.min(Math.max(t.scrollHeight, 64), 132)}px`;
+}
+$("q-text").addEventListener("input", autoGrow);
+$("composer-bar").onclick = () => {
+  if ($("composer-bar").disabled) return;
+  composerOpen = !composerOpen;
+  updateThrowButton();
+  if (composerOpen && isPhone()) $("q-text").focus();
+};
 
 function startCooldown(seconds) {
   cooldownUntil = Date.now() + seconds * 1000;
@@ -274,7 +315,11 @@ async function throwQuestion() {
   $("throw-btn").disabled = true;
   $("q-msg").textContent = "";
   const r = await sendQuestion(body);
-  if (r.ok) $("q-text").value = "";
+  if (r.ok) {
+    $("q-text").value = "";
+    autoGrow();
+    composerOpen = false; // restrângere automată: după trimitere vezi imediat lista de întrebări
+  }
   updateThrowButton();
 }
 

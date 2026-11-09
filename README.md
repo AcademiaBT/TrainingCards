@@ -99,3 +99,5 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 ### v73: Recapitulare — „Permite aruncarea” (înlocuiește v71 și v72)
 - Bifa **„Permite aruncarea”** (la trainer, **debifată implicit**, activabilă și dezactivabilă oricând) controlează butonul **„Aruncă înapoi”**. **Debifată: niciun buton** în dreptul întrebărilor; participanții scriu și trimit întrebări către echipa adversă (în limita stabilită; 0 = nelimitat). **Bifată: butonul apare** la fiecare întrebare primită. **Debifată din nou**: butoanele dispar, iar întrebările rămân fixe, în echipele în care erau. Întrebările noi se pot scrie oricând, în limita permisă. Impus și în baza de date. Supabase: rulează din nou `supabase/add-recap.sql` (idempotent), dacă nu l-ai rulat deja pentru v72.
 
+### v74: Recapitulare pe telefon — panou de scris minimizabil, cu restrângere automată
+- Pe telefon, panoul de scris are o **bară „✏️ Scrie o întrebare”** care îl strânge la o singură bară și îl deschide la loc; **se strânge singur după fiecare trimitere** și când nu se mai poate scrie (limită, pauză, timp expirat). Câmpul e mai mic și crește singur. Pe laptop nu se schimbă nimic. Fără SQL.

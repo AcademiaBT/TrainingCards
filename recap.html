@@ -42,12 +42,19 @@
     <section id="game" hidden>
       <div class="recap-layout">
         <div class="recap-composer panel" id="composer">
-          <div class="team-banner" id="team-banner"></div>
-          <label for="q-text" id="q-label">Întrebare pentru echipa adversă</label>
-          <textarea id="q-text" maxlength="200" rows="4" placeholder="Scrie o întrebare din ce ați recapitulat…"></textarea>
-          <div class="q-meta"><span id="q-count">0/200</span><span id="q-msg" role="status"></span></div>
-          <div class="q-left" id="q-left"></div>
-          <button class="btn gold" id="throw-btn" disabled>Aruncă întrebarea</button>
+          <button type="button" class="composer-bar" id="composer-bar" aria-expanded="true" aria-controls="composer-body">
+            <span class="composer-bar-title" id="composer-bar-title">✏️ Scrie o întrebare</span>
+            <span class="composer-bar-info" id="composer-bar-info"></span>
+            <span class="composer-bar-chev" id="composer-bar-chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="composer-body" id="composer-body">
+            <div class="team-banner" id="team-banner"></div>
+            <label for="q-text" id="q-label">Întrebare pentru echipa adversă</label>
+            <textarea id="q-text" maxlength="200" rows="4" placeholder="Scrie o întrebare din ce ați recapitulat…"></textarea>
+            <div class="q-meta"><span id="q-count">0/200</span><span id="q-msg" role="status"></span></div>
+            <div class="q-left" id="q-left"></div>
+            <button class="btn gold" id="throw-btn" disabled>Aruncă întrebarea</button>
+          </div>
         </div>
         <div class="recap-visual">
           <div class="timer-bar" id="timer-bar" hidden>

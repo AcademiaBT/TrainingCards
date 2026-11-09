@@ -34,8 +34,19 @@
   }
   .recap-visual { order:1; flex:1 1 auto; min-height:0; overflow:auto; }
   .recap-composer { order:2; flex:0 0 auto; padding:10px 12px; margin:0; }
-  .recap-composer textarea { min-height:56px; }
+  .recap-composer textarea { height:64px; min-height:56px; } /* mai mic; crește singur pe măsură ce scrii (până la ~5 rânduri) */
+  .recap-composer.collapsed { padding:6px 8px; }
+  .recap-composer.collapsed .composer-body { display:none; }
+  .recap-composer.collapsed .composer-bar { margin:0; }
+  /* bara panoului de scris: minimizează / deschide */
+  .composer-bar { display:flex; align-items:center; gap:8px; width:100%; margin:0 0 8px; padding:9px 12px; font:inherit; font-weight:700; text-align:left; color:var(--ink); background:var(--field-bg); border:1px solid var(--parchment-dark); border-radius:10px; cursor:pointer; }
+  .composer-bar:disabled { cursor:default; }
+  .composer-bar-title { flex:1 1 auto; }
+  .composer-bar-info { font-weight:500; font-size:13px; color:var(--ink-soft); }
+  .composer-bar-chev { font-size:15px; }
 }
+.composer-bar { display:none; } /* doar pe telefon; pe laptop panoul e mereu deschis */
+@media (max-width: 800px) { .composer-bar { display:flex; } }
 
 /* ---------- compozitor ---------- */
 .team-banner {
