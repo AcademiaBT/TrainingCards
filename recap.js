@@ -162,7 +162,8 @@ function drawAll() {
     newIds,
     myTeam: me?.team,
     returning,
-    onReturn: session.status === "play" && me?.team && !timerBlocked() ? returnQuestion : null,
+    // „Aruncă înapoi” APARE doar cât timp trainerul a bifat „Permite aruncarea” (și cronometrul nu e oprit); altfel, niciun buton în dreptul întrebărilor
+    onReturn: session.status === "play" && me?.team && !timerBlocked() && throwAllowed() ? returnQuestion : null,
   });
 }
 
@@ -205,6 +206,9 @@ function renderTimer() {
   }
 }
 
+// „Permite aruncarea” (bifa trainerului) controlează DOAR „Aruncă înapoi”; întrebările noi se trimit oricând (în limita permisă și cât timp rulează cronometrul)
+const throwAllowed = () => session?.throw_allowed !== false;
+
 function updateThrowButton() {
   const text = $("q-text").value;
   $("q-count").textContent = `${text.length}/${MAX_LEN}`;
@@ -240,12 +244,10 @@ const THROW_ERRORS = {
   recap_time_up: "Timpul a expirat: nu se mai pot arunca întrebări.",
   recap_timer_paused: "Pauză: aruncatul de întrebări e oprit până reia trainerul cronometrul.",
 };
-
-async function throwQuestion() {
-  const body = $("q-text").value.trim().slice(0, MAX_LEN);
-  if (!body || $("throw-btn").disabled) return;
-  $("throw-btn").disabled = true;
-  $("q-msg").textContent = "";
+// ---------------------------------------------------------------------
+//  Aruncare / pregătire
+// ---------------------------------------------------------------------
+async function sendQuestion(body) {
   const { data, error } = await supabase
     .from("recap_questions")
     .insert({ session_id: session.id, participant_id: me.id, team: me.team, body })
@@ -256,14 +258,24 @@ async function throwQuestion() {
     $("q-msg").textContent = key ? THROW_ERRORS[key] : error.message;
     if (key === "recap_limit_reached") myCount = Math.max(myCount, session.max_questions || 0);
     startCooldown(key === "recap_rate_limit" ? 3 : 1);
-    return;
+    return { ok: false, key };
   }
   myCount++;
   store.remember(data);
   arena.fly(me.team); // bulgarele pleaca imediat, fara sa astepte reimprospatarea
   drawAll();
-  $("q-text").value = "";
   startCooldown(COOLDOWN_S);
+  return { ok: true };
+}
+
+async function throwQuestion() {
+  const body = $("q-text").value.trim().slice(0, MAX_LEN);
+  if (!body || $("throw-btn").disabled) return;
+  $("throw-btn").disabled = true;
+  $("q-msg").textContent = "";
+  const r = await sendQuestion(body);
+  if (r.ok) $("q-text").value = "";
+  updateThrowButton();
 }
 
 // „Aruncă înapoi”: aceeași întrebare, trimisă înapoi echipei care a pus-o. O singură returnare pe întrebare (primul coleg care apasă);
@@ -275,9 +287,10 @@ const RETURN_ERRORS = {
   recap_not_playing: "Recapitularea nu este activă acum.",
   recap_time_up: "Timpul a expirat: nu se mai pot arunca întrebări.",
   recap_timer_paused: "Pauză: aruncatul de întrebări e oprit până reia trainerul cronometrul.",
+  recap_throw_off: "Aruncarea nu este permisă acum. Trainerul o va permite.",
 };
 async function returnQuestion(q) {
-  if (returning.has(q.id) || !me?.team || timerBlocked()) return;
+  if (returning.has(q.id) || !me?.team || timerBlocked() || !throwAllowed()) return;
   returning.add(q.id);
   $("q-msg").textContent = "";
   drawAll();
@@ -310,7 +323,7 @@ $("throw-btn").onclick = throwQuestion;
 let tick = 0;
 async function refresh() {
   tick++;
-  const { data, error } = await supabase.from("recap_sessions").select("status, topic, max_questions, timer_status, timer_total_seconds, timer_remaining_seconds, timer_ends_at").eq("id", session.id).maybeSingle();
+  const { data, error } = await supabase.from("recap_sessions").select("status, topic, max_questions, throw_allowed, timer_status, timer_total_seconds, timer_remaining_seconds, timer_ends_at").eq("id", session.id).maybeSingle();
   if (!error && !data) {
     // trainerul a inchis de tot recapitularea (sesiunea a fost stearsa)
     clearInterval(poll);
@@ -321,10 +334,12 @@ async function refresh() {
   if (!data) return;
   const changed = data.status !== session.status || data.topic !== session.topic;
   const limitChanged = data.max_questions !== session.max_questions;
+  const allowChanged = data.throw_allowed !== session.throw_allowed; // trainerul a bifat / debifat „Permite aruncarea”
   session = { ...session, ...data };
   if (tick % 15 === 0) clock.sync(); // ceasul serverului se reverifică din când în când
   renderTimer();
   if (limitChanged && !$("game").hidden) updateThrowButton(); // trainerul a schimbat limita
+  if (allowChanged && !$("game").hidden && store && arena) drawAll(); // butonul „Aruncă înapoi” apare / dispare în dreptul întrebărilor primite
   if (me && !me.team && session.status !== "lobby") {
     const { data: p } = await supabase.from("recap_participants").select("team").eq("id", me.id).maybeSingle();
     if (p?.team) {

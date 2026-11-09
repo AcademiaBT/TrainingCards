@@ -155,7 +155,15 @@ export const DEBRIEF_MODEL_TRANSFER =
   "Aceeași informație poate fi înțeleasă foarte diferit: prea vagă, lasă loc interpretărilor; prea lungă, se pierde pe drum; exactă și cu un sistem de referință comun, e înțeleasă la fel de toți.";
 export const DEBRIEF_MODEL_SHORT_TIME = "Dacă ai puțin timp: întrebările 2, 4 și 6.";
 
-export const debriefFor = (mode) => (mode === "model" ? DEBRIEF_MODEL : DEBRIEF);
+// Întrebările de debrief: cele ale scenariului (dacă trainerul le-a personalizat), altfel cele standard ale activității
+export const customDebrief = (scenario) =>
+  Array.isArray(scenario?.debrief) ? scenario.debrief.filter((q) => typeof q === "string" && q.trim()).map((q) => q.trim()) : [];
+export const hasCustomDebrief = (scenario) => customDebrief(scenario).length > 0;
+export const debriefFor = (mode, scenario = null) => {
+  const own = customDebrief(scenario);
+  if (own.length) return own;
+  return mode === "model" ? DEBRIEF_MODEL : DEBRIEF;
+};
 
 export const DEBRIEF = [
   "Ce presupuneri ai făcut fără să îți dai seama?",

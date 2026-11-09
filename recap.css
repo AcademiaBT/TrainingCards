@@ -323,3 +323,12 @@ body.projector .recap-help { display:none; }
 .proj-timer.paused { color:var(--grey); }
 .proj-timer.expired, .proj-timer.low { color:var(--red); }
 body.projector .proj-timer:not([hidden]) { display:block; }
+
+/* „Aruncă înapoi”: apare doar cât bifa „Permite aruncarea” a trainerului e bifată; în timpul trimiterii e inactiv */
+.qret-btn:disabled { opacity:.55; cursor:default; }
+
+/* „Permite aruncarea” (trainer) */
+.check-row { display:flex; align-items:center; gap:8px; margin:10px 0 4px; font-size:14px; cursor:pointer; }
+.check-row input { width:20px; height:20px; accent-color:var(--green); }
+.allow-panel { margin:12px 0; padding:12px 14px; background:var(--card-bg); border:1px solid var(--parchment-dark); border-radius:12px; }
+.allow-panel .hint { margin:4px 0 0; }

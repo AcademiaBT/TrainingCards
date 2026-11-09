@@ -69,6 +69,14 @@
           <button class="btn outline" id="sc-add-round">＋ Adaugă runda 2</button>
           <button class="btn outline" id="sc-remove-round" hidden>Elimină runda 2</button>
         </div>
+        <fieldset class="sc-round sc-debrief">
+          <legend>Întrebări de debrief (opțional)</legend>
+          <p class="hint">Se afișează participanților și ție în etapa „Debrief”, doar pentru acest scenariu. Scrie <b>câte o întrebare pe rând</b> (cel mult 10, fiecare de cel mult 300 de caractere; se numerotează automat). <b>Lasă gol</b> ca să se folosească întrebările standard ale activității.</p>
+          <label for="sc-debrief">Întrebările de debrief ale scenariului</label>
+          <textarea id="sc-debrief" rows="6" placeholder="ex. Ce ai presupus fără să îți dai seama?&#10;Ce întrebare ar fi clarificat situația?"></textarea>
+          <div class="sc-actions"><button class="btn outline" id="sc-debrief-defaults" type="button">Încarcă întrebările standard, ca să le modifici</button></div>
+          <div class="sc-preview"><b>Previzualizare:</b> <span class="hint" id="sc-debrief-count"></span><div id="sc-debrief-preview"></div></div>
+        </fieldset>
         <div class="error-msg" id="sc-error"></div>
         <div class="sc-actions">
           <button class="btn" id="sc-save">Salvează scenariul</button>

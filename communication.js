@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
+import { ACTIVITIES, debriefFor, hasCustomDebrief, DEBRIEF_MODEL_TRANSFER, getRounds, roundOf, isRoundStatus } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRoundSummary, summaryHtml, exportDrawing, gridFrame, gridLinesHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -234,7 +234,9 @@ function render() {
   }
   if (session.status === "debrief") {
     $("debrief").hidden = false;
-    $("debrief-list").innerHTML = debriefFor(session.mode).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+    $("debrief-list").innerHTML = debriefFor(session.mode, session.scenario).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+    // cu întrebări proprii ale trainerului, textul standard de sub listă (despre clientul agresiv) nu se mai potrivește: se ascunde
+    $("debrief-transfer").hidden = hasCustomDebrief(session.scenario);
     // la model: textul de transfer potrivit si rezumatul scorurilor pe runde; la celelalte moduri ramane ca pana acum
     if (session.mode === "model") {
       $("debrief-transfer").textContent = DEBRIEF_MODEL_TRANSFER;

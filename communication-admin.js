@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
-import { ACTIVITIES, debriefFor, DEBRIEF_MODEL_SHORT_TIME, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
+import { ACTIVITIES, debriefFor, hasCustomDebrief, DEBRIEF, DEBRIEF_MODEL_SHORT_TIME, getRounds, randomVariant, variantLabel, stagesFor, stageLabel, baseClientScenarios, roundOf, parseStatus, MAX_ROUNDS } from "./communication-data.js";
 import { compareModel, gridHtml, scoreText, parseSteps, stepsHtml, hydrateOverlays, escapeText, gridFrame, modelRoundSummary, summaryHtml, loadDrawThumbs, fetchFullDrawing, enableLightbox } from "./communication-shared.js";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -400,7 +400,8 @@ async function render() {
       probeRounds(nRounds);
     }
   } else if (session.status === "debrief") {
-    html = `<ol>${debriefFor(session.mode).map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
+    html = `<ol>${debriefFor(session.mode, session.scenario).map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol>`;
+    if (hasCustomDebrief(session.scenario)) html = `<p class="hint">Întrebările de debrief ale scenariului „${escapeHtml(session.scenario.title || "")}”.</p>` + html;
     if (session.mode === "model") html += `<div id="debrief-summary"></div><p class="hint">${DEBRIEF_MODEL_SHORT_TIME}</p>`;
   } else if (isModel && !ended) {
     const { kind, n } = parseStatus(session.status);
@@ -562,7 +563,7 @@ let scenarioTab = "draw"; // fila activă din panou
 let form = null; // starea formularului: { id, mode, title, rounds: [...] }
 
 const lastKey = (m = "draw") => `comm_last_${m === "client" ? "client_" : ""}scenario_${(user?.email || "").toLowerCase()}`;
-const snapshot = (sc) => ({ id: sc.id, title: sc.title, rounds: sc.rounds });
+const snapshot = (sc) => ({ id: sc.id, title: sc.title, rounds: sc.rounds, debrief: hasCustomDebrief(sc) ? sc.debrief : null }); // copia din sesiune: și întrebările de debrief ale scenariului
 const scenariosOf = (m) => myScenarios.filter((s) => s.mode === m);
 
 async function loadScenarios() {
@@ -614,7 +615,7 @@ function renderScenarioList() {
     scenariosOf(scenarioTab)
       .map(
         (s) => `<div class="sc-item"><b>${escapeHtml(s.title)}</b>
-          <span class="hint">${n(s)}${scenarioTab === "draw" && s.rounds.some((r) => r.image_url) ? " · cu imagine" : ""}</span>
+          <span class="hint">${n(s)}${scenarioTab === "draw" && s.rounds.some((r) => r.image_url) ? " · cu imagine" : ""}${hasCustomDebrief(s) ? " · debrief propriu" : ""}</span>
           <button class="btn outline" data-sc-edit="${escapeHtml(s.id)}">Editează</button>
           <button class="btn outline" data-sc-del="${escapeHtml(s.id)}">Șterge</button></div>`
       )
@@ -648,6 +649,8 @@ function openScenarioForm(id = null) {
     id: sc?.id || null,
     mode,
     title: sc?.title || "",
+    debrief: (sc?.debrief || []).join("\n"),
+    hadDebrief: hasCustomDebrief(sc), // scenariul avea deja întrebări proprii (deci coloana există): se poate și goli
     rounds: sc
       ? sc.rounds.map((r) =>
           mode === "client"
@@ -658,6 +661,8 @@ function openScenarioForm(id = null) {
   };
   $("scenario-form-title").textContent = sc ? "Editează scenariul" : "Scenariu nou";
   $("sc-title").value = form.title;
+  $("sc-debrief").value = form.debrief;
+  updateDebriefPreview();
   $("sc-error").textContent = "";
   renderFormRounds();
   $("scenario-form").hidden = false;
@@ -758,8 +763,23 @@ function updateRoundButtons() {
 }
 
 // citeste valorile din campuri in starea formularului
+const MAX_DEBRIEF = 10;
+const MAX_DEBRIEF_LEN = 300;
+function updateDebriefPreview() {
+  const qs = parseSteps($("sc-debrief").value);
+  $("sc-debrief-preview").innerHTML = stepsHtml(qs) || '<span class="hint">Nicio întrebare proprie: se folosesc cele standard.</span>';
+  $("sc-debrief-count").textContent = qs.length ? `(${qs.length} din cel mult ${MAX_DEBRIEF})` : "";
+}
+$("sc-debrief").addEventListener("input", updateDebriefPreview);
+$("sc-debrief-defaults").onclick = () => {
+  $("sc-debrief").value = DEBRIEF.join("\n");
+  updateDebriefPreview();
+  $("sc-debrief").focus();
+};
+
 function syncForm() {
   form.title = $("sc-title").value.trim();
+  form.debrief = $("sc-debrief").value;
   form.rounds.forEach((r, i) => {
     r.title = $(`sc-r${i}-title`).value.trim();
     if (form.mode === "client") {
@@ -828,6 +848,11 @@ async function saveScenario() {
     if (empty >= 0) return (err.textContent = `Runda ${empty + 1}: scrie cel puțin o instrucțiune.`);
   }
 
+  const debrief = parseSteps(form.debrief);
+  if (debrief.length > MAX_DEBRIEF) return (err.textContent = `Cel mult ${MAX_DEBRIEF} întrebări de debrief (acum sunt ${debrief.length}).`);
+  const tooLong = debrief.findIndex((q) => q.length > MAX_DEBRIEF_LEN);
+  if (tooLong >= 0) return (err.textContent = `Întrebarea de debrief ${tooLong + 1} are ${debrief[tooLong].length} de caractere; maximum ${MAX_DEBRIEF_LEN}.`);
+
   $("sc-save").disabled = true;
   try {
     const rounds = [];
@@ -841,11 +866,13 @@ async function saveScenario() {
       }
     }
     const row = { owner_email: user.email.toLowerCase(), mode: form.mode, title: form.title, rounds };
+    // coloana apare în rând doar dacă ai întrebări proprii (sau le-ai golit pe cele vechi): scenariile obișnuite se salvează la fel ca până acum
+    if (debrief.length || form.hadDebrief) row.debrief = debrief.length ? debrief : null;
     const q = form.id
       ? supabase.from("communication_scenarios").update(row).eq("id", form.id)
       : supabase.from("communication_scenarios").insert(row);
     const { error } = await q;
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message + (/debrief/i.test(error.message) ? " (ai rulat scriptul add-scenario-debrief.sql în Supabase?)" : ""));
     closeScenarioForm();
     $("scenario-hint").hidden = true;
     await loadScenarios();

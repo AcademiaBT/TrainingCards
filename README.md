@@ -92,3 +92,10 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 
 ### v69: grila, implicit oprită la toți participanții
 - Grila de pătrățele pornește **oprită la toți participanții, pe laptop și pe telefon**. Alegerea (pornit/oprit) se păstrează **doar în sesiunea curentă** (la reîncărcare și între runde); o **sesiune nouă începe mereu cu grila oprită**, chiar dacă pe acel dispozitiv fusese pornită înainte. La trainer rămâne pornită implicit. Fără modificări în Supabase.
+
+### v70: întrebări de debrief personalizate pe fiecare scenariu
+- În „Scenariile mele” (Desenează după instrucțiuni și Ce ai înțeles?), formularul are secțiunea **„Întrebări de debrief (opțional)”**: câte o întrebare pe rând (cel mult 10, fiecare de cel mult 300 de caractere), cu previzualizare și butonul „Încarcă întrebările standard”. La etapa „Debrief”, participanții și trainerul văd **întrebările scenariului**, altfel cele standard. Lista de scenarii marchează „debrief propriu”. Supabase: rulează `supabase/add-scenario-debrief.sql` (idempotent; inclus în `install-complete.sql`).
+
+### v73: Recapitulare — „Permite aruncarea” (înlocuiește v71 și v72)
+- Bifa **„Permite aruncarea”** (la trainer, **debifată implicit**, activabilă și dezactivabilă oricând) controlează butonul **„Aruncă înapoi”**. **Debifată: niciun buton** în dreptul întrebărilor; participanții scriu și trimit întrebări către echipa adversă (în limita stabilită; 0 = nelimitat). **Bifată: butonul apare** la fiecare întrebare primită. **Debifată din nou**: butoanele dispar, iar întrebările rămân fixe, în echipele în care erau. Întrebările noi se pot scrie oricând, în limita permisă. Impus și în baza de date. Supabase: rulează din nou `supabase/add-recap.sql` (idempotent), dacă nu l-ai rulat deja pentru v72.
+

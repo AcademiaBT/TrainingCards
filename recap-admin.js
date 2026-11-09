@@ -124,8 +124,31 @@ function render() {
         ? "Participanții își aruncă întrebările. Poți ascunde o întrebare nepotrivită (se ascunde și din ecranele lor) sau poți folosi „Mod proiector” pentru ecranul din sală."
         : "Recapitularea s-a încheiat: nu se mai pot arunca întrebări, iar participanții văd în continuare câmpul de luptă. Copiază întrebările dacă vrei să le păstrezi, apoi „Închide de tot” (șterge sesiunea și oprește linkul) sau „Sesiune nouă”.";
   renderParticipants();
+  renderAllowPanel();
   renderTimerPanel();
 }
+
+// ---------- „Permite aruncarea” ----------
+function renderAllowPanel() {
+  const play = session?.status === "play";
+  $("allow-panel").hidden = !play;
+  if (!play) return;
+  const on = session.throw_allowed !== false;
+  if (document.activeElement !== $("allow-throw")) $("allow-throw").checked = on;
+  $("allow-status").textContent = on
+    ? "Aruncarea e permisă: în dreptul fiecărei întrebări primite apare butonul „Aruncă înapoi”. Dacă o debifezi, butoanele dispar, iar întrebările rămân fixe, în echipele în care erau."
+    : "Aruncarea e oprită: participanții scriu și trimit întrebări către echipa adversă (în limita stabilită), dar în dreptul întrebărilor nu apare niciun buton „Aruncă înapoi” până bifezi „Permite aruncarea”.";
+}
+$("allow-throw").onchange = async (e) => {
+  const on = e.target.checked;
+  const { data, error } = await supabase.from("recap_sessions").update({ throw_allowed: on }).eq("id", session.id).select().single();
+  if (error) {
+    e.target.checked = !on;
+    return alert(error.message + (/throw_allowed|schema|column/i.test(error.message) ? "\n\n(ai rulat scriptul add-recap.sql în Supabase?)" : ""));
+  }
+  session = data;
+  render();
+};
 
 // ---------- cronometru ----------
 const minSecToSeconds = (minId, secId) => (Math.max(0, parseInt($(minId).value, 10) || 0) * 60) + Math.min(59, Math.max(0, parseInt($(secId).value, 10) || 0));
