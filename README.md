@@ -89,3 +89,6 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 
 ### v68: ecranul de autentificare, mereu pe tema implicită
 - Ecranele de autentificare (jocuri cu cărți, Nodul comunicării, Recapitulare) folosesc **mereu tema implicită (Pergament), la toți**. Tema trainerului se aplică abia după autentificare; la deconectare nu rămâne în browser pentru următoarea persoană; un cont fără temă salvată nu o moștenește pe a altuia. Fără modificări în Supabase.
+
+### v69: grila, implicit oprită la toți participanții
+- Grila de pătrățele pornește **oprită la toți participanții, pe laptop și pe telefon**. Alegerea (pornit/oprit) se păstrează **doar în sesiunea curentă** (la reîncărcare și între runde); o **sesiune nouă începe mereu cu grila oprită**, chiar dacă pe acel dispozitiv fusese pornită înainte. La trainer rămâne pornită implicit. Fără modificări în Supabase.

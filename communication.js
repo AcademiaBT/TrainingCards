@@ -6,8 +6,15 @@ import { compareModel, gridHtml, scoreText, stepsHtml, hydrateOverlays, modelRou
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 
-// ---------- grila de pătrățele: o pornește / o oprește participantul (alegerea rămâne pe dispozitiv) ----------
-const GRID_KEY = "comm_grid";
+// ---------- grila de pătrățele: o pornește / o oprește participantul ----------
+// Implicit e OPRITĂ, la toți, pe laptop și pe telefon. Alegerea se păstrează doar în sesiunea curentă (rămâne la reîncărcare și între runde),
+// nu și în sesiunile următoare: o sesiune nouă începe mereu cu grila oprită.
+const GRID_KEY = `comm_grid_${new URLSearchParams(location.search).get("s") || ""}`;
+try {
+  localStorage.removeItem("comm_grid"); // alegerea veche, valabilă pe tot dispozitivul (până la v68), nu se mai folosește
+} catch {
+  /* mod privat */
+}
 const gridOn = () => {
   try {
     return localStorage.getItem(GRID_KEY) === "1";
