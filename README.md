@@ -105,3 +105,6 @@ Cheia `anon` din `config.js` este publică prin design — accesul e controlat d
 ### v75: pagina trainerului la Recapitulare — bară live, setări strânse, „Încheie” singur, pastilă în modul proiector
 - **Bară live** deasupra câmpului de luptă, lipită sus la derulare: **comutatorul „Aruncare”** (mare, cu starea scrisă și confirmare scurtă) și **cronometrul** (Pauză/Reia, +1 min, Adaugă timp). **„Setări sesiune”** (link, QR, limită) se strâng singure la start. **„Încheie”** e singur, sus în dreapta. În **Mod proiector**, bara devine o pastilă cu comutatorul. Fără SQL.
 
+### v76: Recapitulare, intrare de sine stătătoare
+- Butonul **„🎯 Recapitulare”** a fost **scos din Nodul comunicării** și mutat în **pagina principală a trainerului** (Carduri de training · Admin), lângă „🧩 Nodul comunicării”. Pagina Recapitulării nu mai trimite la Nodul comunicării, ci înapoi la meniul principal. Antetul meniului principal trece pe rânduri pe ecrane înguste (înainte, pe telefon, „Temă” și „Deconectare” ieșeau din ecran). Fără SQL.
+
